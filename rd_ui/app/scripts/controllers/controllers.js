@@ -80,12 +80,12 @@
         }
 
         if ($scope.selectedTab.key == 'my') {
-          return query.user.id == currentUser.id && query.name != 'New Query';
+          return query.user.id == currentUser.id && !query.is_draft;
         } else if ($scope.selectedTab.key == 'drafts') {
-          return query.user.id == currentUser.id && query.name == 'New Query';
+          return query.user.id == currentUser.id && query.is_draft;
         }
 
-        return query.name != 'New Query';
+        return !query.draft;
       });
     }
 
