@@ -114,7 +114,17 @@
           $scope.$parent.reloadDashboards();
         });
       }
-    }
+    };
+
+    $scope.togglePublished = function () {
+      Events.record(currentUser, "toggle_published", "dashboard", $scope.dashboard.id);
+      $scope.dashboard.is_draft = !$scope.dashboard.is_draft;
+      $scope.saveInProgress = true;
+      Dashboard.save({slug: $scope.dashboard.id, name: $scope.dashboard.name,
+                      layout: JSON.stringify($scope.dashboard.layout),
+                      is_draft: $scope.dashboard.is_draft},
+                     function() {$scope.saveInProgress = false;});
+    };
 
     $scope.toggleFullscreen = function() {
       $scope.isFullscreen = !$scope.isFullscreen;

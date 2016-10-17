@@ -141,3 +141,15 @@ class DataSourcePauseResource(BaseResource):
         })
 
         return data_source.to_dict()
+
+
+class DataSourceTestResource(BaseResource):
+    @require_admin
+    def post(self, data_source_id):
+        data_source = get_object_or_404(models.DataSource.get_by_id_and_org, data_source_id, self.current_org)
+        try:
+            data_source.query_runner.test_connection()
+        except Exception, e:
+            return {"msg": "failure: {}".format(e), "ok": 0}
+        else:
+            return {"msg": "success", "ok": 1}

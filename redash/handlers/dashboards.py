@@ -58,6 +58,7 @@ class DashboardResource(BaseResource):
         dashboard = models.Dashboard.get_by_id_and_org(dashboard_slug, self.current_org)
         dashboard.layout = dashboard_properties['layout']
         dashboard.name = dashboard_properties['name']
+        dashboard.is_draft = dashboard_properties['is_draft']
         dashboard.save()
 
         return dashboard.to_dict(with_widgets=True, user=self.current_user)
