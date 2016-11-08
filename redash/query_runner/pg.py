@@ -47,6 +47,7 @@ def _wait(conn, timeout=None):
 
 class PostgreSQL(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
+    default_doc_url = "https://www.postgresql.org/docs/current/"
 
     @classmethod
     def configuration_schema(cls):
@@ -75,6 +76,11 @@ class PostgreSQL(BaseSQLQueryRunner):
                    "type": "string",
                    "title": "SSL Mode",
                    "default": "prefer"
+                },
+                "doc_url": {
+                    "type": "string",
+                    "title": "Documentation URL",
+                    "default": cls.default_doc_url
                 }
             },
             "order": ['host', 'port', 'user', 'password'],
@@ -179,6 +185,9 @@ class PostgreSQL(BaseSQLQueryRunner):
 
 
 class Redshift(PostgreSQL):
+    default_doc_url = ("http://docs.aws.amazon.com/redshift/latest/"
+                       "dg/cm_chap_SQLCommandRef.html")
+
     @classmethod
     def type(cls):
         return "redshift"
@@ -223,6 +232,11 @@ class Redshift(PostgreSQL):
                    "type": "string",
                    "title": "SSL Mode",
                    "default": "prefer"
+                },
+                "doc_url": {
+                    "type": "string",
+                    "title": "Documentation URL",
+                    "default": cls.default_doc_url
                 }
             },
             "order": ['host', 'port', 'user', 'password'],

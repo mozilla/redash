@@ -108,6 +108,7 @@ def parse_worksheet(worksheet):
         columns.append({
             'name': column_name,
             'friendly_name': column_name,
+
             'type': TYPE_STRING
         })
 
@@ -139,6 +140,9 @@ class TimeoutSession(Session):
 
 
 class GoogleSpreadsheet(BaseQueryRunner):
+    default_doc_url = ("http://redash.readthedocs.io/en/latest/"
+                       "datasources.html#google-spreadsheets")
+
     @classmethod
     def annotate_query(cls):
         return False
@@ -159,6 +163,11 @@ class GoogleSpreadsheet(BaseQueryRunner):
                 'jsonKeyFile': {
                     "type": "string",
                     'title': 'JSON Key File'
+                },
+                "doc_url": {
+                    "type": "string",
+                    "title": "Documentation URL",
+                    "default": cls.default_doc_url
                 }
             },
             'required': ['jsonKeyFile'],

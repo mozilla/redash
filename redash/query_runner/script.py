@@ -6,6 +6,9 @@ from redash.query_runner import *
 
 
 class Script(BaseQueryRunner):
+    default_doc_url = ("http://redash.readthedocs.io/en/latest/"
+                       "datasources.html#python")
+
     @classmethod
     def annotate_query(cls):
         return False
@@ -26,6 +29,11 @@ class Script(BaseQueryRunner):
                 'shell': {
                     'type': 'boolean',
                     'title': 'Execute command through the shell'
+                },
+                "doc_url": {
+                    "type": "string",
+                    "title": "Documentation URL",
+                    "default": cls.default_doc_url
                 }
             },
             'required': ['path']

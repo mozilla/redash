@@ -138,7 +138,9 @@
                 <div class="row form-inline">
                   <div class="col-xs-5 text-left">
                     <select class="form-control datasource-small" ng-disabled="!isQueryOwner || !sourceMode" ng-model="query.data_source_id" ng-change="updateDataSource()"
-                      ng-options="ds.id as ds.name for ds in dataSources"></select>
+                            ng-options="ds.id as ds.name for ds in dataSources"></select>
+                    <a ng-if="dataSource.options.doc_url != ''" ng-href={{dataSource.options.doc_url}}>{{dataSource.type_name}} documentation</a>
+                    <span ng-if="dataSource.options.doc_url == ''">{{dataSource.type_name}}</span>
                   </div>
 
                   <div class="col-xs-7">
