@@ -105,6 +105,7 @@ class DashboardListResource(BaseResource):
             is_draft=True,
             layout="[]",
         )
+        dashboard.record_changes(changed_by=self.current_user)
         models.db.session.add(dashboard)
         models.db.session.commit()
         return serialize_dashboard(dashboard)

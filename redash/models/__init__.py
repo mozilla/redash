@@ -441,7 +441,7 @@ def should_schedule_next(
 )
 class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
-    version = Column(db.Integer, default=1)
+    version = Column(db.Integer, default=0)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
     org = db.relationship(Organization, backref="queries")
     data_source_id = Column(db.Integer, db.ForeignKey("data_sources.id"), nullable=True)
@@ -767,6 +767,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         forked_query = Query(
             name="Copy of (#{}) {}".format(self.id, self.name), user=user, **kwargs
         )
+        forked_query.record_changes(changed_by=user)
 
         for v in sorted(self.visualizations, key=lambda v: v.id):
             forked_v = v.copy()

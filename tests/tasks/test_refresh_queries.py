@@ -124,7 +124,7 @@ class TestRefreshQuery(BaseTestCase):
             add_job_mock.assert_not_called()
 
     def test_doesnt_enqueue_parameterized_queries_with_dropdown_queries_that_are_detached_from_data_source(
-        self
+        self,
     ):
         """
         Scheduled queries with a dropdown parameter which points to a query that is detached from its data source are skipped.
