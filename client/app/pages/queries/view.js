@@ -303,6 +303,21 @@ function QueryViewCtrl(
     $location.hash(visualization.id);
   };
 
+  $scope.compareQueryVersion = () => {
+    if (!$scope.query.query) {
+      return;
+    }
+
+    $uibModal.open({
+      windowClass: 'modal-xl',
+      component: 'compareQueryDialog',
+      resolve: {
+        query: $scope.query,
+        saveQuery: () => $scope.saveQuery,
+      },
+    });
+  };
+
   $scope.$watch('query.name', () => {
     Title.set($scope.query.name);
   });
