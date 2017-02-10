@@ -296,8 +296,6 @@ function QueryViewCtrl(
     }
 
     $scope.dataSource = find($scope.dataSources, ds => ds.id === $scope.query.data_source_id);
-    getSchema();
-    $scope.executeQuery();
   };
 
   $scope.setVisualizationTab = (visualization) => {
