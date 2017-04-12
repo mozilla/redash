@@ -2,6 +2,7 @@
 set -e
 
 worker() {
+  /app/manage.py db upgrade
   WORKERS_COUNT=${WORKERS_COUNT:-2}
   QUEUES=${QUEUES:-queries,scheduled_queries,celery,schemas}
   WORKER_EXTRA_OPTIONS=${WORKER_EXTRA_OPTIONS:-}
@@ -11,6 +12,7 @@ worker() {
 }
 
 scheduler() {
+  /app/manage.py db upgrade
   WORKERS_COUNT=${WORKERS_COUNT:-1}
   QUEUES=${QUEUES:-celery}
   SCHEDULE_DB=${SCHEDULE_DB:-celerybeat-schedule}
@@ -31,6 +33,7 @@ dev_worker() {
 }
 
 server() {
+  /app/manage.py db upgrade
   # Recycle gunicorn workers every n-th request. See http://docs.gunicorn.org/en/stable/settings.html#max-requests for more details.
   MAX_REQUESTS=${MAX_REQUESTS:-1000}
   MAX_REQUESTS_JITTER=${MAX_REQUESTS_JITTER:-100}
