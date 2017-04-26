@@ -1,4 +1,5 @@
 from itertools import chain
+import json
 
 from flask import request, url_for
 from funcy import distinct, project, take
@@ -128,6 +129,13 @@ class DashboardResource(BaseResource):
         dashboard = models.Dashboard.get_by_id_and_org(dashboard_slug, self.current_org)
 
         require_object_modify_permission(dashboard, self.current_user)
+        if 'layout' in dashboard_properties:
+            try:
+                layout = json.loads(dashboard_properties['layout'])
+            except ValueError:
+                abort(400)
+            if not isinstance(layout, list):
+                abort(400)
 
         updates = project(dashboard_properties, ('name', 'layout', 'version',
                                                  'is_draft', 'dashboard_filters_enabled'))
