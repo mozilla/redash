@@ -10,6 +10,7 @@ from redash.handlers.base import BaseResource, get_object_or_404
 from redash.permissions import (can_modify, require_admin_or_owner,
                                 require_object_modify_permission,
                                 require_permission)
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
 
@@ -154,6 +155,8 @@ class DashboardResource(BaseResource):
             models.db.session.commit()
         except StaleDataError:
             abort(409)
+        except IntegrityError:
+            abort(400)
 
         result = dashboard.to_dict(with_widgets=True, user=self.current_user)
         return result
