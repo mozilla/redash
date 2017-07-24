@@ -82,12 +82,13 @@
             {{ds.name}}
           </ui-select-choices>
         </ui-select>
-        <a ng-if="dataSource.options.doc_url != ''" ng-href={{dataSource.options.doc_url}}>{{dataSource.type_name}} documentation</a>
+        <a ng-if="dataSource.options.doc_url != '' && dataSource.options.doc_url" ng-href={{dataSource.options.doc_url}}>{{dataSource.type_name}} documentation</a>
+        <span ng-if="dataSource.options.doc_url == '' || !dataSource.options.doc_url">{{ dataSource.type_name }} documentation</span>
         <get-data-source-version id='data-source-version'></get-data-source-version>
       </div>
 
       <div class="editor__left__schema" ng-if="sourceMode">
-        <schema-browser class="schema-container" schema="schema" on-refresh="refreshSchema()"></schema-browser>
+        <schema-browser class="schema-container" schema="schema" tabletogglestring="dataSource.options.toggle_table_string" on-refresh="refreshSchema()"></schema-browser>
       </div>
       <div ng-if="!sourceMode" style="flex-grow: 1;">&nbsp;</div>
 
