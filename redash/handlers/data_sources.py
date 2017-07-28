@@ -4,12 +4,17 @@ from flask import make_response, request
 from flask_restful import abort
 from funcy import project
 from six import text_type
+from operator import itemgetter
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
-from redash import models
+from redash import models, settings
+from redash.models import TableMetadata, ColumnMetadata
+from redash.serializers import ColumnMetadataSerializer, TableMetadataSerializer
 from redash.handlers.base import BaseResource, get_object_or_404, require_fields
 from redash.permissions import (require_access, require_admin,
                                 require_permission, view_only)
+from redash.tasks.queries import refresh_schema
 from redash.query_runner import (get_configuration_schema_for_query_runner_type,
                                  query_runners, NotSupported)
 from redash.utils import filter_none
@@ -51,7 +56,11 @@ class DataSourceResource(BaseResource):
 
         data_source.type = req['type']
         data_source.name = req['name']
+        data_source.description = req['description'] if 'description' in req else ''
         models.db.session.add(data_source)
+
+        # Refresh the stored schemas when a data source is updated
+        refresh_schema.apply_async(args=(data_source.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
 
         try:
             models.db.session.commit()
@@ -98,7 +107,7 @@ class DataSourceListResource(BaseResource):
                 continue
 
             try:
-                d = ds.to_dict()
+                d = ds.to_dict(all=True)
                 d['view_only'] = all(project(ds.groups, self.current_user.group_ids).values())
                 response[ds.id] = d
             except AttributeError:
@@ -128,12 +137,17 @@ class DataSourceListResource(BaseResource):
             abort(400)
 
         try:
+            description = req['description'] if 'description' in req else ''
             datasource = models.DataSource.create_with_group(org=self.current_org,
                                                              name=req['name'],
                                                              type=req['type'],
+                                                             description=description,
                                                              options=config)
 
             models.db.session.commit()
+
+            # Refresh the stored schemas when a new data source is added to the list
+            refresh_schema.apply_async(args=(datasource.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
         except IntegrityError as e:
             models.db.session.rollback()
             if req['name'] in e.message:
@@ -151,15 +165,47 @@ class DataSourceListResource(BaseResource):
 
 
 class DataSourceSchemaResource(BaseResource):
+    @require_admin
+    def post(self, data_source_id):
+        data_source = get_object_or_404(models.DataSource.get_by_id_and_org, data_source_id, self.current_org)
+        new_schema_data = request.get_json(force=True)
+        models.DataSource.save_schema(new_schema_data)
+
     def get(self, data_source_id):
         data_source = get_object_or_404(models.DataSource.get_by_id_and_org, data_source_id, self.current_org)
         require_access(data_source, self.current_user, view_only)
         refresh = request.args.get('refresh') is not None
 
         response = {}
-
         try:
-            response['schema'] = data_source.get_schema(refresh)
+            if refresh:
+                refresh_schema.apply_async(args=(data_source.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
+
+            schema = []
+            columns_by_table_id = {}
+
+            tables = TableMetadata.query.filter(
+                TableMetadata.data_source_id == data_source.id,
+                TableMetadata.exists.is_(True),
+            ).options(joinedload(TableMetadata.sample_queries)).all()
+            table_ids = [table.id for table in tables]
+
+            columns = ColumnMetadata.query.filter(
+                ColumnMetadata.exists.is_(True),
+                ColumnMetadata.table_id.in_(table_ids),
+            ).all()
+
+            for column in columns:
+                serialized_col = ColumnMetadataSerializer(column).serialize()
+                columns_by_table_id.setdefault(column.table_id, []).append(serialized_col)
+
+            for table in tables:
+                serialized_table = TableMetadataSerializer(table).serialize()
+                serialized_table['columns'] = sorted(
+                    columns_by_table_id.get(table.id, []), key=itemgetter('name'))
+                schema.append(serialized_table)
+
+            response['schema'] = sorted(schema, key=itemgetter('name'))
         except NotSupported:
             response['error'] = {
                 'code': 1,

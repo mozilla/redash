@@ -11,6 +11,19 @@ function SchemaBrowserCtrl($rootScope, $scope) {
     $scope.$broadcast('vsRepeatTrigger');
   };
 
+  $scope.showSchemaInfo = false;
+  $scope.openSchemaInfo = ($event, table) => {
+    $scope.tableName = table.name;
+    $scope.tableDescription = table.description;
+    $scope.tableMetadata = table.columns;
+    $scope.sampleQueries = Object.values(table.sample_queries);
+    $scope.showSchemaInfo = true;
+    $event.stopPropagation();
+  };
+  $scope.closeSchemaInfo = () => {
+    $scope.$apply(() => { $scope.showSchemaInfo = false; });
+  };
+
   this.getSize = (table) => {
     let size = 22;
 
@@ -32,6 +45,13 @@ function SchemaBrowserCtrl($rootScope, $scope) {
       this.versionToggle = false;
       this.versionFilter = 'abcdefghijklmnop';
     }
+  };
+
+  this.itemExists = (item) => {
+    if ('visible' in item) {
+      return item.visible;
+    }
+    return false;
   };
 
   this.itemSelected = ($event, hierarchy) => {

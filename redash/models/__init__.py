@@ -4,12 +4,13 @@ import logging
 import time
 import pytz
 
+import xlsxwriter
 from six import python_2_unicode_compatible, text_type
 from sqlalchemy import distinct, or_, and_, UniqueConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import backref, contains_eager, joinedload, subqueryload, load_only
+from sqlalchemy.orm import backref, contains_eager, joinedload, subqueryload, load_only, relationship
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy import func
 from sqlalchemy_utils import generic_relationship
@@ -63,6 +64,59 @@ scheduled_queries_executions = ScheduledQueriesExecutions()
 
 
 @python_2_unicode_compatible
+@generic_repr('id', 'name', 'data_source_id', 'org_id', 'exists', 'column_metadata')
+class TableMetadata(TimestampMixin, db.Model):
+    id = Column(db.Integer, primary_key=True)
+    org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
+    data_source_id = Column(db.Integer, db.ForeignKey("data_sources.id", ondelete="CASCADE"))
+    exists = Column(db.Boolean, default=True)
+    visible = Column(db.Boolean, default=True)
+    name = Column(db.String(255))
+    description = Column(db.String(4096), nullable=True)
+    column_metadata = Column(db.Boolean, default=False)
+    sample_updated_at = Column(db.DateTime(True), nullable=True)
+    sample_queries = relationship(
+        'Query',
+        secondary='tablemetadata_queries_link',
+        backref='relevant_tables'
+    )
+
+    __tablename__ = 'table_metadata'
+
+    def __str__(self):
+        return text_type(self.name)
+
+
+@python_2_unicode_compatible
+@generic_repr('id', 'name', 'type', 'table_id', 'org_id', 'exists')
+class ColumnMetadata(TimestampMixin, db.Model):
+    id = Column(db.Integer, primary_key=True)
+    org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
+    table_id = Column(db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"))
+    name = Column(db.String(255))
+    type = Column(db.String(255), nullable=True)
+    example = Column(db.String(4096), nullable=True)
+    exists = Column(db.Boolean, default=True)
+    description = Column(db.String(4096), nullable=True)
+
+    __tablename__ = 'column_metadata'
+
+    def __str__(self):
+        return text_type(self.name)
+
+
+@python_2_unicode_compatible
+class TableMetadataQueriesLink(db.Model):
+    table_id = Column(db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"), primary_key=True)
+    query_id = Column(db.Integer, db.ForeignKey("queries.id", ondelete="CASCADE"), primary_key=True)
+
+    __tablename__ = 'tablemetadata_queries_link'
+
+    def __str__(self):
+        return text_type(self.id)
+
+
+@python_2_unicode_compatible
 @generic_repr('id', 'name', 'type', 'org_id', 'created_at')
 class DataSource(BelongsToOrgMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
@@ -72,6 +126,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
     name = Column(db.String(255))
     type = Column(db.String(255))
     options = Column('encrypted_options', ConfigurationContainer.as_mutable(EncryptedConfiguration(db.Text, settings.DATASOURCE_SECRET_KEY, FernetEngine)))
+    description = Column(db.String(4096), nullable=True)
     queue_name = Column(db.String(255), default="queries")
     scheduled_queue_name = Column(db.String(255), default="scheduled_queries")
     created_at = Column(db.DateTime(True), default=db.func.now())
@@ -89,6 +144,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             'id': self.id,
             'name': self.name,
             'type': self.type,
+            'description': self.description,
             'syntax': self.query_runner.syntax,
             'paused': self.paused,
             'pause_reason': self.pause_reason
@@ -135,30 +191,41 @@ class DataSource(BelongsToOrgMixin, db.Model):
     def get_by_id(cls, _id):
         return cls.query.filter(cls.id == _id).one()
 
+    @classmethod
+    def save_schema(cls, schema_info):
+        # There was a change in column data.
+        if 'columnId' in schema_info:
+            ColumnMetadata.query.filter(
+                ColumnMetadata.table_id == schema_info['tableId'],
+                ColumnMetadata.id == schema_info['columnId'],
+            ).update(schema_info['schema'])
+            db.session.commit()
+            return
+
+        sample_queries = schema_info['schema'].pop('sample_queries', None)
+        if sample_queries is not None:
+            table_metadata_object = TableMetadata.query.filter(
+                TableMetadata.id == schema_info['tableId']
+            ).first()
+            table_metadata_object.sample_queries = []
+
+            query_ids = [sample_query['id'] for sample_query in sample_queries.values()]
+            query_objects = Query.query.filter(Query.id.in_(query_ids))
+            table_metadata_object.sample_queries.extend(query_objects)
+            db.session.commit()
+
+        TableMetadata.query.filter(
+            TableMetadata.id == schema_info['tableId']
+        ).update(schema_info['schema'])
+
+        db.session.commit()
+
     def delete(self):
         Query.query.filter(Query.data_source == self).update(dict(data_source_id=None, latest_query_data_id=None))
         QueryResult.query.filter(QueryResult.data_source == self).delete()
         res = db.session.delete(self)
         db.session.commit()
-
-        redis_connection.delete(self._schema_key)
-
         return res
-
-    def get_schema(self, refresh=False):
-        cache = None
-        if not refresh:
-            cache = redis_connection.get(self._schema_key)
-
-        if cache is None:
-            query_runner = self.query_runner
-            schema = sorted(query_runner.get_schema(get_stats=refresh), key=lambda t: t['name'])
-
-            redis_connection.set(self._schema_key, json_dumps(schema))
-        else:
-            schema = json_loads(cache)
-
-        return schema
 
     @property
     def _schema_key(self):
@@ -403,7 +470,6 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                                                  'query': 'D'}),
                            nullable=True)
     tags = Column('tags', MutableList.as_mutable(postgresql.ARRAY(db.Unicode)), nullable=True)
-
     query_class = SearchBaseQuery
     __tablename__ = 'queries'
     __mapper_args__ = {
