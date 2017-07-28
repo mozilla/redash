@@ -4,7 +4,7 @@
 </div>
 <div class="modal-body">
   <p>
-    <input type="text" class="form-control" placeholder="Dashboard Name" ng-model="$ctrl.dashboard.name" autofocus required>
+    <input type="text" class="form-control" placeholder="Dashboard Name" ng-model="$ctrl.dashboard.name"  ng-keyup="$ctrl.saveDashboardOnEnter($event)" autofocus required>
   </p>
 </div>
 <div class="modal-footer">
