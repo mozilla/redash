@@ -65,6 +65,7 @@ def _wait(conn, timeout=None):
 
 class PostgreSQL(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
+    sample_query = "SELECT * FROM {table} LIMIT 1"
 
     @classmethod
     def configuration_schema(cls):
@@ -99,7 +100,11 @@ class PostgreSQL(BaseSQLQueryRunner):
                     "title": "Toggle Table String",
                     "default": "_v",
                     "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
-                }
+                },
+                "samples": {
+                    "type": "boolean",
+                    "title": "Show Data Samples"
+                },
             },
             "order": ['host', 'port', 'user', 'password'],
             "required": ["dbname"],
@@ -126,9 +131,13 @@ class PostgreSQL(BaseSQLQueryRunner):
                 table_name = row['table_name']
 
             if table_name not in schema:
-                schema[table_name] = {'name': table_name, 'columns': []}
+                schema[table_name] = {'name': table_name, 'columns': [], 'metadata': []}
 
             schema[table_name]['columns'].append(row['column_name'])
+            schema[table_name]['metadata'].append({
+                "name": row['column_name'],
+                "type": row['column_type'],
+            })
 
     def _get_tables(self, schema):
         '''
@@ -148,7 +157,8 @@ class PostgreSQL(BaseSQLQueryRunner):
         query = """
         SELECT s.nspname as table_schema,
                c.relname as table_name,
-               a.attname as column_name
+               a.attname as column_name,
+               a.atttypid::regtype::varchar as column_type
         FROM pg_class c
         JOIN pg_namespace s
         ON c.relnamespace = s.oid
@@ -157,13 +167,16 @@ class PostgreSQL(BaseSQLQueryRunner):
         ON a.attrelid = c.oid
         AND a.attnum > 0
         AND NOT a.attisdropped
+        JOIN pg_type t
+        ON a.atttypid = t.oid
         WHERE c.relkind IN ('m', 'f', 'p')
 
         UNION
 
         SELECT table_schema,
                table_name,
-               column_name
+               column_name,
+               data_type as column_type
         FROM information_schema.columns
         WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
         """
@@ -227,6 +240,8 @@ class PostgreSQL(BaseSQLQueryRunner):
 
 
 class Redshift(PostgreSQL):
+
+    sample_query = "SELECT * FROM {table} LIMIT 1"
     @classmethod
     def type(cls):
         return "redshift"
@@ -283,6 +298,16 @@ class Redshift(PostgreSQL):
                     "title": "Query Group for Scheduled Queries",
                     "default": "default"
                 },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
+                },
+                "samples": {
+                    "type": "boolean",
+                    "title": "Show Data Samples"
+                },
             },
             "order": ['host', 'port', 'user', 'password', 'dbname', 'sslmode', 'adhoc_query_group', 'scheduled_query_group'],
             "required": ["dbname", "user", "password", "host", "port"],
@@ -316,11 +341,12 @@ class Redshift(PostgreSQL):
             SELECT DISTINCT table_name,
                             table_schema,
                             column_name,
+                            data_type AS column_type,
                             ordinal_position AS pos
             FROM svv_columns
             WHERE table_schema NOT IN ('pg_internal','pg_catalog','information_schema')
         )
-        SELECT table_name, table_schema, column_name
+        SELECT table_name, table_schema, column_name, column_type
         FROM tables
         WHERE
             HAS_SCHEMA_PRIVILEGE(table_schema, 'USAGE') AND

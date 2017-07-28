@@ -31,6 +31,9 @@ PRESTO_TYPES_MAPPING = {
 
 class Presto(BaseQueryRunner):
     noop_query = 'SHOW TABLES'
+    # This takes a 1% random sample from {table}, reducing
+    # the runtime and data scanned for the query
+    sample_query = "SELECT * FROM {table} TABLESAMPLE SYSTEM (1) LIMIT 1"
 
     @classmethod
     def configuration_schema(cls):
@@ -65,6 +68,10 @@ class Presto(BaseQueryRunner):
                     "default": "_v",
                     "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
                 },
+                'samples': {
+                    'type': 'boolean',
+                    'title': 'Show Data Samples'
+                },
             },
             'order': ['host', 'protocol', 'port', 'username', 'password', 'schema', 'catalog'],
             'required': ['host']
@@ -81,13 +88,12 @@ class Presto(BaseQueryRunner):
     def get_schema(self, get_stats=False):
         schema = {}
         query = """
-        SELECT table_schema, table_name, column_name
+        SELECT table_schema, table_name, column_name, data_type AS column_type
         FROM information_schema.columns
         WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
         """
 
         results, error = self.run_query(query, None)
-
         if error is not None:
             raise Exception("Failed getting schema.")
 
@@ -95,12 +101,14 @@ class Presto(BaseQueryRunner):
 
         for row in results['rows']:
             table_name = '{}.{}'.format(row['table_schema'], row['table_name'])
-
             if table_name not in schema:
-                schema[table_name] = {'name': table_name, 'columns': []}
+                schema[table_name] = {'name': table_name, 'columns': [], 'metadata': []}
 
             schema[table_name]['columns'].append(row['column_name'])
-
+            schema[table_name]['metadata'].append({
+                "name": row['column_name'],
+                "type": row['column_type'],
+            })
         return schema.values()
 
     def run_query(self, query, user):

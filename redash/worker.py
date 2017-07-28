@@ -42,7 +42,11 @@ celery_schedule = {
     'send_aggregated_errors': {
         'task': 'redash.tasks.send_aggregated_errors',
         'schedule': timedelta(minutes=settings.SEND_FAILURE_EMAIL_INTERVAL),
-    }
+    },
+    'cleanup_schema_metadata': {
+        'task': 'redash.tasks.cleanup_schema_metadata',
+        'schedule': timedelta(days=3),
+    },
 }
 
 if settings.VERSION_CHECK:
