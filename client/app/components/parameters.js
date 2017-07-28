@@ -145,6 +145,7 @@ function ParametersDirective($location, $uibModal) {
           },
         });
       };
+      scope.hideParameters = $location.search().hideParameters;
     },
   };
 }
