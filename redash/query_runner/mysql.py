@@ -40,6 +40,7 @@ class Result(object):
 
 class Mysql(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
+    sample_query = "SELECT * FROM {table} LIMIT 1"
 
     @classmethod
     def configuration_schema(cls):
@@ -73,7 +74,11 @@ class Mysql(BaseSQLQueryRunner):
                     "title": "Toggle Table String",
                     "default": "_v",
                     "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
-                }
+                },
+                'samples': {
+                    'type': 'boolean',
+                    'title': 'Show Data Samples'
+                },
             },
             "order": ['host', 'port', 'user', 'passwd', 'db'],
             'required': ['db'],
@@ -135,7 +140,8 @@ class Mysql(BaseSQLQueryRunner):
         query = """
         SELECT col.table_schema as table_schema,
                col.table_name as table_name,
-               col.column_name as column_name
+               col.column_name as column_name,
+               col.column_type as column_type
         FROM `information_schema`.`columns` col
         WHERE col.table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys');
         """
@@ -147,7 +153,7 @@ class Mysql(BaseSQLQueryRunner):
 
         results = json_loads(results)
 
-        for row in results['rows']:
+        for i, row in enumerate(results['rows']):
             if row['table_schema'] != self.configuration['db']:
                 table_name = u'{}.{}'.format(row['table_schema'],
                                              row['table_name'])
@@ -155,9 +161,13 @@ class Mysql(BaseSQLQueryRunner):
                 table_name = row['table_name']
 
             if table_name not in schema:
-                schema[table_name] = {'name': table_name, 'columns': []}
+                schema[table_name] = {'name': table_name, 'columns': [], 'metadata': []}
 
             schema[table_name]['columns'].append(row['column_name'])
+            schema[table_name]['metadata'].append({
+                "name": row['column_name'],
+                "type": row['column_type'],
+            })
 
         return schema.values()
 
