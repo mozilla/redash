@@ -225,6 +225,7 @@
                 <rd-tab ng-if="!query.visualizations.length" tab-id="table" name="Table" base-path="query.getUrl(sourceMode)"></rd-tab>
                 <rd-tab tab-id="{{vis.id}}" name="{{vis.name}}" base-path="query.getUrl(sourceMode)" ng-repeat="vis in query.visualizations | orderBy:'id'">
                   <span class="remove" ng-click="deleteVisualization($event, vis)" ng-if="canEdit && !($first && (vis.type === 'TABLE'))"> &times;</span>
+                  <span class="btn btn-xs btn-success" ng-click="openAddToDashboardForm(vis)"> +</span>
                 </rd-tab>
                 <li class="rd-tab"><a ng-click="openVisualizationEditor()" ng-if="sourceMode && canEdit">&plus; New Visualization</a></li>
               </ul>

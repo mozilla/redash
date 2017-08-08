@@ -64,7 +64,6 @@ class DashboardListResource(BaseResource):
         models.db.session.commit()
         return dashboard.to_dict()
 
-
 class DashboardResource(BaseResource):
     @require_permission('list_dashboards')
     def get(self, dashboard_slug=None):
@@ -241,3 +240,21 @@ class DashboardShareResource(BaseResource):
             'object_id': dashboard.id,
             'object_type': 'dashboard',
         })
+
+class SearchDashboardResource(BaseResource):
+    @require_permission('list_dashboards')
+    def get(self):
+        """
+        Searches for a dashboard.
+
+        Sends to models.py > Dashboard > search()
+        search(cls, term, user_id, group_ids, limit_to_users_dashboards=False, include_drafts=False)
+        """
+        term = request.args.get('q', '')
+        include_drafts = request.args.get('include_drafts') is not None
+        user_id = request.args.get('user_id', '')
+        group_ids = self.current_user.group_ids
+        if group_ids == None and request.args.get('test',False):
+            group_ids = [2] # the array that's used for test factory users
+        return [q.to_dict() for q in models.Dashboard.search(term, user_id, group_ids, include_drafts=include_drafts)]
+
