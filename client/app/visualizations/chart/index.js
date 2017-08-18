@@ -123,19 +123,48 @@ function ChartEditor(ColorPalette, clientConfig) {
       }
 
       function refreshSeries() {
-        const seriesNames = pluck(scope.queryResult.getChartData(scope.options.columnMapping), 'name');
-        const existing = keys(scope.options.seriesOptions);
-        each(difference(seriesNames, existing), (name) => {
-          scope.options.seriesOptions[name] = {
-            type: scope.options.globalSeriesType,
-            yAxis: 0,
-          };
-          scope.form.seriesList.push(name);
-        });
-        each(difference(existing, seriesNames), (name) => {
-          scope.form.seriesList = without(scope.form.seriesList, name);
-          delete scope.options.seriesOptions[name];
-        });
+        // for pie charts only get color list (x row) instead of series list (y column)
+        if (scope.options.globalSeriesType === 'pie') {
+          const seriesData = scope.queryResult.getData();
+          scope.form.colorsList = [];
+          const xColumnName = scope.form.xAxisColumn;
+          seriesData.forEach((rowOfData) => {
+            scope.form.colorsList.push(rowOfData[xColumnName]);
+          });
+
+          const colorNames = scope.form.colorsList;
+          let existing = [];
+          if (scope.options.colorOptions === undefined) {
+            existing = colorNames;
+          } else {
+            existing = keys(scope.options.colorOptions);
+          }
+          each(difference(colorNames, existing), (name) => {
+            scope.options.colorOptions[name] = {
+              type: scope.options.globalSeriesType,
+              yAxis: 0,
+            };
+            scope.form.colorsList.push(name);
+          });
+          each(difference(existing, colorNames), (name) => {
+            scope.form.colorsList = without(scope.form.colorsList, name);
+            delete scope.options.colorOptions[name];
+          });
+        } else {
+          const seriesNames = pluck(scope.queryResult.getChartData(scope.options.columnMapping), 'name');
+          const existing = keys(scope.options.seriesOptions);
+          each(difference(seriesNames, existing), (name) => {
+            scope.options.seriesOptions[name] = {
+              type: scope.options.globalSeriesType,
+              yAxis: 0,
+            };
+            scope.form.seriesList.push(name);
+          });
+          each(difference(existing, seriesNames), (name) => {
+            scope.form.seriesList = without(scope.form.seriesList, name);
+            delete scope.options.seriesOptions[name];
+          });
+        }
       }
 
       function setColumnRole(role, column) {
@@ -167,6 +196,8 @@ function ChartEditor(ColorPalette, clientConfig) {
         yAxisColumns: [],
         seriesList: sortBy(keys(scope.options.seriesOptions), name =>
           scope.options.seriesOptions[name].zIndex),
+        colorsList: sortBy(keys(scope.options.colorOptions), name =>
+          scope.options.colorOptions[name].zIndex),
       };
 
       scope.$watchCollection('form.seriesList', (value) => {
@@ -175,7 +206,6 @@ function ChartEditor(ColorPalette, clientConfig) {
           scope.options.seriesOptions[name].index = 0; // is this needed?
         });
       });
-
 
       scope.$watchCollection('form.yAxisColumns', (value, old) => {
         each(old, unsetColumn);

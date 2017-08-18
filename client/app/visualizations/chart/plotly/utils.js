@@ -183,9 +183,17 @@ function preparePieData(seriesList, options) {
   return map(seriesList, (serie, index) => {
     const xPosition = (index % cellsInRow) * cellWidth;
     const yPosition = Math.floor(index / cellsInRow) * cellHeight;
+    const labels = map(serie.data, (row, rowIdx) => {
+      const rowX = hasX ? row.x : `Slice ${index}`;
+      const rowOpts = options.seriesOptions[rowX];
+      if (rowOpts) {
+        colorPalette[rowIdx] = rowOpts.color;
+      }
+      return rowX;
+    });
     return {
       values: pluck(serie.data, 'y'),
-      labels: map(serie.data, row => (hasX ? row.x : `Slice ${index}`)),
+      labels: labels,
       type: 'pie',
       hole: 0.4,
       marker: { colors: ColorPaletteArray },
