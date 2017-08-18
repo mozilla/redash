@@ -252,10 +252,18 @@ function preparePieData(seriesList, options) {
 
     return {
       values: map(serie.data, i => i.y),
-      labels: map(serie.data, row => (hasX ? normalizeValue(row.x) : `Slice ${index}`)),
+      labels: map(serie.data, (row, rowIdx) => {
+
+        const rowX = hasX ? normalizeValue(row.x) : `Slice ${index}`;
+        const rowOpts = options.seriesOptions[rowX];
+        if (rowOpts) {
+          colorPalette[rowIdx] = rowOpts.color;
+        }
+        return rowX;
+      }),
       type: 'pie',
       hole: 0.4,
-      marker: { colors: ColorPaletteArray },
+      marker: { colors: colorPalette },
       hoverinfo,
       text: [],
       textinfo: options.showDataLabels ? 'percent' : 'none',
