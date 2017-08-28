@@ -1,10 +1,3 @@
-<p align="center">
-  <img title="Redash" src='https://redash.io/assets/images/logo.png' width="200px"/>
-</p>
-<p align="center">
-    <img title="Build Status" src='https://circleci.com/gh/getredash/redash.png?circle-token=8a695aa5ec2cbfa89b48c275aea298318016f040'/>
-</p>
-
 [![Join the chat at https://gitter.im/getredash/redash](https://badges.gitter.im/getredash/redash.svg)](https://gitter.im/getredash/redash?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Documentation](https://img.shields.io/badge/docs-redash.io/help-brightgreen.svg)](https://redash.io/help/)
 
@@ -48,3 +41,13 @@ You can try out the demo instance: http://demo.redash.io/ (login with any Google
 ## License
 
 BSD-2-Clause.
+
+<p align="center">
+  <img title="Redash" src='https://redash.io/assets/images/logo.png' width="200px"/>
+</p>
+<p align="center">
+    <img title="Build Status" src='https://circleci.com/gh/getredash/redash.png?circle-token=8a695aa5ec2cbfa89b48c275aea298318016f040'/>
+</p>
+<p align="center">
+    <img title="BSD-2-Clause" src='https://www.öppensourced.com/media/reviews/photos/original/e2/b9/b3/22-bsd-3-clause-new-or-revised-modified-license-60-1424101605.png'/>
+</p>
