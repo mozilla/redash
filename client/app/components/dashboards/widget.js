@@ -70,8 +70,6 @@ function DashboardWidgetCtrl($location, $uibModal, $window, Events, currentUser)
       return;
     }
 
-    Events.record('delete', 'widget', this.widget.id);
-
     this.widget.$delete((response) => {
       this.dashboard.widgets = this.dashboard.widgets
         .filter(widget => (widget.id !== undefined) && (widget.id !== this.widget.id));
