@@ -49,6 +49,11 @@ class QuerySearchResource(BaseResource):
             return []
 
         include_drafts = request.args.get('include_drafts') is not None
+        self.record_event({
+            'action': 'search',
+            'object_id': term,
+            'object_type': 'query',
+        })
 
         queries = models.Query.search(term, self.current_user.group_ids, include_drafts=include_drafts, limit=None)
         queries = filter_by_tags(queries, models.Query.tags)
@@ -233,6 +238,12 @@ class QueryResource(BaseResource):
 
         result = QuerySerializer(q, with_visualizations=True).serialize()
         result['can_edit'] = can_modify(q, self.current_user)
+
+        self.record_event({
+            'action': 'view',
+            'object_id': query_id,
+            'object_type': 'query',
+        })
         return result
 
     # TODO: move to resource of its own? (POST /queries/{id}/archive)
@@ -262,6 +273,11 @@ class QueryForkResource(BaseResource):
         require_access(query.data_source.groups, self.current_user, not_view_only)
         forked_query = query.fork(self.current_user)
         models.db.session.commit()
+        self.record_event({
+            'action': 'fork',
+            'object_id': query_id,
+            'object_type': 'query',
+        })
         return QuerySerializer(forked_query, with_visualizations=True).serialize()
 
 

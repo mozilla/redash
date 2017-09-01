@@ -9,9 +9,6 @@ class QueriesListCtrl {
     const page = parseInt($location.search().page || 1, 10);
 
     this.term = $location.search().q;
-    if (isString(this.term) && this.term !== '') {
-      Events.record('search', 'query', '', { term: this.term });
-    }
 
     this.defaultOptions = {};
 
