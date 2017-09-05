@@ -1,5 +1,6 @@
 import json
-from markupsafe import Markup, escape
+from markupsafe import Markup
+from xml.sax.saxutils import quoteattr
 
 from redash.utils import JSONEncoder
 from redash.query_runner import *
@@ -134,7 +135,7 @@ class Presto(BaseQueryRunner):
             rows = [dict(zip(([c['name'] for c in columns]), r)) for i, r in enumerate(cursor.fetchall())]
             for row in rows:
                 for field in row:
-                    field = escape(field)
+                    field = field % quoteattr(field)
             data = {'columns': columns, 'rows': rows, 'data_scanned': 'N/A'}
             json_data = json.dumps(data, cls=JSONEncoder)
             error = None
