@@ -175,16 +175,20 @@ function getUnifiedXAxisValues(seriesList, sorted) {
   return sorted ? sortBy(result, identity) : result;
 }
 
+const DEFAULT_XAXIS_LABEL_LENGTH = 300;
+
 function preparePieData(seriesList, options) {
   const {
     cellWidth, cellHeight, xPadding, yPadding, cellsInRow, hasX,
   } = calculateDimensions(seriesList, options);
 
+  const colorPalette = ColorPaletteArray.slice();
+  const xAxisLabelLength = parseInt(options.xAxisLabelLength, 10) || DEFAULT_XAXIS_LABEL_LENGTH;
   return map(seriesList, (serie, index) => {
     const xPosition = (index % cellsInRow) * cellWidth;
     const yPosition = Math.floor(index / cellsInRow) * cellHeight;
     const labels = map(serie.data, (row, rowIdx) => {
-      const rowX = hasX ? row.x : `Slice ${index}`;
+      const rowX = hasX ? row.x.substr(0, xAxisLabelLength) : `Slice ${index}`;
       const rowOpts = options.seriesOptions[rowX];
       if (rowOpts) {
         colorPalette[rowIdx] = rowOpts.color;
@@ -193,7 +197,7 @@ function preparePieData(seriesList, options) {
     });
     return {
       values: pluck(serie.data, 'y'),
-      labels: labels,
+      labels,
       type: 'pie',
       hole: 0.4,
       marker: { colors: ColorPaletteArray },
