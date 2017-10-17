@@ -37,7 +37,7 @@ class QuerySearchResource(BaseResource):
     @require_permission('view_query')
     def get(self):
         """
-        Search query text, titles, and descriptions.
+        Search query text, names, and descriptions.
 
         :qparam string q: Search term
 
@@ -50,7 +50,10 @@ class QuerySearchResource(BaseResource):
             'object_id': term,
             'object_type': 'query',
         })
-        return [q.to_dict(with_last_modified_by=False) for q in models.Query.search(term, self.current_user.group_ids, include_drafts=include_drafts)]
+        return [q.to_dict(with_last_modified_by=False)
+                for q in models.Query.search(term,
+                                             self.current_user.group_ids,
+                                             include_drafts=include_drafts)]
 
 
 class QueryRecentResource(BaseResource):

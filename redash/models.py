@@ -12,7 +12,7 @@ from funcy import project
 
 import xlsxwriter
 from flask_login import AnonymousUserMixin, UserMixin
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy, BaseQuery
 from passlib.apps import custom_app_context as pwd_context
 from redash import redis_connection, utils
 from redash.destinations import (get_configuration_schema_for_destination_type,
@@ -28,13 +28,30 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import backref, joinedload, object_session, subqueryload
+from sqlalchemy.orm import backref, joinedload, object_session
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy_searchable import SearchQueryMixin, make_searchable
+from sqlalchemy_utils.types import TSVectorType
 
 db = SQLAlchemy(session_options={
     'expire_on_commit': False
 })
+# Make sure the SQLAlchemy mappers are all properly configured first.
+# This is required by SQLAlchemy-Searchable as it adds DDL listeners
+# on the configuration phase of models.
+db.configure_mappers()
+
+# listen to a few database events to set up functions, trigger updates
+# and indexes for the full text search
+make_searchable()
+
+
+class SearchBaseQuery(BaseQuery, SearchQueryMixin):
+    """
+    The SQA query class to use when full text search is wanted.
+    """
+
 
 Column = functools.partial(db.Column, nullable=False)
 
@@ -482,7 +499,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             'type_name': self.query_runner.name()
         }
 
-        
+
         schema = get_configuration_schema_for_query_runner_type(self.type)
         self.options.set_schema(schema)
         d['options'] = self.options.to_dict(mask_secrets=True)
@@ -792,7 +809,11 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     schedule_until = Column(db.DateTime(True), nullable=True)
     visualizations = db.relationship("Visualization", cascade="all, delete-orphan")
     options = Column(MutableDict.as_mutable(PseudoJSON), default={})
+    search_vector = Column(TSVectorType('name', 'description', 'query',
+                                        weights={'name': 'A', 'description': 'B', 'query': 'C'}),
+                           nullable=True)
 
+    query_class = SearchBaseQuery
     __tablename__ = 'queries'
     __mapper_args__ = {
         "version_id_col": version,
@@ -915,27 +936,33 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         return outdated_queries.values()
 
     @classmethod
-    def search(cls, term, group_ids, include_drafts=False):
-        # TODO: This is very naive implementation of search, to be replaced with PostgreSQL full-text-search solution.
-        where = (Query.name.ilike(u"%{}%".format(term)) |
-                 Query.description.ilike(u"%{}%".format(term)))
-
-        if term.isdigit():
-            where |= Query.id == term
-
-        where &= Query.is_archived == False
+    def search(cls, term, group_ids, include_drafts=False, limit=20):
+        where = cls.is_archived == False
 
         if not include_drafts:
-            where &= Query.is_draft == False
+            where &= cls.is_draft == False
 
         where &= DataSourceGroup.group_id.in_(group_ids)
-        query_ids = (
-            db.session.query(Query.id).join(
-                DataSourceGroup,
-                Query.data_source_id == DataSourceGroup.data_source_id)
-            .filter(where)).distinct()
 
-        return Query.query.options(joinedload(Query.user)).filter(Query.id.in_(query_ids))
+        base = cls.query.join(
+            DataSourceGroup,
+            cls.data_source_id == DataSourceGroup.data_source_id
+        ).options(
+            joinedload(cls.user)
+        )
+
+        if term.isdigit():
+            queries = base.filter(cls.id == term)
+        else:
+            queries = (
+                # sort the result using the weight
+                # as defined in the search vector column
+                base.filter(where).search(
+                    term,
+                    sort=True
+                ).distinct().limit(limit)
+            )
+        return queries
 
     @classmethod
     def recent(cls, group_ids, user_id=None, limit=20):
@@ -1310,7 +1337,7 @@ class Dashboard(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model
 
     @classmethod
     def search(cls, term, user_id, group_ids, include_drafts=False):
-        # limit_to_users_dashboards=False, 
+        # limit_to_users_dashboards=False,
         # TODO: This is very naive implementation of search, to be replaced with PostgreSQL full-text-search solution.
         where = (Dashboard.name.ilike(u"%{}%".format(term)))
 
