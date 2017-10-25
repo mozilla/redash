@@ -20,7 +20,7 @@ cassandra-driver==3.1.1
 memsql==2.16.0
 atsd_client==2.0.12
 simple_salesforce==0.72.2
-PyAthena>=1.0.0
+PyAthena==1.2.0
 # certifi is needed to support MongoDB and SSL:
 certifi
 # We don't install snowflake connector by default, as it's causing conflicts with
