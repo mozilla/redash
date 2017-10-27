@@ -21,17 +21,33 @@ Presto, Google Spreadsheets, Cloudera Impala, Hive and custom scripts.
 1. **Query Editor**: think of [JS Fiddle](http://jsfiddle.net) for SQL queries. It's your way to share data in the organization in an open way, by sharing both the dataset and the query that generated it. This way everyone can peer review not only the resulting dataset but also the process that generated it. Also it's possible to fork it and generate new datasets and reach new insights.
 2. **Dashboards/Visualizations**: once you have a dataset, you can create different visualizations out of it, and then combine several visualizations into a single dashboard. Currently it supports charts, pivot table and cohorts.
 
+---
+
+Table of Contents (ToC)
+=======================
+
+* [Demo](#demo)
+* [Getting Started](#getting-started)
+* [Getting Help](#getting-help)
+* [Reporting Bugs and Contributing Code](#reporting-bugs-and-contributing-code)
+* [License](#license)
+
+---
+
 ## Demo
 
 <img src="https://cloud.githubusercontent.com/assets/71468/17391289/8e83878e-5a1d-11e6-8938-af9054a33b19.gif" width="60%"/>
 
 You can try out the demo instance: http://demo.redash.io/ (login with any Google account).
 
+---
+
 ## Getting Started
 
 * [Setting up Redash instance](https://redash.io/help-onpremise/setup/setting-up-redash-instance.html) (includes links to ready made AWS/GCE images).
 * [Documentation](https://redash.io/help/).
 
+---
 
 ## Getting Help
 
@@ -40,11 +56,19 @@ You can try out the demo instance: http://demo.redash.io/ (login with any Google
 * Slack: http://slack.redash.io/
 * Gitter (chat): https://gitter.im/getredash/redash
 
+---
+
 ## Reporting Bugs and Contributing Code
 
 * Want to report a bug or request a feature? Please open [an issue](https://github.com/getredash/redash/issues/new).
 * Want to help us build **_Redash_**? Fork the project, edit in a [dev environment](https://redash.io/help-onpremise/setup/setting-up-development-environment-using-vagrant.html), and make a pull request. We need all the help we can get!
 
+---
+
 ## License
 
-BSD-2-Clause.
+**BSD-2-Clause.**
+
+---
+
+<img src="https://avatars2.githubusercontent.com/u/131524?s=200&v=4" width="50"></img>
