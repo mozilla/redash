@@ -98,6 +98,65 @@ class QueryTest(BaseTestCase):
 
         self.assertIn(q, Query.search('testing', [self.factory.default_group.id]))
 
+    def test_search_query_parser_and(self):
+        q = self.factory.create_query(name="Testing search")
+
+        queries1 = list(Query.search('testing search', [self.factory.default_group.id]))
+        queries2 = list(Query.search('testing and search', [self.factory.default_group.id]))
+        self.assertIn(q, queries1)
+        self.assertIn(q, queries2)
+        self.assertEquals(queries1, queries2)
+
+    def test_search_query_parser_or(self):
+        q1 = self.factory.create_query(name="Testing")
+        q2 = self.factory.create_query(name="search")
+
+        queries = list(Query.search('testing or search', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertIn(q2, queries)
+
+    def test_search_query_parser_negation(self):
+        q1 = self.factory.create_query(name="Testing")
+        q2 = self.factory.create_query(name="search")
+
+        queries = list(Query.search('testing -search', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertNotIn(q2, queries)
+
+    def test_search_query_parser_parenthesis(self):
+        q1 = self.factory.create_query(name="Testing search")
+        q2 = self.factory.create_query(name="Testing searching")
+        q3 = self.factory.create_query(name="Testing finding")
+
+        queries = list(Query.search('(testing search) or finding', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertIn(q2, queries)
+        self.assertIn(q3, queries)
+
+    def test_search_query_parser_hyphen(self):
+        q1 = self.factory.create_query(name="Testing search")
+        q2 = self.factory.create_query(name="Testing-search")
+
+        queries = list(Query.search('testing search', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertIn(q2, queries)
+
+    def test_search_query_parser_emails(self):
+        q1 = self.factory.create_query(name="janedoe@example.com")
+        q2 = self.factory.create_query(name="johndoe@example.com")
+
+        queries = list(Query.search('example', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertIn(q2, queries)
+
+        queries = list(Query.search('com', [self.factory.default_group.id]))
+        self.assertIn(q1, queries)
+        self.assertIn(q2, queries)
+
+        queries = list(Query.search('johndoe', [self.factory.default_group.id]))
+        self.assertNotIn(q1, queries)
+        self.assertIn(q2, queries)
+
 
 class QueryRecentTest(BaseTestCase):
     def test_global_recent(self):
