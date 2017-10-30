@@ -7,7 +7,7 @@ import requests
 
 try:
     import pyathena
-    enabled = True 
+    enabled = True
 except ImportError:
     enabled = False
 
@@ -168,11 +168,10 @@ class AthenaUpstream(BaseQueryRunner):
             rows = [dict(zip(([c['name'] for c in columns]), r)) for i, r in enumerate(cursor.fetchall())]
             qbytes = 'upstream2'
             try:
-                cursor._poll(cursor.query_id)
                 qbytes = cursor.data_scanned_in_bytes
             except AttributeError as e:
                 logger.debug("Athena Upstream can't get data_scanned_in_bytes: %s", e)
-            data = {'columns': columns, 'rows': rows, 'data_scanned': qbytes }
+            data = {'columns': columns, 'rows': rows, 'data_scanned': qbytes}
             json_data = json.dumps(data, cls=JSONEncoder)
             error = None
         except KeyboardInterrupt:
@@ -180,10 +179,10 @@ class AthenaUpstream(BaseQueryRunner):
                 cursor.cancel()
             error = "Query cancelled by user."
             json_data = None
-        except Exception, ex:
+        except Exception as exc:
             if cursor.query_id:
                 cursor.cancel()
-            error = ex.message
+            error = exc.message
             json_data = None
 
         return json_data, error
