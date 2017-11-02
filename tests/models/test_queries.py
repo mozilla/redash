@@ -47,6 +47,13 @@ class QueryTest(BaseTestCase):
         self.assertNotIn(q1, queries)
         self.assertNotIn(q2, queries)
 
+    def test_search_by_number(self):
+        q = self.factory.create_query(description="Testing search 12345")
+        db.session.flush()
+        queries = Query.search('12345', [self.factory.default_group.id])
+
+        self.assertIn(q, queries)
+
     def test_search_respects_groups(self):
         other_group = Group(org=self.factory.org, name="Other Group")
         db.session.add(other_group)

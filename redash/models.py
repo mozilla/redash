@@ -31,7 +31,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import backref, joinedload, object_session
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy_searchable import SearchQueryMixin, make_searchable
+from sqlalchemy_searchable import SearchQueryMixin, make_searchable, vectorizer
 from sqlalchemy_utils.types import TSVectorType
 
 db = SQLAlchemy(session_options={
@@ -809,8 +809,11 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     schedule_until = Column(db.DateTime(True), nullable=True)
     visualizations = db.relationship("Visualization", cascade="all, delete-orphan")
     options = Column(MutableDict.as_mutable(PseudoJSON), default={})
-    search_vector = Column(TSVectorType('name', 'description', 'query',
-                                        weights={'name': 'A', 'description': 'B', 'query': 'C'}),
+    search_vector = Column(TSVectorType('id', 'name', 'description', 'query',
+                                        weights={'name': 'A',
+                                                 'id': 'B',
+                                                 'description': 'C',
+                                                 'query': 'D'}),
                            nullable=True)
 
     query_class = SearchBaseQuery
@@ -944,25 +947,16 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
 
         where &= DataSourceGroup.group_id.in_(group_ids)
 
-        base = cls.query.join(
+        return cls.query.join(
             DataSourceGroup,
             cls.data_source_id == DataSourceGroup.data_source_id
         ).options(
             joinedload(cls.user)
-        )
-
-        if term.isdigit():
-            where = or_(cls.id == term, where)
-
-        queries = (
-            # sort the result using the weight
-            # as defined in the search vector column
-            base.filter(where).search(
-                term,
-                sort=True
-            ).distinct().limit(limit)
-        )
-        return queries
+        ).filter(where).search(
+            term,
+            # sort the result using the weight as defined in the search vector column
+            sort=True
+        ).distinct().limit(limit)
 
     @classmethod
     def recent(cls, group_ids, user_id=None, limit=20):
@@ -1028,6 +1022,14 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
 
     def __unicode__(self):
         return unicode(self.id)
+
+    def __repr__(self):
+        return '<Query %s: "%s">' % (self.id, self.name or 'untitled')
+
+
+@vectorizer(db.Integer)
+def integer_vectorizer(column):
+    return db.func.cast(column, db.Text)
 
 
 @listens_for(Query.query_text, 'set')
