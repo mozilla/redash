@@ -98,15 +98,6 @@ class QueryTest(BaseTestCase):
 
         self.assertIn(q, Query.search('testing', [self.factory.default_group.id]))
 
-    def test_search_query_parser_and(self):
-        q = self.factory.create_query(name="Testing search")
-
-        queries1 = list(Query.search('testing search', [self.factory.default_group.id]))
-        queries2 = list(Query.search('testing and search', [self.factory.default_group.id]))
-        self.assertIn(q, queries1)
-        self.assertIn(q, queries2)
-        self.assertEquals(queries1, queries2)
-
     def test_search_query_parser_or(self):
         q1 = self.factory.create_query(name="Testing")
         q2 = self.factory.create_query(name="search")
