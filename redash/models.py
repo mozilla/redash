@@ -952,16 +952,16 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         )
 
         if term.isdigit():
-            queries = base.filter(cls.id == term)
-        else:
-            queries = (
-                # sort the result using the weight
-                # as defined in the search vector column
-                base.filter(where).search(
-                    term,
-                    sort=True
-                ).distinct().limit(limit)
-            )
+            where = or_(cls.id == term, where)
+
+        queries = (
+            # sort the result using the weight
+            # as defined in the search vector column
+            base.filter(where).search(
+                term,
+                sort=True
+            ).distinct().limit(limit)
+        )
         return queries
 
     @classmethod
