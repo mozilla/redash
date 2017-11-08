@@ -41,3 +41,8 @@ def upgrade():
 def downgrade():
     conn = op.get_bind()
     ss.drop_trigger(conn, 'queries', 'search_vector')
+    op.drop_index('ix_queries_search_vector', table_name='queries')
+    op.create_index('ix_queries_search_vector', 'queries', ['search_vector'],
+                    unique=False, postgresql_using='gin')
+    ss.sync_trigger(conn, 'queries', 'search_vector',
+                    ['name', 'description', 'query'])
