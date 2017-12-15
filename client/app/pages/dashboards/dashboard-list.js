@@ -5,8 +5,9 @@ import template from './dashboard-list.html';
 import './dashboard-list.css';
 
 
-function DashboardListCtrl(Dashboard, $location) {
+function DashboardListCtrl($routeParams, Dashboard, $location) {
   const TAGS_REGEX = /(^([\w\s/]|[^\u0000-\u007F])+):|(#([\w-]|[^\u0000-\u007F])+)/ig;
+  const tagCandidates = $routeParams.tagNames ? $routeParams.tagNames.split(',') : [];
 
   const page = parseInt($location.search().page || 1, 10);
 
@@ -47,12 +48,16 @@ function DashboardListCtrl(Dashboard, $location) {
     const out = data.map(dashboard => dashboard.name.match(TAGS_REGEX));
     this.allTags = _.unique(_.flatten(out)).filter(e => e).map(tag => tag.replace(/:$/, ''));
     this.allTags.sort();
+    this.selectedTags = _.intersection(this.allTags, tagCandidates);
   });
 
   this.paginator = new Paginator([], { page });
 
   this.update = () => {
     this.dashboards.$promise.then((data) => {
+      if (this.selectedTags.length > 0) {
+        $location.path(`/dashboards/${this.selectedTags.join(',')}`);
+      }
       data = _.sortBy(data, 'name');
       const filteredDashboards = data.map((dashboard) => {
         dashboard.tags = (dashboard.name.match(TAGS_REGEX) || []).map(tag => tag.replace(/:$/, ''));
@@ -96,5 +101,6 @@ export default function init(ngModule) {
 
   return {
     '/dashboards': route,
+    '/dashboards/:tagNames': route,
   };
 }
