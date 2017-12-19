@@ -95,6 +95,22 @@
           </schema-browser>
         </div>
 
+        <div class="pull-right">
+          <div class="btn-group hidden-print visible-sm-inline-block visible-xs-inline-block visible-md-inline-block" role="group" uib-dropdown>
+            <button class="btn btn-default btn-sm dropdown-toggle" uib-dropdown-toggle>
+              <span class="zmdi zmdi-format-indent-increase"></span>
+            </button>
+            <ul class="dropdown-menu pull-right" uib-dropdown-menu>
+              <li ng-if="!autocompleteQuery"><a ng-click="toggleAutocompleteQuery()">Enable Autocomplete</a></li>
+              <li ng-if="autocompleteQuery"><a ng-click="toggleAutocompleteQuery()">Disable Autocomplete</a></li>
+              <li><a ng-click="formatQuery()">Format query</a></li>
+            </ul>
+          </div>
+          <label class="visible-lg-inline-block">
+            <input type="checkbox" ng-model="autocompleteQuery">
+            <span class="fa fa-magic"></span> Autocomplete
+          </label>
+          <button type="button" class="btn btn-default btn-s visible-lg-inline-block" ng-click="formatQuery()">
         <div class="col-md-9 p-r-0" style="height:100%;">
           <div class="editor__control">
             <div class="form-inline">
