@@ -65,6 +65,11 @@ function QuerySourceCtrl(
       .catch(error => toastr.error(error));
   };
 
+  $scope.autocompleteQuery = true;
+  $scope.toggleAutocompleteQuery = () => {
+    $scope.autocompleteQuery = !$scope.autocompleteQuery;
+   };
+
   $scope.$watch('query.query', (newQueryText) => {
     $scope.isDirty = (newQueryText !== queryText);
   });
