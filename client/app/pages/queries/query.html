@@ -134,21 +134,18 @@
                 <query-editor query="query"
                   schema="schema"
                   syntax="dataSource.syntax"></query-editor>
-
-                <button type="button" class="btn btn-default btn-s btn__format pull-right" ng-click="formatQuery()" title="Format">
-                  <span class="zmdi zmdi-format-indent-increase"></span>
-                </button>
+                <label class="btn__format pull-right">
+                  <button type="button" class="btn btn-default btn-s pull-right" ng-click="formatQuery()" title="Format">
+                    <span class="zmdi zmdi-format-indent-increase"></span>
+                  </button>
+                  <input type="checkbox" ng-model="autocompleteQuery">
+                  <span class="fa fa-magic"></span> Autocomplete
+                </label>
               </p>
-
               <div class="editor__control">
                 <div class="row form-inline">
                   <div class="col-xs-5 text-left">
-                    <select class="form-control datasource-small" ng-disabled="!isQueryOwner || !sourceMode" ng-model="query.data_source_id" ng-change="updateDataSource()"
-                            ng-options="ds.id as ds.name for ds in dataSources"></select>
-                    <a ng-if="dataSource.options.doc_url != ''" ng-href={{dataSource.options.doc_url}}>{{dataSource.type_name}} documentation</a>
-                    <span ng-if="dataSource.options.doc_url == ''">{{dataSource.type_name}}</span>
                   </div>
-
                   <div class="col-xs-7">
                     <div class="editor__control--right">
                       <button class="btn btn-default" ng-show="canEdit" ng-click="saveQuery()" title="Save">
