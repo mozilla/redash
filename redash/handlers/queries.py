@@ -53,7 +53,8 @@ class QuerySearchResource(BaseResource):
         return [q.to_dict(with_last_modified_by=False)
                 for q in models.Query.search(term,
                                              self.current_user.group_ids,
-                                             include_drafts=include_drafts)]
+                                             include_drafts=include_drafts,
+                                             limit=None)]
 
 
 class QueryRecentResource(BaseResource):
