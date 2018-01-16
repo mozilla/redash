@@ -357,7 +357,7 @@ export class Parameter {
       return { [`${prefix}${this.name}`]: JSON.stringify(this.value) };
     }
     return {
-      [`${prefix}${this.name}`]: this.value,
+      [`${prefix}${this.name}_${this.parentQueryId}`]: this.value,
       [`${prefix}${this.name}.start`]: null,
       [`${prefix}${this.name}.end`]: null,
     };
@@ -375,7 +375,7 @@ export class Parameter {
         this.setValue([query[keyStart], query[keyEnd]]);
       }
     } else {
-      const key = `${prefix}${this.name}`;
+      const key = `${prefix}${this.name}_${this.parentQueryId}`;
       if (has(query, key)) {
         if (this.multiValuesOptions) {
           try {
@@ -762,7 +762,7 @@ function QueryResource(
       });
     }
     Object.keys(params).forEach(key => params[key] == null && delete params[key]);
-    params = map(params, (value, name) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('&');
+    params = map(params, (value, name) => `${encodeURIComponent(name)}_${this.id}=${encodeURIComponent(value)}`).join('&');
 
     if (params !== '') {
       url += `?${params}`;
