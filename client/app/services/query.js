@@ -112,12 +112,14 @@ class Parameters {
     });
 
     const parameterExists = p => includes(parameterNames, p.name);
-    this.query.options.parameters = this.query.options.parameters.filter(parameterExists).map(p => new Parameter(p));
+    this.query.options.parameters = this.query.options.parameters
+      .filter(parameterExists)
+      .map(p => new Parameter(Object.assign({ queryId: this.query.id }, p)));
   }
 
   initFromQueryString(queryString) {
     this.get().forEach((param) => {
-      const queryStringName = `p_${param.name}`;
+      const queryStringName = `p_${param.name}_${this.query.id}`;
       if (has(queryString, queryStringName)) {
         param.value = queryString[queryStringName];
       }
@@ -357,7 +359,7 @@ function QueryResource($resource, $http, $q, $location, currentUser, QueryResult
           params += '&';
         }
 
-        params += `p_${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+        params += `p_${encodeURIComponent(name)}_${this.id}=${encodeURIComponent(value)}`;
       });
     }
 
