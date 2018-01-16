@@ -380,7 +380,7 @@ function QueryResource($resource, $http, $location, $q, currentUser, QueryResult
       });
     }
     Object.keys(params).forEach(key => params[key] == null && delete params[key]);
-    params = map(params, (value, name) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join("&");
+    params = map(params, (value, name) => `${encodeURIComponent(name)}_${this.id}=${encodeURIComponent(value)}`).join("&");
 
     if (params !== "") {
       url += `?${params}`;

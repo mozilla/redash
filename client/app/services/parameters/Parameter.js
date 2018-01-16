@@ -131,14 +131,14 @@ class Parameter {
     const prefix = this.urlPrefix;
     // `null` removes the parameter from the URL in case it exists
     return {
-      [`${prefix}${this.name}`]: !this.isEmpty ? this.value : null,
+      [`${prefix}${this.name}_${this.parentQueryId}`]: !this.isEmpty ? this.value : null,
     };
   }
 
   /** Set parameter value from the URL */
   fromUrlParams(query) {
     const prefix = this.urlPrefix;
-    const key = `${prefix}${this.name}`;
+    const key = `${prefix}${this.name}_${this.parentQueryId}`;
     if (has(query, key)) {
       this.setValue(query[key]);
     }
