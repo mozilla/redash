@@ -298,7 +298,11 @@ function QueryResource($resource, $http, $q, $location, currentUser, QueryResult
       this.latest_query_data_id = null;
     }
 
-    if (this.latest_query_data && maxAge !== 0) {
+    if (this.schedule_keep_results) {
+      if (!this.queryResult) {
+        this.queryResult = QueryResult.getAggregate(this.id);
+      }
+    } else if (this.latest_query_data && maxAge !== 0) {
       if (!this.queryResult) {
         this.queryResult = new QueryResult({
           query_result: this.latest_query_data,

@@ -135,11 +135,22 @@ function scheduleUntil() {
   };
 }
 
+function scheduleKeepResults() {
+  return {
+    restrict: 'E',
+    scope: {
+      query: '=',
+      saveQuery: '=',
+    },
+    template: '<input type="number" class="form-control" ng-model="query.schedule_keep_results" ng-change="saveQuery()">',
+  };
+}
+
 const ScheduleForm = {
   controller() {
     this.query = this.resolve.query;
     this.saveQuery = this.resolve.saveQuery;
-
+    this.isIncremental = false;
     if (this.query.hasDailySchedule()) {
       this.refreshType = 'daily';
     } else {
@@ -158,5 +169,6 @@ export default function init(ngModule) {
   ngModule.directive('queryTimePicker', queryTimePicker);
   ngModule.directive('queryRefreshSelect', queryRefreshSelect);
   ngModule.directive('scheduleUntil', scheduleUntil);
+  ngModule.directive('scheduleKeepResults', scheduleKeepResults);
   ngModule.component('scheduleDialog', ScheduleForm);
 }

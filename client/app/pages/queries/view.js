@@ -184,6 +184,7 @@ function QueryViewCtrl(
     } else {
       request = pick($scope.query, [
         'schedule',
+        'schedule_keep_results',
         'query',
         'id',
         'description',
