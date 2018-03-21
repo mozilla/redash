@@ -68,6 +68,7 @@ class DataSourceResource(BaseResource):
         try:
             models.db.session.commit()
         except IntegrityError as e:
+            models.db.session.rollback()
             if req["name"] in str(e):
                 abort(
                     400,
@@ -158,6 +159,7 @@ class DataSourceListResource(BaseResource):
 
             models.db.session.commit()
         except IntegrityError as e:
+            models.db.session.rollback()
             if req["name"] in str(e):
                 abort(
                     400,
