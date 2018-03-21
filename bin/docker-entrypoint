@@ -22,7 +22,7 @@ scheduler() {
 
 server() {
   /app/manage.py db upgrade
-  exec /usr/local/bin/gunicorn -b 0.0.0.0:5000 --name redash -w${REDASH_WEB_WORKERS:-4} redash.wsgi:app
+  exec /usr/local/bin/gunicorn -b 0.0.0.0:${PORT:-5000} --name redash -w${REDASH_WEB_WORKERS:-4} redash.wsgi:app
 }
 
 create_db() {

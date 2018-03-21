@@ -4,6 +4,8 @@ import logging
 import urlparse
 import urllib
 import redis
+from logging.config import dictConfig
+from dockerflow.flask import Dockerflow
 from flask import Flask, safe_join
 from flask_sslify import SSLify
 from werkzeug.contrib.fixers import ProxyFix
@@ -37,6 +39,55 @@ def setup_logging():
         logging.getLogger('apiclient').setLevel("ERROR")
 
 
+def setup_moz_logging():
+    logging_config = {
+        'version': 1,
+        'formatters': {
+            'json': {
+                '()': 'dockerflow.logging.JsonLogFormatter',
+                'logger_name': 'redash'
+            }
+        },
+        'handlers': {
+            'console': {
+                'level': settings.LOG_LEVEL,
+                'class': 'logging.StreamHandler',
+                'formatter': 'json'
+            },
+        },
+        'loggers': {
+            '': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+            'request.summary': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+        }
+    }
+    if settings.LOG_LEVEL != 'DEBUG':
+        logging_config['loggers'].update({
+            'passlib': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+            },
+            'requests.packages.urllib3': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+            },
+            'snowflake.connector': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+            },
+            'apiclient': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+            },
+        })
+        dictConfig(logging_config)
+
+
 def create_redis_connection():
     logging.debug("Creating Redis connection (%s)", settings.REDIS_URL)
     redis_url = urlparse.urlparse(settings.REDIS_URL)
@@ -61,7 +112,7 @@ def create_redis_connection():
     return r
 
 
-setup_logging()
+setup_moz_logging()
 redis_connection = create_redis_connection()
 mail = Mail()
 migrate = Migrate()
@@ -143,4 +194,5 @@ def create_app(load_admin=True):
     handlers.init_app(app)
     configure_webpack(app)
     extensions.init_extensions(app)
+    dockerflow = Dockerflow(app, db=db, redis=redis_connection, migrate=migrate)
     return app

@@ -51,3 +51,4 @@ python-geoip-geolite2==2015.303
 # Uncomment the requirement for ldap3 if using ldap.
 # It is not included by default because of the GPL license conflict.
 # ldap3==2.2.4
+dockerflow==2018.2.1
