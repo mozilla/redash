@@ -10,7 +10,7 @@ worker() {
   echo "Starting $WORKERS_COUNT workers for queues: $QUEUES..."
   exec /usr/local/bin/celery worker --app=redash.worker -c$WORKERS_COUNT -Q$QUEUES -linfo \
       --max-tasks-per-child=10 \
-      --max-memory-per-child=$MEMORY \
+      --max-memory-per-child=$MAX_MEMORY \
       -Ofair
 }
 
