@@ -230,7 +230,8 @@ function prepareChartData(seriesList, options) {
     const yValues = [];
     const yErrorValues = [];
     each(data, (row) => {
-      const x = normalizeValue(row.x);
+      const xAxisLabelLength = parseInt(options.xAxisLabelLength, 10) || DEFAULT_XAXIS_LABEL_LENGTH;
+      const x = normalizeValue(row.x).substr(0, xAxisLabelLength);
       const y = normalizeValue(row.y);
       const yError = normalizeValue(row.yError);
       sourceData.set(x, {
