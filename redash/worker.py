@@ -16,6 +16,10 @@ celery = Celery('redash',
                 include='redash.tasks')
 
 celery_schedule = {
+    'health_status': {
+        'task': 'redash.tasks.health_status',
+        'schedule': timedelta(minutes=settings.HEALTH_QUERIES_REFRESH_SCHEDULE)
+    },
     'refresh_queries': {
         'task': 'redash.tasks.refresh_queries',
         'schedule': timedelta(seconds=30)
