@@ -177,6 +177,17 @@ function getUnifiedXAxisValues(seriesList, sorted) {
 
 const DEFAULT_XAXIS_LABEL_LENGTH = 300;
 
+// We only truncate category x-axis labels because the other types
+// are correctly formatted by Plotly.
+function truncateCategoryAxis(oldXLabel, options) {
+  const xAxisLabelLength = parseInt(options.xAxisLabelLength, 10) || DEFAULT_XAXIS_LABEL_LENGTH;
+
+  if (options && options.xAxis && options.xAxis.type === 'category') {
+    return String(oldXLabel).substr(0, xAxisLabelLength);
+  }
+  return oldXLabel;
+}
+
 function preparePieData(seriesList, options) {
   const {
     cellWidth, cellHeight, xPadding, yPadding, cellsInRow, hasX,
@@ -187,7 +198,7 @@ function preparePieData(seriesList, options) {
     const xPosition = (index % cellsInRow) * cellWidth;
     const yPosition = Math.floor(index / cellsInRow) * cellHeight;
     const labels = map(serie.data, (row, rowIdx) => {
-      const rowX = hasX ? row.x : `Slice ${index}`;
+      const rowX = hasX ? truncateCategoryAxis(row.x, options) : `Slice ${index}`;
       const rowOpts = options.seriesOptions[rowX];
       if (rowOpts) {
         colorPalette[rowIdx] = rowOpts.color;
@@ -229,7 +240,7 @@ function prepareChartData(seriesList, options) {
     const yValues = [];
     const yErrorValues = [];
     each(data, (row) => {
-      const x = normalizeValue(row.x);
+      const x = truncateCategoryAxis(normalizeValue(row.x), options);
       const y = normalizeValue(row.y);
       const yError = normalizeValue(row.yError);
       sourceData.set(x, {
@@ -376,19 +387,6 @@ export function prepareLayout(element, seriesList, options, data) {
     if (options.series.stacking) {
       result.barmode = 'relative';
     }
-  }
-
-  // Truncate x-axis labels using ticktext.
-  // Example can be found here: https://plot.ly/javascript/axes/#enumerated-ticks-with-tickvals-and-ticktext
-  let ticktext, tickvals;
-  const xAxisLabelLength = parseInt(options.xAxisLabelLength, 10) || DEFAULT_XAXIS_LABEL_LENGTH;
-  if (data.length > 0) {
-    ticktext = map(data[0].x, xVal => String(xVal).substr(0, xAxisLabelLength));
-    tickvals = data[0].x;
-  }
-  if (ticktext && tickvals) {
-    result.xaxis.ticktext = ticktext;
-    result.xaxis.tickvals = tickvals;
   }
 
   return result;
