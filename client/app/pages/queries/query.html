@@ -89,8 +89,14 @@
       <div ng-if="!sourceMode" style="flex-grow: 1;">&nbsp;</div>
 
       <div class="query-metadata query-metadata--description">
-        <edit-in-place editable="canEdit" done="saveDescription" editor="textarea" placeholder="Add description" ignore-blanks='false'
-          value="query.description" markdown="true">
+        <edit-in-place
+          class="edit-in-place"
+          editable="canEdit"
+          on-done="saveDescription"
+          editor="'textarea'"
+          placeholder-text="'Add description'"
+          ignore-blanks="false"
+          value="query.description">
         </edit-in-place>
       </div>
 
