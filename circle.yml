@@ -18,16 +18,22 @@ test:
   override:
     - pytest --junitxml=$CIRCLE_TEST_REPORTS/junit.xml tests/
 deployment:
-  latest:
+  master:
     branch: master
     owner: mozilla
     commands:
-      - ./bin/deploy "latest"
-  hub_releases:
+      - ./bin/deploy "master"
+  release:
+    branch: release
+    owner: mozilla
+    commands:
+      - ./bin/deploy "rc"
+  milestone:
     tag: /^m[0-9]+(\.[0-9]+)?$/
     owner: mozilla
     commands:
       - ./bin/deploy "$CIRCLE_TAG"
+      - ./bin/alias "$CIRCLE_TAG" "latest"
 general:
   branches:
     ignore:
