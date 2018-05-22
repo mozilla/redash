@@ -226,51 +226,7 @@
     </div>
   </div>
 
-  <div ng-if="currentTab == 'series'" class="m-t-10 m-b-10">
-    <table class="table table-condensed col-table">
-      <thead>
-        <th style="width: 1%;">zIndex</th>
-        <th ng-if="options.globalSeriesType != 'pie'">Left Y Axis</th>
-        <th ng-if="options.globalSeriesType != 'pie'">Right Y Axis</th>
-        <th>Label</th>
-        <th ng-if="options.globalSeriesType != 'pie'">Type</th>
-      </thead>
-      <tbody ui-sortable ng-model="form.seriesList">
-        <tr ng-repeat="name in form.seriesList">
-          <td style="width: 1%; cursor: move;">
-            <i class="fa fa-arrows-v"></i>
-            <span ng-bind="options.seriesOptions[name].zIndex + 1"></span>
-          </td>
-          <td ng-if="options.globalSeriesType != 'pie'">
-            <input type="radio" ng-value="0" ng-model="options.seriesOptions[name].yAxis">
-          </td>
-          <td ng-if="options.globalSeriesType != 'pie'">
-            <input type="radio" ng-value="1" ng-model="options.seriesOptions[name].yAxis">
-          </td>
-          <td style="padding: 3px; width: 140px;">
-            <input placeholder="{{name}}" class="form-control input-sm super-small-input" type="text" ng-model="options.seriesOptions[name].name">
-          </td>
-          <td ng-if="options.globalSeriesType != 'pie'" style="padding: 3px; width: 105px;">
-            <ui-select ng-model="options.seriesOptions[name].type">
-              <ui-select-match placeholder="Chart Type">
-                <div>
-                  <i class="fa fa-{{$select.selected.value.icon}}"></i>
-                  {{$select.selected.value.name}}
-                </div>
-              </ui-select-match>
-              <ui-select-choices repeat="info.chartType as (chartType, info) in chartTypes">
-                <div>
-                  <i class="fa fa-{{info.value.icon}}"></i>
-                  <span> </span>
-                  <span ng-bind-html="info.value.name | highlight: $select.search"></span>
-                </div>
-              </ui-select-choices>
-            </ui-select>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <chart-series-editor ng-if="currentTab == 'series'" series-options="options.seriesOptions" series-list="form.seriesList" update-series-list="updateSeriesList" update-series-options="updateSeriesOptions" type="options.globalSeriesType" />
 
   <div ng-if="(currentTab == 'colors') && (options.globalSeriesType != 'pie')" class="m-t-10 m-b-10">
     <table class="table table-condensed col-table">

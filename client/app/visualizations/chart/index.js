@@ -2,6 +2,9 @@ import {
   some, extend, defaults, has, partial, intersection, without, includes, isUndefined,
   sortBy, each, map, keys, difference,
 } from 'lodash';
+import { react2angular } from 'react2angular';
+
+import ChartSeriesEditor from '@/react-components/ChartSeriesEditor';
 import template from './chart.html';
 import editorTemplate from './chart-editor.html';
 
@@ -122,6 +125,14 @@ function ChartEditor(ColorPalette, clientConfig) {
       };
 
       scope.showSizeColumnPicker = () => some(scope.options.seriesOptions, options => options.type === 'bubble');
+
+      scope.updateSeriesList = (s) => {
+        scope.form.seriesList = s;
+      };
+
+      scope.updateSeriesOptions = (opts) => {
+        scope.$apply(() => { scope.options.seriesOptions = opts; });
+      };
 
       if (scope.options.customCode === undefined) {
         scope.options.customCode = `// Available variables are x, ys, element, and Plotly
@@ -337,6 +348,7 @@ const ColorBox = {
 
 export default function init(ngModule) {
   ngModule.component('colorBox', ColorBox);
+  ngModule.component('chartSeriesEditor', react2angular(ChartSeriesEditor, null, ['ColorPalette']));
   ngModule.directive('chartRenderer', ChartRenderer);
   ngModule.directive('chartEditor', ChartEditor);
   ngModule.config((VisualizationProvider) => {
