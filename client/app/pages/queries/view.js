@@ -133,6 +133,8 @@ function QueryViewCtrl(
     KeyboardShortcuts.unbind(shortcuts);
   });
 
+  $scope.canForkQuery = () => currentUser.hasPermission('edit_query') && !$scope.dataSource.view_only;
+
   if ($scope.query.hasResult() || $scope.query.paramsRequired()) {
     getQueryResult();
   }
@@ -228,6 +230,12 @@ function QueryViewCtrl(
 
   // toastr.success('It seems like the query has been modified by another user. ' +
   //   'Please copy/backup your changes and reload this page.', { timeOut: 0 });
+
+  $scope.duplicateQuery = () => {
+    Query.fork({ id: $scope.query.id }, (newQuery) => {
+      $location.url(newQuery.getSourceLink()).replace();
+    });
+  };
 
   $scope.togglePublished = () => {
     Events.record('toggle_published', 'query', $scope.query.id);
