@@ -109,6 +109,7 @@ function VisualizationOptionsEditor(Visualization) {
     replace: false,
     scope: {
       visualization: '=',
+      updateVisualization: '=',
       query: '=',
       queryResult: '=',
     },

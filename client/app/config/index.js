@@ -22,8 +22,6 @@ import 'angular-ui-ace';
 import 'angular-resizable';
 import { each, isFunction, extend } from 'lodash';
 
-import '@/lib/sortable';
-
 import * as filters from '@/filters';
 import registerDirectives from '@/directives';
 import markdownFilter from '@/filters/markdown';
@@ -53,7 +51,6 @@ const requirements = [
   ngUpload,
   'angularResizable',
   vsRepeat,
-  'ui.sortable',
 ];
 
 const ngModule = angular.module('app', requirements);

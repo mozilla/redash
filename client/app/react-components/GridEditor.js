@@ -1,11 +1,10 @@
+import React from 'react';
+import PropTypes from 'prop-types';
 import _ from 'lodash';
-import { react2angular } from 'react2angular';
 import { getColumnCleanName } from '@/services/query-result';
-import { createFormatter } from '@/lib/value-format';
-import TableEditorColumns from '@/react-components/TableEditorColumns';
-import GridEditor from '@/react-components/GridEditor';
-import template from './table.html';
-import './table-editor.less';
+import TableEditorColumns from './TableEditorColumns';
+
+const ALLOWED_ITEM_PER_PAGE = [5, 10, 15, 20, 25];
 
 const DEFAULT_OPTIONS = {
   itemsPerPage: 15,
@@ -45,8 +44,8 @@ function getDefaultColumnsOptions(columns) {
 
 function getDefaultFormatOptions(column, clientConfig) {
   const dateTimeFormat = {
-    date: clientConfig.dateFormat || 'DD/MM/YYYY',
-    datetime: clientConfig.dateTimeFormat || 'DD/MM/YYYY HH:mm',
+    date: clientConfig.dateFormat || 'DD/MM/YY',
+    datetime: clientConfig.dateTimeFormat || 'DD/MM/YY HH:mm',
   };
   const numberFormat = {
     integer: clientConfig.integerFormat || '0,0',
@@ -110,74 +109,88 @@ function getColumnsOptions(columns, visualizationColumns) {
   return _.sortBy(options, 'order');
 }
 
-function getColumnsToDisplay(columns, options, clientConfig) {
-  columns = _.fromPairs(_.map(columns, col => [col.name, col]));
-  let result = _.map(options, col => _.extend(
-    getDefaultFormatOptions(col, clientConfig),
-    col,
-    columns[col.name],
-  ));
+export default class GridEditor extends React.Component {
+  static propTypes = {
+    visualization: PropTypes.object.isRequired,
+    queryResult: PropTypes.object.isRequired,
+    updateVisualization: PropTypes.func.isRequired,
+  }
 
-  result = _.map(result, col => _.extend(col, {
-    formatFunction: createFormatter(col),
-  }));
+  constructor(props) {
+    super(props);
+    this.state = {
+      currentTab: 'columns',
+    };
+  }
 
-  return _.sortBy(_.filter(result, 'visible'), 'order');
-}
+  showColumnsTab = () => this.setState({ currentTab: 'columns' });
+  showGridTab = () => this.setState({ currentTab: 'grid' });
 
-function GridRenderer(clientConfig) {
-  return {
-    restrict: 'E',
-    scope: {
-      queryResult: '=',
-      options: '=',
-    },
-    template,
-    replace: false,
-    controller($scope) {
-      $scope.gridColumns = [];
-      $scope.gridRows = [];
 
-      function update() {
-        if ($scope.queryResult.getData() == null) {
-          $scope.gridColumns = [];
-          $scope.filters = [];
-        } else {
-          $scope.filters = $scope.queryResult.getFilters();
-          $scope.gridRows = $scope.queryResult.getData();
-          const columns = $scope.queryResult.getColumns();
-          const columnsOptions = getColumnsOptions(columns, _.extend({}, $scope.options).columns);
-          $scope.gridColumns = getColumnsToDisplay(columns, columnsOptions, clientConfig);
-        }
-      }
+  updateOptions = newVal =>
+    this.props.updateVisualization(Object.assign(
+      {},
+      this.props.visualization,
+      {
+        options: Object.assign(
+          {},
+          DEFAULT_OPTIONS,
+          this.props.visualization.options,
+          newVal,
+        ),
+      },
+    ));
 
-      $scope.$watch('queryResult && queryResult.getData()', (queryResult) => {
-        if (queryResult) {
-          update();
-        }
-      });
-
-      $scope.$watch('options', (newValue, oldValue) => {
-        if (newValue !== oldValue) {
-          update();
-        }
-      }, true);
-    },
-  };
-}
-export default function init(ngModule) {
-  ngModule.directive('gridRenderer', GridRenderer);
-  ngModule.component('gridEditor', react2angular(GridEditor, null, ['clientConfig']));
-  ngModule.component('tableEditorColumns', react2angular(TableEditorColumns));
-  ngModule.config((VisualizationProvider) => {
-    const defaultOptions = DEFAULT_OPTIONS;
-
-    VisualizationProvider.registerVisualization({
-      type: 'TABLE',
-      name: 'Table',
-      renderTemplate: '<grid-renderer options="visualization.options" query-result="queryResult"></grid-renderer>',
-      editorTemplate: '<grid-editor visualization="visualization" update-visualization="updateVisualization" query-result="queryResult"></grid-editor>',
-      defaultOptions,
+  collectTableColumns = (newCols) => {
+    this.updateOptions({
+      columns: _.map(
+        getColumnsOptions(
+          this.props.queryResult.getData() !== null ? this.props.queryResult.getColumns() : [],
+          newCols,
+        ),
+        col => _.extend(getDefaultFormatOptions(col, this.props.clientConfig), col),
+      ),
     });
-  });
+  }
+
+  render() {
+    const columnsButton = (
+      <li className={this.state.currentTab === 'columns' ? 'active' : ''}>
+        <a tabIndex={0} role="button" onClick={this.showColumnsTab} onKeyPress={this.showGridTab}>Columns</a>
+      </li>
+    );
+    let activeTab;
+    if (this.state.currentTab === 'grid') {
+      activeTab = (
+        <div className="m-t-10 m-b-10">
+          <div className="form-group">
+            <label htmlFor="grid-editor-items-per-page">Items per page
+              <select id="grid-editor-items-per-page" className="form-control" onChange={e => this.updateOptions({ itemsPerPage: e.target.value })}>
+                {ALLOWED_ITEM_PER_PAGE.map(n => <option value={n}>{n}</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
+      );
+    } else if (this.state.currentTab === 'columns') {
+      activeTab = (
+        <TableEditorColumns
+          columns={this.props.visualization.options.columns}
+          updateColumns={this.collectTableColumns}
+        />
+      );
+    }
+
+    return (
+      <div className="table-editor-container">
+        <ul className="tab-nav">
+          {this.props.visualization.options.globalSeriesType !== 'custom' ? columnsButton : ''}
+          <li className={this.state.currentTab === 'grid' ? 'active' : ''}>
+            <a tabIndex={0} role="button" onClick={this.showGridTab} onKeyPress={this.showGridTab}>Grid</a>
+          </li>
+        </ul>
+        {activeTab}
+      </div>
+    );
+  }
 }

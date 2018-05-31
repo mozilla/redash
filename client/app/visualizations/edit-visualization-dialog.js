@@ -9,7 +9,7 @@ const EditVisualizationDialog = {
     close: '&',
     dismiss: '&',
   },
-  controller($window, currentUser, Events, Visualization, toastr) {
+  controller($window, $scope, currentUser, Events, Visualization, toastr) {
     'ngInject';
 
     this.query = this.resolve.query;
@@ -17,6 +17,7 @@ const EditVisualizationDialog = {
     this.originalVisualization = this.resolve.visualization;
     this.onNewSuccess = this.resolve.onNewSuccess;
     this.visualization = copy(this.originalVisualization);
+    this.updateVisualization = vis => $scope.$apply(() => { this.visualization = vis; });
     this.visTypes = Visualization.visualizationTypes;
 
     // Don't allow to change type after creating visualization
