@@ -1,6 +1,8 @@
 import _ from 'lodash';
+import { react2angular } from 'react2angular';
 import { getColumnCleanName } from '@/services/query-result';
 import { createFormatter } from '@/lib/value-format';
+import TableEditorColumns from '@/react-components/TableEditorColumns';
 import template from './table.html';
 import editorTemplate from './table-editor.html';
 import './table-editor.less';
@@ -196,16 +198,17 @@ function GridEditor(clientConfig) {
         }
       });
 
-      $scope.$watch('queryResult && queryResult.getData()', (queryResult) => {
-        if (queryResult) {
-          const columns = $scope.queryResult.getData() !== null ? $scope.queryResult.getColumns() : [];
-          $scope.visualization.options.columns = _.map(
-            getColumnsOptions(columns, $scope.visualization.options.columns),
-            col => _.extend(getDefaultFormatOptions(col, clientConfig), col),
-          );
-        }
-      });
-
+      const collectTableColumns = (newCols) => {
+        $scope.visualization.options.columns = _.map(
+          getColumnsOptions(
+            $scope.queryResult.getData() !== null ? $scope.queryResult.getColumns() : [],
+            newCols,
+          ),
+          col => _.extend(getDefaultFormatOptions(col, clientConfig), col),
+        );
+      };
+      collectTableColumns($scope.visualization.options.columns);
+      $scope.updateColumns = newCols => $scope.$apply(() => collectTableColumns(newCols));
       $scope.templateHint = `
         All columns can be referenced using <code>{{ column_name }}</code> syntax.
         Use <code>{{ @ }}</code> to reference current (this) column.
@@ -218,7 +221,7 @@ function GridEditor(clientConfig) {
 export default function init(ngModule) {
   ngModule.directive('gridRenderer', GridRenderer);
   ngModule.directive('gridEditor', GridEditor);
-
+  ngModule.component('tableEditorColumns', react2angular(TableEditorColumns));
   ngModule.config((VisualizationProvider) => {
     const defaultOptions = DEFAULT_OPTIONS;
 
