@@ -134,7 +134,7 @@
           <section class="flex-fill p-relative t-body">
             <div class="d-flex flex-column p-b-15 p-absolute" style="left: 0; top: 0; right: 0; bottom: 0;">
               <div class="p-t-15 p-b-5" ng-if="query.getParametersDefs().length > 0">
-                <parameters parameters="query.getParametersDefs()" sync-values="!query.isNew()" editable="sourceMode && canEdit"></parameters>
+                <parameters parameters="query.getParametersDefs()" query="query" sync-values="!query.isNew()" editable="sourceMode && canEdit"></parameters>
               </div>
               <query-execution-status query="query" query-result="queryResult" status="queryResult.getStatus()"></query-execution-status>
               <!-- tabs and data -->
