@@ -1,10 +1,9 @@
 import moment from 'moment';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { react2angular } from 'react2angular';
 import DatePicker from 'antd/lib/date-picker';
 
-function DateTimeInput({
+export default function DateTimeInput({
   value,
   withSeconds,
   onSelect,
@@ -35,6 +34,7 @@ DateTimeInput.propTypes = {
       return new Error('Prop `' + propName + '` supplied to `' + componentName +
         '` should be a Moment.js instance.');
     }
+    return undefined;
   },
   withSeconds: PropTypes.bool,
   onSelect: PropTypes.func,
@@ -45,9 +45,3 @@ DateTimeInput.defaultProps = {
   withSeconds: false,
   onSelect: () => {},
 };
-
-export default function init(ngModule) {
-  ngModule.component('dateTimeInput', react2angular(DateTimeInput, null, ['clientConfig']));
-}
-
-init.init = true;
