@@ -32,10 +32,6 @@ server() {
 }
 
 create_db() {
-  while ! bash -c "echo > /dev/tcp/postgres/5432" &> /dev/null ; do
-    echo "Waiting for PostgreSQL container to become available."
-    sleep 5
-  done
   exec /app/manage.py database create_tables
 }
 
@@ -106,3 +102,4 @@ case "$1" in
     exec "$@"
     ;;
 esac
+

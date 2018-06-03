@@ -118,6 +118,7 @@ class QueryExecutorTests(BaseTestCase):
             with self.assertRaises(QueryExecutionError):
                 execute_query("SELECT 1, 2", self.factory.data_source.id, {},
                               scheduled_query_id=q.id)
+            q = models.Query.get_by_id(q.id)
             self.assertEqual(q.schedule_failures, 1)
             with self.assertRaises(QueryExecutionError):
                 execute_query("SELECT 1, 2", self.factory.data_source.id, {},

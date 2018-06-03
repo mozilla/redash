@@ -300,6 +300,8 @@ class Organization(TimestampMixin, db.Model):
     slug = Column(db.String(255), unique=True)
     settings = Column(MutableDict.as_mutable(PseudoJSON))
     groups = db.relationship("Group", lazy="dynamic")
+    events = db.relationship("Event", lazy="dynamic", order_by="desc(Event.created_at)",)
+
 
     __tablename__ = 'organizations'
 
@@ -758,7 +760,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
 
     @classmethod
     def store_result(cls, org, data_source, query_hash, query, data, run_time, retrieved_at):
-        query_result = cls(org=org,
+        query_result = cls(org_id=org,
                            query_hash=query_hash,
                            query_text=query,
                            runtime=run_time,
@@ -1567,7 +1569,7 @@ class Widget(TimestampMixin, db.Model):
 class Event(db.Model):
     id = Column(db.Integer, primary_key=True)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
-    org = db.relationship(Organization, backref="events")
+    org = db.relationship(Organization, back_populates="events")
     user_id = Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     user = db.relationship(User, backref="events")
     action = Column(db.String(255))

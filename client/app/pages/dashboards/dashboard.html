@@ -31,7 +31,7 @@
           <div class="btn-group" uib-dropdown ng-if="!$ctrl.layoutEditing">
             <button id="split-button" type="button"
                     ng-class="{'btn-default btn-sm': $ctrl.refreshRate === null,'btn-primary btn-sm':$ctrl.refreshRate !== null}"
-                    class="btn btn-sm" ng-click="$ctrl.loadDashboard(true)">
+                    class="btn btn-sm" ng-click="$ctrl.refreshDashboard()">
               <i class="zmdi zmdi-refresh"></i> {{$ctrl.refreshRate === null ? 'Refresh' : $ctrl.refreshRate.name}}
             </button>
             <button type="button" class="btn" uib-dropdown-toggle
@@ -84,12 +84,16 @@
     <filters filters="$ctrl.filters" on-change="$ctrl.filtersOnChange(filter, $modal)"></filters>
   </div>
 
-  <div style="overflow: hidden; padding-bottom: 5px;" ng-if="$ctrl.dashboard.widgets.length > 0">
-    <div gridster="$ctrl.dashboardGridOptions" class="dashboard-wrapper"
+  <div style="padding-bottom: 5px;" ng-if="$ctrl.dashboard.widgets.length > 0">
+    <div gridstack editing="$ctrl.layoutEditing && !$ctrl.saveInProgress" batch-update="$ctrl.updateGridItems"
+      is-one-column-mode="$ctrl.isGridDisabled" class="dashboard-wrapper"
       ng-class="{'preview-mode': !$ctrl.layoutEditing, 'editing-mode': $ctrl.layoutEditing}">
-      <div ng-repeat="widget in $ctrl.dashboard.widgets" gridster-item="widget.options.position"
-        gridster-auto-height=".scrollbox, .spinner-container">
-        <dashboard-widget widget="widget" dashboard="$ctrl.dashboard" on-delete="$ctrl.removeWidget()"></dashboard-widget>
+      <div class="dashboard-widget-wrapper"
+        ng-repeat="widget in $ctrl.dashboard.widgets track by widget.id"
+        gridstack-item="widget.options.position" gridstack-item-id="{{ widget.id }}">
+        <div class="grid-stack-item-content">
+          <dashboard-widget widget="widget" dashboard="$ctrl.dashboard" on-delete="$ctrl.removeWidget(widget.id)"></dashboard-widget>
+        </div>
       </div>
     </div>
   </div>

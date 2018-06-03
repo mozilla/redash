@@ -8,6 +8,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import 'leaflet-fullscreen';
+import 'leaflet-fullscreen/dist/leaflet.fullscreen.css';
 
 import template from './map.html';
 import editorTemplate from './map-editor.html';
@@ -23,14 +25,16 @@ L.Icon.Default.mergeOptions({
 
 delete L.Icon.Default.prototype._getIconUrl;
 
-
 function mapRenderer() {
   return {
     restrict: 'E',
     template,
     link($scope, elm) {
       const colorScale = d3.scale.category10();
-      const map = L.map(elm[0].children[0].children[0], { scrollWheelZoom: false });
+      const map = L.map(elm[0].children[0].children[0], {
+        scrollWheelZoom: false,
+        fullscreenControl: true,
+      });
       const mapControls = L.control.layers().addTo(map);
       const layers = {};
       const tileLayer = L.tileLayer('//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -209,7 +213,6 @@ function mapRenderer() {
 
       $scope.$watch('queryResult && queryResult.getData()', render);
       $scope.$watch('visualization.options', render, true);
-      $scope.$watch('visualization.options.height', resize);
     },
   };
 }
@@ -297,7 +300,7 @@ export default function init(ngModule) {
 
     VisualizationProvider.registerVisualization({
       type: 'MAP',
-      name: 'Map',
+      name: 'Map (Markers)',
       renderTemplate,
       editorTemplate: editTemplate,
       defaultOptions,

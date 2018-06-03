@@ -20,7 +20,8 @@ const DEFAULT_OPTIONS = {
   totalColumn: 'total',
   valueColumn: 'value',
 
-  defaultRows: -1,
+  autoHeight: true,
+  defaultRows: 8,
 };
 
 function groupData(sortedData) {
@@ -29,7 +30,7 @@ function groupData(sortedData) {
   _.each(sortedData, (item) => {
     const groupKey = item.date + 0;
     result[groupKey] = result[groupKey] || {
-      date: item.date,
+      date: moment(item.date),
       total: parseInt(item.total, 10),
       values: {},
     };
