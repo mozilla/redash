@@ -8,14 +8,16 @@ const EmptyStateComponent = {
     icon: '@',
     title: '@',
     description: '@',
+    illustration: '@',
     helpLink: '@',
     showAlertStep: '<',
     showDashboardStep: '<',
     showInviteStep: '<',
     onboardingMode: '<',
   },
-  controller($http, $uibModal) {
+  controller($http, $uibModal, currentUser) {
     this.loading = true;
+    this.isAdmin = currentUser.isAdmin;
 
     $http.get('api/organization/status').then((response) => {
       this.loading = false;

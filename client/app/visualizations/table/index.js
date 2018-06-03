@@ -1,6 +1,6 @@
 import _ from 'underscore';
 import { getColumnCleanName } from '@/services/query-result';
-import createFormatter from '@/lib/value-format';
+import { createFormatter } from '@/lib/value-format';
 import template from './table.html';
 import editorTemplate from './table-editor.html';
 import './table-editor.less';
@@ -19,7 +19,8 @@ const DISPLAY_AS_OPTIONS = [
 
 const DEFAULT_OPTIONS = {
   itemsPerPage: 15,
-  defaultRows: -1,
+  autoHeight: true,
+  defaultRows: 14,
   defaultColumns: 3,
   minColumns: 2,
 };
@@ -47,7 +48,7 @@ function getDefaultColumnsOptions(columns) {
     allowSearch: false,
     alignContent: getColumnContentAlignment(col.type),
     // `string` cell options
-    allowHTML: false,
+    allowHTML: true,
     highlightLinks: false,
   }));
 }

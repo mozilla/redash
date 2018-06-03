@@ -76,12 +76,6 @@ function QuerySourceCtrl(
     $scope.autocompleteQuery = !$scope.autocompleteQuery;
   };
 
-  $scope.duplicateQuery = () => {
-    Query.fork({ id: $scope.query.id }, (newQuery) => {
-      $location.url(newQuery.getSourceLink()).replace();
-    });
-  };
-
   $scope.deleteVisualization = ($e, vis) => {
     $e.preventDefault();
 

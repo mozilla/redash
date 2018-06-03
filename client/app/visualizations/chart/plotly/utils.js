@@ -3,7 +3,7 @@ import {
   each, values, sortBy, pluck, identity, filter, map,
 } from 'underscore';
 import moment from 'moment';
-import createFormatter from '@/lib/value-format';
+import { createFormatter } from '@/lib/value-format';
 
 // The following colors will be used if you pick "Automatic" color.
 const BaseColors = {
@@ -33,7 +33,7 @@ export const ColorPalette = Object.assign({}, BaseColors, {
   'Pink 2': '#C63FA9',
 });
 
-const formatNumber = createFormatter({ displayAs: 'number', numberFormat: '0,0[.]00' });
+const formatNumber = createFormatter({ displayAs: 'number', numberFormat: '0,0[.]00000' });
 const formatPercent = createFormatter({ displayAs: 'number', numberFormat: '0[.]00' });
 
 const ColorPaletteArray = values(BaseColors);
@@ -148,8 +148,10 @@ function calculateDimensions(series, options) {
 
   const hasX = contains(values(options.columnMapping), 'x');
   const hasY2 = !!find(series, (serie) => {
-    const serieOptions = options.seriesOptions[serie.name] || { type: options.globalSeriesType };
-    return (serieOptions.yAxis === 1) && (options.series.stacking === null);
+    const seriesOptions = options.seriesOptions[serie.name] || { type: options.globalSeriesType };
+    return (seriesOptions.yAxis === 1) && (
+      (options.series.stacking === null) || (seriesOptions.type === 'line')
+    );
   });
 
   return {
@@ -271,7 +273,10 @@ function prepareChartData(seriesList, options) {
       sourceData,
     };
 
-    if ((seriesOptions.yAxis === 1) && (options.series.stacking === null)) {
+    if (
+      (seriesOptions.yAxis === 1) &&
+      ((options.series.stacking === null) || (seriesOptions.type === 'line'))
+    ) {
       plotlySeries.yaxis = 'y2';
     }
 
@@ -283,6 +288,7 @@ function prepareChartData(seriesList, options) {
       };
     } else if (seriesOptions.type === 'box') {
       plotlySeries.boxpoints = 'outliers';
+      plotlySeries.hoverinfo = false;
       plotlySeries.marker = {
         color: seriesColor,
         size: 3,
@@ -348,6 +354,10 @@ export function prepareLayout(element, seriesList, options, data) {
       type: getScaleType(options.xAxis.type),
     };
 
+    if (options.sortX && result.xaxis.type === 'category') {
+      result.xaxis.categoryorder = 'category ascending';
+    }
+
     if (!isUndefined(options.xAxis.labels)) {
       result.xaxis.showticklabels = options.xAxis.labels.enabled;
     }
@@ -395,10 +405,11 @@ export function prepareLayout(element, seriesList, options, data) {
 function updateSeriesText(seriesList, options) {
   each(seriesList, (series) => {
     series.text = [];
-    series.x.forEach((xvalue) => {
-      const item = series.sourceData.get(xvalue);
-      if (item !== undefined) {
-        let text = formatNumber(item.y);
+    series.x.forEach((x) => {
+      let text = null;
+      const item = series.sourceData.get(x);
+      if (item) {
+        text = formatNumber(item.y);
         if (item.yError !== undefined) {
           text = `${text} \u00B1 ${formatNumber(item.yError)}`;
         }
@@ -406,11 +417,8 @@ function updateSeriesText(seriesList, options) {
         if (options.series.percentValues) {
           text = `${formatPercent(Math.abs(item.yPercent))}% (${text})`;
         }
-
-        series.text.push(text);
-      } else {
-        series.text.push(null);
       }
+      series.text.push(text);
     });
   });
   return seriesList;
