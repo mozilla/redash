@@ -100,7 +100,7 @@ class DataSourceListResource(BaseResource):
             'object_id': 'admin/data_sources',
             'object_type': 'api_call',
         })
-        return sorted(response.values(), key=lambda d: d['id'])
+        return sorted(response.values(), key=lambda d: d['name'])
 
     @require_admin
     def post(self):
