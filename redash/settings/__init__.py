@@ -1,7 +1,7 @@
 import os
 from funcy import distinct, remove
 
-from .helpers import parse_db_url, fix_assets_path, array_from_string, parse_boolean, int_or_none, set_from_string, dict_from_string
+from .helpers import parse_db_url, fix_assets_path, array_from_string, parse_boolean, int_or_none, set_from_string
 
 
 def all_settings():
@@ -242,14 +242,3 @@ SCHEMA_RUN_TABLE_SIZE_CALCULATIONS = parse_boolean(os.environ.get("REDASH_SCHEMA
 # Allow Parameters in Embeds
 # WARNING: With this option enabled, Redash reads query parameters from the request URL (risk of SQL injection!)
 ALLOW_PARAMETERS_IN_EMBEDS = parse_boolean(os.environ.get("REDASH_ALLOW_PARAMETERS_IN_EMBEDS", "false"))
-
-# Allow for a map of custom queries to test data source performance and availability.
-# A sample map may look like:
-# {
-#    "1": "select 1;",
-#    "5": "select 1;"
-# }
-CUSTOM_HEALTH_QUERIES = dict_from_string(os.environ.get("REDASH_CUSTOM_HEALTH_QUERIES", ""))
-
-# Frequency of health query runs in minutes (12 hours by default)
-HEALTH_QUERIES_REFRESH_SCHEDULE = int(os.environ.get("REDASH_HEALTH_QUERIES_REFRESH_SCHEDULE", 720))

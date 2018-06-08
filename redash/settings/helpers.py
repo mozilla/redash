@@ -33,12 +33,6 @@ def array_from_string(s):
 
     return [item.strip() for item in array]
 
-def dict_from_string(s):
-    try:
-        return json.loads(s)
-    except ValueError:
-        return {}
-
 
 def set_from_string(s):
     return set(array_from_string(s))

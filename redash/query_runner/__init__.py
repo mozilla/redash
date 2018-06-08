@@ -102,12 +102,10 @@ class BaseQueryRunner(object):
 
         return version
 
-    def test_connection(self, custom_query_text=None):
+    def test_connection(self):
         if self.noop_query is None:
             raise NotImplementedError()
-
-        query_text = custom_query_text or self.noop_query
-        data, error = self.run_query(query_text, None)
+        data, error = self.run_query(self.noop_query, None)
 
         if error is not None:
             raise Exception(error)

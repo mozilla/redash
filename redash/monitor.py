@@ -1,4 +1,3 @@
-import json
 from redash import redis_connection, models, __version__, settings
 
 
@@ -15,9 +14,7 @@ def get_object_counts():
         status['unused_query_results_count'] = models.QueryResult.unused().count()
     status['dashboards_count'] = models.Dashboard.query.count()
     status['widgets_count'] = models.Widget.query.count()
-    status['data_sources'] = json.loads(redis_connection.get('data_sources:health') or '{}')
     return status
-
 
 def get_queues():
     queues = {}
