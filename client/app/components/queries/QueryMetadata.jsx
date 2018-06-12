@@ -33,13 +33,14 @@ export default function QueryMetadata(props) {
           </strong>
           created {timeAgo(props.query.created_at)}
         </div>
-        <img alt="" src={props.query.last_modified_by.profile_image_url} className="profile__image_thumb" />
-        <div className="flex-fill m-r-10">
-          <strong className={'meta__name' + (props.query.user.is_disabled ? ' text-muted' : '')}>
-            {props.query.user.name}
-          </strong>
-          updated {timeAgo(props.query.updated_at)}
-        </div>
+        {props.query.isNew() ? null :
+          <img alt="" src={props.query.last_modified_by.profile_image_url} className="profile__image_thumb" />
+          <div className="flex-fill m-r-10">
+            <strong className={'meta__name' + (props.query.user.is_disabled ? ' text-muted' : '')}>
+              {props.query.user.name}
+            </strong>
+            updated {timeAgo(props.query.updated_at)}
+          </div> }
         <div>
           <span className="query-metadata__property">Refresh schedule:</span>
           {props.query.isNew() ?
