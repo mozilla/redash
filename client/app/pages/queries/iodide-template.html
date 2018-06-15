@@ -1,0 +1,20 @@
+%% meta
+{"title": "{{ title }}"}
+
+%% md
+This is an iodide notebook, for more information and tutorials see https://iodide.io
+
+%% js
+// this cell fetches the results of your stmo query ({{ title }})
+iodide.evalQueue.requireExplicitContinuation();
+var stmoData;
+let url = '{{ jsonUrl }}';
+fetch(url)
+  .then(response => response.json())
+  .then((json)=> {stmoData = json; iodide.evalQueue.continue()});
+
+%% js
+// You can now access the results of your stmo query from the "stmoData" variable
+// As an example, we are going to assemble the rows of the query into a simple
+// data structure
+stmoData.query_result.data.rows.map(row=>Object.values(row))

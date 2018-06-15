@@ -1,12 +1,14 @@
 import { pick, any, some, find, min, isObject } from 'underscore';
 import { SCHEMA_NOT_SUPPORTED, SCHEMA_LOAD_ERROR } from '@/services/data-source';
 import template from './query.html';
+import iodideTemplate from './iodide-template.html';
 
 function QueryViewCtrl(
   $scope,
   Events,
   $route,
   $routeParams,
+  $interpolate,
   $location,
   $window,
   $q,
@@ -172,6 +174,12 @@ function QueryViewCtrl(
       },
     });
   };
+
+  const iodideNotebookJsmd = $interpolate(iodideTemplate)({
+    title: $scope.query.name,
+    jsonUrl: `${clientConfig.basePath}api/queries/${$scope.query.id}/results.json?api_key=${$scope.query.api_key}`,
+  });
+  $scope.iodideUrl = `https://iodide.io/master/?jsmd=${encodeURIComponent(iodideNotebookJsmd)}`;
 
   $scope.duplicateQuery = () => {
     Query.fork({ id: $scope.query.id }, (newQuery) => {
