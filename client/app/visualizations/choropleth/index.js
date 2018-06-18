@@ -5,6 +5,8 @@ import { formatSimpleTemplate } from '@/lib/value-format';
 import 'leaflet-fullscreen';
 import 'leaflet-fullscreen/dist/leaflet.fullscreen.css';
 
+import { ColorPalette } from '@/visualizations/chart/plotly/utils';
+
 import {
   AdditionalColors,
   darkenColor,
@@ -258,7 +260,7 @@ export default function init(ngModule) {
   ngModule.constant('ChoroplethPalette', {});
   ngModule.directive('choroplethRenderer', choroplethRenderer);
   ngModule.directive('choroplethEditor', choroplethEditor);
-  ngModule.config((VisualizationProvider, ColorPalette, ChoroplethPalette) => {
+  ngModule.config((VisualizationProvider, ChoroplethPalette) => {
     _.extend(ChoroplethPalette, AdditionalColors, ColorPalette);
 
     const renderTemplate =
