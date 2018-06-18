@@ -109,6 +109,16 @@ function getColumnsOptions(columns, visualizationColumns) {
   return _.sortBy(options, 'order');
 }
 
+function collectTableColumns(queryResult, clientConfig, newCols) {
+  return _.map(
+    getColumnsOptions(
+      queryResult.getData() !== null ? queryResult.getColumns() : [],
+      newCols,
+    ),
+    col => _.extend(getDefaultFormatOptions(col, clientConfig), col),
+  );
+}
+
 export default class GridEditor extends React.Component {
   static propTypes = {
     visualization: PropTypes.object.isRequired,
@@ -120,6 +130,14 @@ export default class GridEditor extends React.Component {
     super(props);
     this.state = {
       currentTab: 'columns',
+      columns: null,
+    };
+  }
+
+  static getDerivedStateFromProps(newProps, oldState) {
+    return {
+      ...oldState,
+      columns: collectTableColumns(newProps.queryResult, newProps.clientConfig, newProps.visualization.options.columns),
     };
   }
 
@@ -141,17 +159,10 @@ export default class GridEditor extends React.Component {
       },
     ));
 
-  collectTableColumns = (newCols) => {
+  updateColumns = newCols => (
     this.updateOptions({
-      columns: _.map(
-        getColumnsOptions(
-          this.props.queryResult.getData() !== null ? this.props.queryResult.getColumns() : [],
-          newCols,
-        ),
-        col => _.extend(getDefaultFormatOptions(col, this.props.clientConfig), col),
-      ),
-    });
-  }
+      columns: collectTableColumns(this.props.queryResult, this.props.clientConfig, newCols),
+    }));
 
   render() {
     const columnsButton = (
@@ -175,8 +186,8 @@ export default class GridEditor extends React.Component {
     } else if (this.state.currentTab === 'columns') {
       activeTab = (
         <TableEditorColumns
-          columns={this.props.visualization.options.columns}
-          updateColumns={this.collectTableColumns}
+          columns={this.state.columns}
+          updateColumns={this.updateColumns}
         />
       );
     }

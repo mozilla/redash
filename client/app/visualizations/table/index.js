@@ -3,6 +3,7 @@ import { react2angular } from 'react2angular';
 import { getColumnCleanName } from '@/services/query-result';
 import { createFormatter } from '@/lib/value-format';
 import TableEditorColumns from '@/react-components/TableEditorColumns';
+import DynamicTable from '@/react-components/DynamicTable';
 import GridEditor from '@/react-components/GridEditor';
 import template from './table.html';
 import './table-editor.less';
@@ -167,6 +168,7 @@ function GridRenderer(clientConfig) {
 }
 export default function init(ngModule) {
   ngModule.directive('gridRenderer', GridRenderer);
+  ngModule.component('dynamicTable', react2angular(DynamicTable));
   ngModule.component('gridEditor', react2angular(GridEditor, null, ['clientConfig']));
   ngModule.component('tableEditorColumns', react2angular(TableEditorColumns));
   ngModule.config((VisualizationProvider) => {

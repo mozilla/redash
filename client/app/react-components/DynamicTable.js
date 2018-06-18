@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Pagination } from 'react-bootstrap';
-import { each, extend, findIndex, filter, isFunction, isString, isUndefined, map, trim } from 'lodash';
+import { extend, findIndex, filter, isFunction, isString, isUndefined, trim } from 'lodash';
 import $ from 'jquery';
 import renderJsonView from '@/lib/visualizations/json-view-interactive';
 import { formatSimpleTemplate } from '@/lib/value-format';
@@ -95,8 +95,8 @@ const TableCell = (props) => {
     const parsedValue = parseValue(val);
     return (
       <td className={`display-as-${props.column.displayAs}`}>
-        {!isUndefined(parsedValue) ? <div className="json-cell-invalid">{val}</div>
-          : <div className="json-cell-valid" jsonRef={el => renderJsonView($(el), parsedValue)} />}
+        {isUndefined(parsedValue) ? <div className="json-cell-invalid">{val}</div>
+          : <div className="json-cell-valid" ref={el => renderJsonView($(el), parsedValue)} />}
       </td>
     );
   }
@@ -173,13 +173,13 @@ function getPages(currentPage, totalPages, maxSize) {
   }
 
   // Add page number links
-  for (let number = startPage; number <= endPage; number++) {
-    pages.push({ number, text: pageLabel(number), active: number === currentPage });
+  for (let number = startPage; number <= endPage; number += 1) {
+    pages.push({ number, text: number, active: number === currentPage });
   }
 
   if (isMaxSized && maxSize > 0) {
     if (startPage > 1) {
-      if (!boundaryLinkNumbers || startPage > 3) {
+      if (startPage > 3) {
         pages.unshift({ number: startPage - 1, text: '...', active: false });
       }
       if (startPage === 3) {
@@ -196,13 +196,13 @@ function getPages(currentPage, totalPages, maxSize) {
     if (endPage === totalPages - 2) {
       pages.push({ number: totalPages - 1, text: totalPages - 1, active: false });
     }
-    pages.push({ number: totalPages, text: totalPages, active: false })
+    pages.push({ number: totalPages, text: totalPages, active: false });
   }
   return pages;
 }
 
 
-function displayRows(preparedRows, currentPage, itemsPerPages) {
+function displayRows(preparedRows, currentPage, itemsPerPage) {
   const first = (currentPage - 1) * itemsPerPage;
   const last = first + itemsPerPage;
   return preparedRows.slice(first, last);
@@ -210,9 +210,26 @@ function displayRows(preparedRows, currentPage, itemsPerPages) {
 
 export default class DynamicTable extends React.Component {
   static propTypes = {
+    // eslint-disable-next-line react/no-unused-prop-types
     rows: PropTypes.array.isRequired,
     columns: PropTypes.array.isRequired,
-    itemsPerPage: PropTypes.number.isRequired,
+    // eslint-disable-next-line react/no-unused-prop-types
+    itemsPerPage: PropTypes.number,
+  }
+  static defaultProps = { itemsPerPage: 10 };
+
+  state = {
+    itemsPerPage: 10,
+    searchColumns: [],
+    preparedRows: [],
+    rowsToDisplay: [],
+    totalPages: 1,
+    currentPage: 1,
+    searchTerm: '',
+    orderBy: [],
+    // eslint-disable-next-line react/no-unused-state
+    rows: [],
+    columns: [],
   }
 
   static getDerivedStateFromProps(newProps, oldState) {
@@ -255,19 +272,6 @@ export default class DynamicTable extends React.Component {
     return newState;
   }
 
-  state = {
-    itemsPerPage: null,
-    searchColumns: [],
-    preparedRows: [],
-    rowsToDisplay: [],
-    totalPages: 1,
-    currentPage: 1,
-    searchTerm: '',
-    orderBy: [],
-    rows: [],
-    columns: [],
-  }
-
   selectPage = (pageNumber, event) => {
     if (event) {
       event.preventDefault();
@@ -286,7 +290,9 @@ export default class DynamicTable extends React.Component {
 
   render() {
     const noNext = this.state.currentPage === this.state.totalPages;
-    const noPrev = this.state.currentPage == 1;
+    const noPrev = this.state.currentPage === 1;
+    const goNext = e => this.selectPage(this.state.currentPage + 1, e);
+    const goPrev = e => this.selectPage(this.state.currentPage - 1, e);
     return (
       <React.Fragment>
         <div className="dynamic-table-container">
@@ -295,6 +301,7 @@ export default class DynamicTable extends React.Component {
               <tr>
                 {this.props.columns.map(c => (
                   <ColumnHeader
+                    key={c.name}
                     column={c}
                     orderBy={this.state.orderBy}
                     onClick={this.onColumnHeaderClick}
@@ -314,11 +321,12 @@ export default class DynamicTable extends React.Component {
                     onChange={this.onSearchTermChanged}
                   />
                 </th>
-              </thead> : ''}
+              </thead> : <thead />}
             <tbody>
-              {this.state.rowsToDisplay.map(r => (
-                <tr>
-                  {this.state.columns.map(c => <TableCell column={c} row={r} />)}
+              {this.state.rowsToDisplay.map((r, i) => (
+                /* eslint-disable-next-line react/no-array-index-key */
+                <tr key={i}>
+                  {this.state.columns.map(c => <TableCell key={c.name} column={c} row={r} />)}
                 </tr>
                ))}
             </tbody>
@@ -327,9 +335,9 @@ export default class DynamicTable extends React.Component {
         {this.state.preparedRows.length > this.state.itemsPerPage ?
           <div className="paginator-container">
             <Pagination className="pagination">
-              <Pagination.Prev role="menuitem" className="pagination-prev" disabled={noPrev}><a href onClick={e => this.selectPage(this.state.currentPage - 1, e)} disabled={noPrev} uib-tabindex-toggle>&#8592;</a></Pagination.Prev>
-              {this.state.pages.map(p => <Pagination.Item role="menuitem" active={p.active} disabled={!p.active} className="pagination-page"><a href onClick={e => this.selectPage(p.number, e)} disabled={!p.active} uib-tabindex-toggle>{p.text}</a></Pagination.Item>)}
-              <Pagination.Next role="menuitem" disabled={noNext()} className="pagination-next"><a href onClick={e => this.selectPage(this.state.currentPage + 1, e)} disabled={this.state.currentPage === this.state.totalPages} uib-tabindex-toggle>&#8594;</a></Pagination.Next>
+              <Pagination.Prev role="menuitem" className="pagination-prev" disabled={noPrev} onClick={goPrev} onKeyPress={goPrev}>&#8592;</Pagination.Prev>
+              {this.state.pages.map(p => <Pagination.Item key={p.number} role="menuitem" active={p.active} className="pagination-page" onClick={e => this.selectPage(p.number, e)} onKeyPress={e => this.selectPage(p.number, e)}>{p.text}</Pagination.Item>)}
+              <Pagination.Next role="menuitem" disabled={noNext} className="pagination-next" onClick={goNext} onKeyPress={goNext}>&#8594;</Pagination.Next>
             </Pagination>
           </div>
           : ''}
