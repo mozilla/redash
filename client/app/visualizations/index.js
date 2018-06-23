@@ -1,5 +1,12 @@
 import moment from 'moment';
 import { isArray, reduce } from 'lodash';
+import { react2angular } from 'react2angular';
+
+import VisualizationOptionsEditor from '@/react-components/VisualizationOptionsEditor';
+import VisualizationRenderer from '@/react-components/VisualizationRenderer';
+
+// eslint-disable-next-line no-unused-vars
+export const visualizationRegistry = {};
 
 function VisualizationProvider() {
   this.visualizations = {};
@@ -13,11 +20,6 @@ function VisualizationProvider() {
 
   this.registerVisualization = (config) => {
     const visualization = Object.assign({}, defaultConfig, config);
-
-    // TODO: this is prone to errors; better refactor.
-    if (this.defaultVisualization === undefined && !visualization.name.match(/Deprecated/)) {
-      this.defaultVisualization = visualization;
-    }
 
     this.visualizations[config.type] = visualization;
 
@@ -80,42 +82,6 @@ function VisualizationName(Visualization) {
   };
 }
 
-function VisualizationRenderer(Visualization) {
-  return {
-    restrict: 'E',
-    scope: {
-      visualization: '=',
-      queryResult: '=',
-    },
-    // TODO: using switch here (and in the options editor) might introduce errors and bad
-    // performance wise. It's better to eventually show the correct template based on the
-    // visualization type and not make the browser render all of them.
-    template: `<filters filters="filters"></filters>\n${Visualization.renderVisualizationsTemplate}`,
-    replace: false,
-    link(scope) {
-      scope.$watch('queryResult && queryResult.getFilters()', (filters) => {
-        if (filters) {
-          scope.filters = filters;
-        }
-      });
-    },
-  };
-}
-
-function VisualizationOptionsEditor(Visualization) {
-  return {
-    restrict: 'E',
-    template: Visualization.editorTemplate,
-    replace: false,
-    scope: {
-      visualization: '=',
-      updateVisualization: '=',
-      query: '=',
-      queryResult: '=',
-    },
-  };
-}
-
 function FilterValueFilter(clientConfig) {
   return (value, filter) => {
     let firstValue = value;
@@ -140,8 +106,8 @@ function FilterValueFilter(clientConfig) {
 
 export default function init(ngModule) {
   ngModule.provider('Visualization', VisualizationProvider);
-  ngModule.directive('visualizationRenderer', VisualizationRenderer);
-  ngModule.directive('visualizationOptionsEditor', VisualizationOptionsEditor);
+  ngModule.component('visualizationRenderer', react2angular(VisualizationRenderer, null, ['clientConfig']));
+  ngModule.component('visualizationOptionsEditor', react2angular(VisualizationOptionsEditor, null, ['clientConfig']));
   ngModule.directive('visualizationName', VisualizationName);
   ngModule.filter('filterValue', FilterValueFilter);
 }

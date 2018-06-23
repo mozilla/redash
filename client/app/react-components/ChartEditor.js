@@ -1,11 +1,11 @@
-/* eslint-disable jsx-a11y/label-has-for */
+/* eslint-disable jsx-a11y/label-has-for, jsx-a11y/no-static-element-interactions */
 
 import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
 
-import { capitalize, filter, includes, map, some, sortBy, toPairs } from 'lodash';
+import { capitalize, compact, each, filter, findKey, includes, invert, map, some, sortBy, toPairs } from 'lodash';
 import ChartTypePicker from './ChartTypePicker';
 import ChartSeriesEditor from './ChartSeriesEditor';
 import ChartColorEditor from './ChartColorEditor';
@@ -21,17 +21,12 @@ export default class ChartEditor extends React.Component {
     queryResult: PropTypes.object.isRequired,
     visualization: PropTypes.object.isRequired,
     updateVisualization: PropTypes.func.isRequired,
-
   }
 
   constructor(props) {
     super(props);
     this.state = {
       currentTab: 'general',
-      xAxisColumn: null,
-      yAxisColumns: [],
-      groupby: null,
-      sizeColumn: null,
       seriesList: map(sortBy(toPairs(props.visualization.options.seriesOptions), '1.zIndex'), 0),
       colorsList: map(sortBy(toPairs(props.visualization.options.colorsOptions), '1.zIndex'), 0),
     };
@@ -46,11 +41,23 @@ export default class ChartEditor extends React.Component {
           c => ({ value: c.name, label: <span>{c.name} <small className="text-muted">{c.type}</small></span> }),
         ));
     }
-
-    this.xAxisOptions = axisOptions(() => [...this.state.yAxisColumns, this.state.groupby]);
-    this.yAxisOptions = axisOptions(() => [this.state.xAxisColumn, this.state.groupby]);
-    this.groupbyOptions = axisOptions(() => [this.state.xAxisColumn, ...this.state.yAxisColumns]);
-    this.sizeColumnOptions = axisOptions(() => [...this.state.yAxisColumns, this.state.groupby]);
+    const yAxisColumns = () => this.props.visualization.options.yAxisColumns || [];
+    this.xAxisOptions = axisOptions(() => [
+      ...yAxisColumns(),
+      this.props.visualization.options.groupby,
+    ]);
+    this.yAxisOptions = axisOptions(() => [
+      this.props.visualization.options.xAxisColumn,
+      this.props.visualization.options.groupby,
+    ]);
+    this.groupbyOptions = axisOptions(() => [
+      this.props.visualization.options.xAxisColumn,
+      ...yAxisColumns(),
+    ]);
+    this.sizeColumnOptions = axisOptions(() => [
+      ...yAxisColumns(),
+      this.props.visualization.options.groupby,
+    ]);
 
     const yAxes = props.visualization.options.yAxis;
     this.updateYAxisText = [
@@ -71,16 +78,31 @@ export default class ChartEditor extends React.Component {
     ];
   }
 
+  getYAxisColumns = () => compact(map(this.props.visualization.options.columnMapping, (v, k) => v === 'y' && k))
+  getXAxisColumn = () => findKey(this.props.visualization.options.columnMapping, c => c === 'x')
+  getErrorColumn = () => findKey(this.props.visualization.options.columnMapping, c => c === 'yError')
+  getSizeColumn = () => findKey(this.props.visualization.options.columnMapping, c => c === 'size')
+  getGroupby = () => findKey(this.props.visualization.options.columnMapping, c => c === 'groupby')
+
   // XXX See also GridEditor.updateOptions
-  updateOptions = newVal =>
-    this.props.updateVisualization({
+  updateOptions = (newVal) => {
+    const newOptions = Object.assign(
+      {},
+      this.props.visualization.options,
+      newVal,
+    );
+    return this.props.updateVisualization({
       ...this.props.visualization,
-      options: Object.assign(
-        {},
-        this.props.visualization.options,
-        newVal,
-      ),
+      options: newOptions,
     });
+  }
+
+  updateColumn = newRoles => this.updateOptions({
+    columnMapping: {
+      ...this.props.visualization.options.columnMapping,
+      ...(invert(newRoles)),
+    },
+  })
 
   changeTab = (event) => {
     this.setState({ currentTab: event.target.dataset.tabname });
@@ -126,13 +148,16 @@ export default class ChartEditor extends React.Component {
     },
   })
 
-
-  updateXAxis = xAxisColumn => this.setState({ xAxisColumn })
   updateXAxisLabelLength = xAxisLabelLength => this.updateOptions({ xAxisLabelLength })
-  updateYAxis = yAxisColumns => this.setState({ yAxisColumns })
-  updateGroupby = groupby => this.setState({ groupby })
-  updateSizeColumn = sizeColumn => this.setState({ sizeColumn })
-  updateErrorColumn = errorColumn => this.setState({ errorColumn })
+  updateXAxis = x => this.updateColumn({ x })
+  updateYAxis = (ys) => {
+    const newColMap = { ...this.props.visualization.options.columnMapping };
+    each(ys, (col) => { newColMap[col] = 'y'; });
+    this.updateOptions({ columnMapping: newColMap });
+  }
+  updateGroupby = groupby => this.updateColumn({ groupby })
+  updateSizeColumn = size => this.updateColumn({ size })
+  updateErrorColumn = yError => this.updateColumn({ yError })
   updateStacking = stacking => this.updateOptions({ series: { ...this.props.visualization.options.series, stacking } })
   updateSeriesList = seriesList => this.setState({ seriesList })
   updateSeriesOptions = seriesOptions => this.updateOptions({ seriesOptions })
@@ -210,22 +235,22 @@ export default class ChartEditor extends React.Component {
                 /> Show data labels
               </label>
             </div> : '' }
-          <div className={'form-group' + (!this.state.xAxisColumn ? ' has-error' : '')}>
+          <div className={'form-group' + (!opts.xAxisColumn ? ' has-error' : '')}>
             <label className="control-label">X Column</label>
             <Select
               placeholder="Choose column..."
-              value={this.state.xAxisColumn}
+              value={this.getXAxisColumn()}
               options={this.xAxisOptions()}
               onChange={this.updateXAxis}
             />
           </div>
 
-          <div className={'form-group' + (this.state.yAxisColumns && this.state.yAxisColumns.length > 0 ? '' : ' has-error')}>
+          <div className={'form-group' + (opts.yAxisColumns && opts.yAxisColumns.length > 0 ? '' : ' has-error')}>
             <label className="control-label">Y Columns</label>
 
             <Select
               placeholder="Choose columns..."
-              value={this.state.yAxisColumns}
+              value={this.getYAxisColumns()}
               options={this.yAxisOptions()}
               onChange={this.updateYAxis}
               multi
@@ -237,7 +262,7 @@ export default class ChartEditor extends React.Component {
               <label className="control-label">Group by</label>
               <Select
                 placeholder="Choose column..."
-                value={this.state.groupby}
+                value={this.getGroupby()}
                 options={this.groupbyOptions()}
                 onChange={this.updateGroupby}
               />
@@ -248,7 +273,7 @@ export default class ChartEditor extends React.Component {
               <label className="control-label">Bubble size column</label>
               <Select
                 placeholder="Choose column..."
-                value={this.state.sizeColumn}
+                value={this.getSizeColumn()}
                 options={this.sizeColumnOptions()}
                 onChange={this.updateSizeColumn}
               />
@@ -259,7 +284,7 @@ export default class ChartEditor extends React.Component {
               <label className="control-label">Errors column</label>
               <Select
                 placeholder="Choose column..."
-                value={this.state.errorColumn}
+                value={this.getErrorColumn()}
                 options={this.xAxisOptions()}
                 onChange={this.updateErrorColumn}
               />
@@ -420,26 +445,27 @@ export default class ChartEditor extends React.Component {
         />
       ),
     };
+    // XXX 'ng-click' retained here merely because of existing CSS
     return (
       <div>
-        <ul className="tab-nav" role="tablist">
+        <ul className="tab-nav">
           <li className={this.state.currentTab === 'general' ? 'active' : ''}>
-            <a role="tab" data-tabname="general" tabIndex="-1" onKeyPress={this.changeTab} onClick={this.changeTab}>General</a>
+            <a data-tabname="general" tabIndex="-1" onKeyPress={this.changeTab} ng-click="true" onClick={this.changeTab}>General</a>
           </li>
           {opts.globalSeriesType !== 'custom' ?
             <React.Fragment>
               <li className={this.state.currentTab === 'xAxis' ? 'active' : ''}>
-                <a role="tab" data-tabname="xAxis" tabIndex="-1" onKeyPress={this.changeTab} onClick={this.changeTab}>X Axis</a>
+                <a data-tabname="xAxis" tabIndex="-1" onKeyPress={this.changeTab} ng-click="true" onClick={this.changeTab}>X Axis</a>
               </li>
               <li className={this.state.currentTab === 'yAxis' ? 'active' : ''}>
-                <a role="tab" data-tabname="yAxis" tabIndex="-1" onKeyPress={this.changeTab} onClick={this.changeTab}>Y Axis</a>
+                <a data-tabname="yAxis" tabIndex="-1" onKeyPress={this.changeTab} ng-click="true" onClick={this.changeTab}>Y Axis</a>
               </li>
               {opts.globalSeriesType !== 'pie' ?
                 <li className={this.state.currentTab === 'series' ? 'active' : ''}>
-                  <a role="tab" data-tabname="series" tabIndex="-1" onKeyPress={this.changeTab} onClick={this.changeTab}>Series</a>
+                  <a data-tabname="series" tabIndex="-1" onKeyPress={this.changeTab} ng-click="true" onClick={this.changeTab}>Series</a>
                 </li> :
                 <li className={this.state.currentTab === 'colors' ? 'active' : ''}>
-                  <a role="tab" data-tabname="colors" tabIndex="-1" onKeyPress={this.changeTab} onClick={this.changeTab}>Colors</a>
+                  <a data-tabname="colors" tabIndex="-1" onKeyPress={this.changeTab} ng-click="true" onClick={this.changeTab}>Colors</a>
                 </li>}
             </React.Fragment> : ''}
         </ul>

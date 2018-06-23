@@ -1,6 +1,9 @@
 import { map } from 'lodash';
 import { copy } from 'angular';
+
+import { visualizationRegistry } from '@/visualizations';
 import template from './edit-visualization-dialog.html';
+
 
 const EditVisualizationDialog = {
   template,
@@ -19,16 +22,17 @@ const EditVisualizationDialog = {
     this.visualization = copy(this.originalVisualization);
     this.updateVisualization = vis => $scope.$apply(() => { this.visualization = vis; });
     this.visTypes = Visualization.visualizationTypes;
+    this.visualizationRegistry = visualizationRegistry;
 
     // Don't allow to change type after creating visualization
     this.canChangeType = !(this.visualization && this.visualization.id);
 
     this.newVisualization = () =>
       ({
-        type: Visualization.defaultVisualization.type,
-        name: Visualization.defaultVisualization.name,
+        type: visualizationRegistry.CHART.type,
+        name: visualizationRegistry.CHART.name,
         description: '',
-        options: Visualization.defaultVisualization.defaultOptions,
+        options: visualizationRegistry.CHART.defaultOptions,
       });
     if (!this.visualization) {
       this.visualization = this.newVisualization();
@@ -45,7 +49,7 @@ const EditVisualizationDialog = {
       // Bring default options
       if (type && oldType !== type && this.visualization) {
         this.visualization.options =
-          Visualization.visualizations[this.visualization.type].defaultOptions;
+          visualizationRegistry[this.visualization.type].defaultOptions;
       }
     };
 

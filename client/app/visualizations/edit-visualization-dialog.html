@@ -14,7 +14,7 @@
 
               <select required ng-model="$ctrl.visualization.type"
                 ng-disabled="!$ctrl.canChangeType"
-                ng-options="type.type as type.name for type in $ctrl.visTypes" class="form-control"
+                ng-options="type.type as type.name for type in $ctrl.visualizationRegistry" class="form-control"
                 ng-change="$ctrl.typeChanged('{{$ctrl.visualization.type}}')"></select>
             </div>
 
