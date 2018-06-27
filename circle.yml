@@ -115,7 +115,8 @@ workflows:
              - integration_tests
            filters:
              branches:
-               only: master
+               - master
+               - /release.*/
       - build-release:
            requires:
              - build
