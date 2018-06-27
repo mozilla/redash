@@ -1,40 +1,129 @@
-machine:
-  services:
-    - docker
-    - redis
-  node:
-    version:
-      6.9.1
-dependencies:
-  override:
-    - pip install --upgrade setuptools
-    - pip install -r requirements_dev.txt
-    - pip install -r requirements.txt
-    - npm install
-    - npm run build
-  cache_directories:
-    - node_modules/
-test:
-  override:
-    - pytest --junitxml=$CIRCLE_TEST_REPORTS/junit.xml tests/
-deployment:
-  master:
-    branch: master
-    owner: mozilla
-    commands:
-      - ./bin/deploy "master"
-  release:
-    branch: release
-    owner: mozilla
-    commands:
-      - ./bin/deploy "rc"
-  milestone:
-    tag: /^m[0-9]+(\.[0-9]+)?$/
-    owner: mozilla
-    commands:
-      - ./bin/deploy "$CIRCLE_TAG"
-      - ./bin/alias "$CIRCLE_TAG" "latest"
-general:
-  branches:
-    ignore:
-      - gh-pages
+version: 2.0
+notify:
+  webhooks:
+    - url: https://webhooks.gitter.im/e/895d09c3165a0913ac2f
+jobs:
+  build:
+    docker:
+      - image: circleci/node:6.14
+    working_directory: ~/redash
+    steps:
+      - checkout
+      - restore_cache:
+         keys:
+           - node-modules-
+      - run:
+          name: Setup NPM Environment
+          command: npm install
+      - run:
+          name: Install python
+          command: |
+            sudo apt-get install python-pip python-dev build-essential
+            sudo pip install --upgrade pip
+      - run:
+          name: Setup python Environment
+          command: |
+            pip install --upgrade setuptools
+            pip install -r requirements_dev.txt
+            pip install -r requirements.txt
+      - run:
+          name: build
+          command: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./*
+      - save_cache:
+         key: node-modules-
+         paths:
+           - node_modules
+  test:
+    docker:
+      - image: circleci/node:6.14
+    working_directory: ~/redash
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run tests
+          command: pytest --junitxml=$CIRCLE_TEST_REPORTS/junit.xml tests/
+  build-deploy: # build for the master branch
+    docker:
+      - image: circleci/node:6.14
+    working_directory: ~/redash
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build and deploy
+          command: bin/pack
+  build-release: # build for tags
+    docker:
+      - image: circleci/node:6.14
+    working_directory: ~/redash
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build docker image and push to repo
+          command: |
+            - bin/pack
+            - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+            - docker build -t redash/redash:$(./manage.py version | sed -e "s/\+/./") .
+            - docker push redash/redash:$(./manage.py version | sed -e "s/\+/./")
+  integration_tests:
+    working_directory: ~/redash
+    docker:
+      - image: circleci/node:6.14
+    environment:
+      REDASH_SERVER_URL : "http://127.0.0.1:5000/"
+      DOCKER_NAME: "redash-ui-tests"
+      DOCKER_TAG: "latest"
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Pull images and build ui-tests image
+          command: |
+            set -x
+            docker-compose -f docker-compose.yml up -d
+            sleep 20
+      - run:
+          name: Pull redash-ui-tests
+          command: docker pull mozilla/redash-ui-tests:latest
+      - run:
+          name: Setup redash instance
+          command: |
+            docker-compose run --rm server create_db
+            docker-compose run --rm postgres psql -h postgres -U postgres -c "create database tests"
+            docker-compose run --rm server /app/manage.py users create_root root@example.com "rootuser" --password "IAMROOT" --org default
+            docker-compose run --rm server /app/manage.py ds new "ui-tests" --type "url" --options '{"title": "uitests"}'
+      - run:
+          name: Run tests
+          command: |
+            docker run --net="host" --env REDASH_SERVER_URL="${REDASH_SERVER_URL}" "${DOCKER_NAME}:${DOCKER_TAG}"
+            docker cp ui-tests:/home/user/src/report.html ./report.html
+      - store_artifacts:
+          path: report.html
+workflows:
+  version: 2
+  build_test_deploy_release:
+    jobs:
+      - build
+      - build-deploy:
+           requires:
+             - integration_tests
+           filters:
+             branches:
+               only: master
+      - build-release:
+           requires:
+             - build
+           filters:
+             tags:
+               only: /v[0-9]+(\.[0-9\-a-z]+)*/
+             branches:
+               ignore: /.*/
+      - integration_tests:
+          requires:
+            - build
