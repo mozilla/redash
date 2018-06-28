@@ -171,7 +171,6 @@ export default class QueryEditor extends React.Component {
     return prevState;
   }
 
-
   render() {
     const modKey = this.props.KeyboardShortcuts.modKey;
     const parameterTooltip = <Tooltip id="parameterTooltip">Add New Parameter (<i>{modKey} + P</i>)</Tooltip>;
