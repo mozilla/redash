@@ -166,6 +166,12 @@ class PostgreSQL(BaseSQLQueryRunner):
                 "sslrootcertFile": {"type": "string", "title": "SSL Root Certificate"},
                 "sslcertFile": {"type": "string", "title": "SSL Client Certificate"},
                 "sslkeyFile": {"type": "string", "title": "SSL Client Key"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
             "order": ["host", "port", "user", "password"],
             "required": ["dbname"],
