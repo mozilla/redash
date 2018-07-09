@@ -9,6 +9,7 @@ import template from './query.html';
 const DEFAULT_TAB = 'table';
 
 function QueryViewCtrl(
+  $rootScope,
   $scope,
   Events,
   $route,
@@ -82,6 +83,8 @@ function QueryViewCtrl(
   }
 
   $scope.refreshSchema = () => getSchema(true);
+
+  $scope.editorPaste = name => $rootScope.$broadcast('query-editor.command', 'paste', name);
 
   function updateDataSources(dataSources) {
     // Filter out data sources the user can't query (or used by current query):

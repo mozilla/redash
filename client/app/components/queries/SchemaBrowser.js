@@ -1,12 +1,11 @@
-import { react2angular } from 'react2angular';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { includes, filter } from 'lodash';
+
 import { Collapse } from 'react-bootstrap';
 import List from 'react-virtualized/dist/commonjs/List';
 import AutoSizer from 'react-virtualized/dist/commonjs/AutoSizer';
 
-class SchemaBrowser extends React.Component {
+export default class SchemaBrowser extends React.Component {
   static propTypes = {
     schema: PropTypes.array,
     tableToggleString: PropTypes.string,
@@ -42,26 +41,12 @@ class SchemaBrowser extends React.Component {
     }
   }
 
-  splitFilter = (filterText) => {
-    filterText = filterText.replace(/ {2}/g, ' ');
-    if (filterText.includes(' ')) {
-      const splitTheFilter = filterText.split(' ');
-      return {
-        schemaFilterName: splitTheFilter[0],
-        schemaFilterColumn: splitTheFilter[1],
-      };
-    }
-    return { schemaFilterName: filter, schemaFilterColumn: '' };
-  };
 
   schemaRows = ({ index, key, style }) => {
     const table = this.props.schema[index];
     const showColumns = !!this.state.expanded[index];
-    if (!includes(table.name, this.state.schemaFilterName)) return null;
+    if (!table.name.match(new RegExp(this.state.schemaFilter))) return null;
     if (this.state.versionToggle && table.name.match(new RegExp(this.props.tableToggleString))) return null;
-    const cols = this.state.schemaFilterColumn ?
-          filter(table.columns, c => includes(c, this.state.schemaFilterColumn)) :
-          table.columns;
     return (
       <div key={key} style={style}>
         <div className="table-name" onClick={() => this.showTable(index)}>
@@ -79,7 +64,7 @@ class SchemaBrowser extends React.Component {
         </div>
         <Collapse in={showColumns} onExited={() => this.list.current.recomputeRowHeights(index)}>
           <div>
-            {cols.map(column => (
+            {table.columns.map(column => (
               <div key={column} className="table-open">{column}
                 <i
                   className="fa fa-angle-double-right copy-to-editor"
@@ -97,7 +82,7 @@ class SchemaBrowser extends React.Component {
 
   toggleVersionedTables = () => this.setState({ versionToggle: !this.state.versionToggle });
 
-  updateSchemaFilter = f => this.setState(this.splitFilter(f));
+  updateSchemaFilter = schemaFilter => this.setState({ schemaFilter });
 
   render() {
     if (!this.props.schema) return null;
@@ -147,8 +132,4 @@ class SchemaBrowser extends React.Component {
       </div>
     );
   }
-}
-
-export default function init(ngModule) {
-  ngModule.component('schemaBrowser', react2angular(SchemaBrowser));
 }
