@@ -223,6 +223,7 @@ function QuerySource(props) {
             <div className="editor__left__schema">
               <SchemaBrowser
                 schema={schema}
+                dataSourceId={dataSource ? dataSource.id : undefined}
                 onRefresh={() => refreshSchema(true)}
                 onItemSelect={handleSchemaItemSelect}
               />
