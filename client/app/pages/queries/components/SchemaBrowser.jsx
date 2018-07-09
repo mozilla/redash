@@ -1,12 +1,15 @@
 import { isNil, map, filter, some, includes } from "lodash";
+import { axios } from "@/services/axios";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useDebouncedCallback } from "use-debounce";
+import Checkbox from "antd/lib/checkbox";
 import Input from "antd/lib/input";
 import Button from "antd/lib/button";
 import Tooltip from "antd/lib/tooltip";
 import AutoSizer from "react-virtualized/dist/commonjs/AutoSizer";
 import List from "react-virtualized/dist/commonjs/List";
+import { clientConfig } from "@/services/auth";
 
 const SchemaItemType = PropTypes.shape({
   name: PropTypes.string.isRequired,
@@ -77,8 +80,16 @@ SchemaItem.defaultProps = {
   onSelect: () => {},
 };
 
-function applyFilter(schema, filterString) {
+function applyFilter(schema, filterString, isStringToggled, toggleString) {
   const filters = filter(filterString.toLowerCase().split(/\s+/), s => s.length > 0);
+
+  // Filter out extra schema that include the provided toggle string
+  if (isStringToggled && toggleString) {
+    schema = filter(
+      schema,
+      item => !includes(item.name.toLowerCase(), toggleString)
+    );
+  }
 
   // Empty string: return original schema
   if (filters.length === 0) {
@@ -110,16 +121,38 @@ function applyFilter(schema, filterString) {
   );
 }
 
-export default function SchemaBrowser({ schema, onRefresh, onItemSelect, ...props }) {
+
+function useToggleString(dataSourceId) {
+  const [toggleString, setToggleString] = useState("");
+  useMemo(() => {
+    if (!dataSourceId) {
+      return null;
+    }
+    axios.get(
+      `${clientConfig.basePath}api/data_sources/${dataSourceId}/toggle_string`
+    ).then(data => {
+      setToggleString(data.toggle_string);
+    })
+  }, [dataSourceId]);
+  return toggleString;
+}
+
+
+export default function SchemaBrowser({ schema, dataSourceId, onRefresh, onItemSelect, ...props }) {
   const [filterString, setFilterString] = useState("");
-  const filteredSchema = useMemo(() => applyFilter(schema, filterString), [schema, filterString]);
+  const [isStringToggled, setIsStringToggled] = useState(false);
+  const toggleString = useToggleString(dataSourceId);
+  const filteredSchema = useMemo(() => applyFilter(schema, filterString,
+    isStringToggled, toggleString), [schema, filterString, isStringToggled, toggleString]);
   const [expandedFlags, setExpandedFlags] = useState({});
   const [handleFilterChange] = useDebouncedCallback(setFilterString, 500);
+  const [handleToggleChange] = useDebouncedCallback(setIsStringToggled, 100);
   const [listRef, setListRef] = useState(null);
 
   useEffect(() => {
     setExpandedFlags({});
   }, [schema]);
+
 
   useEffect(() => {
     if (listRef) {
@@ -147,12 +180,20 @@ export default function SchemaBrowser({ schema, onRefresh, onItemSelect, ...prop
           disabled={schema.length === 0}
           onChange={event => handleFilterChange(event.target.value)}
         />
-
         <Tooltip title="Refresh Schema">
           <Button onClick={onRefresh}>
             <i className="zmdi zmdi-refresh" />
           </Button>
         </Tooltip>
+      </div>
+      <div>
+        <Checkbox
+          className="m-t-10"
+          checked={isStringToggled}
+          disabled={!toggleString}
+          onChange={event => handleToggleChange(event.target.checked)}>
+            Hide items with "{toggleString}" in name
+        </Checkbox>
       </div>
       <div className="schema-browser">
         <AutoSizer>
@@ -190,12 +231,14 @@ export default function SchemaBrowser({ schema, onRefresh, onItemSelect, ...prop
 
 SchemaBrowser.propTypes = {
   schema: PropTypes.arrayOf(SchemaItemType),
+  dataSourceId: PropTypes.number,
   onRefresh: PropTypes.func,
   onItemSelect: PropTypes.func,
 };
 
 SchemaBrowser.defaultProps = {
   schema: [],
+  dataSourceId: null,
   onRefresh: () => {},
   onItemSelect: () => {},
 };
