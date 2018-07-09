@@ -148,13 +148,19 @@ class MongoDB(BaseQueryRunner):
                     "type": "string",
                     "extendedEnum": [
                         {"value": "primaryPreferred", "name": "Primary Preferred"},
-                        {"value": "primary", "name": "Primary"},                        
+                        {"value": "primary", "name": "Primary"},
                         {"value": "secondary", "name": "Secondary"},
                         {"value": "secondaryPreferred", "name": "Secondary Preferred"},
                         {"value": "nearest", "name": "Nearest"},
                     ],
                     "title": "Replica Set Read Preference",
-                }                
+                },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
             "required": ["connectionString", "dbName"],
         }
