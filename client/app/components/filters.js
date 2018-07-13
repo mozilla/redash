@@ -1,29 +1,6 @@
-import template from './filters.html';
-
-const FiltersComponent = {
-  template,
-  bindings: {
-    onChange: '&',
-    filters: '<',
-  },
-  controller() {
-    'ngInject';
-
-    this.filterChangeListener = (filter, modal) => {
-      this.onChange({ filter, $modal: modal });
-    };
-
-    this.itemGroup = (item) => {
-      if (item === '*' || item === '-') {
-        return '';
-      }
-
-      return 'Values';
-    };
-  },
-};
-
+import { react2angular } from 'react2angular';
+import Filters from '@/react-components/Filters';
 
 export default function init(ngModule) {
-  ngModule.component('filters', FiltersComponent);
+  ngModule.component('filters', react2angular(Filters, null, ['clientConfig']));
 }
