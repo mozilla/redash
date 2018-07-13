@@ -2,19 +2,44 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
+import { OverlayTrigger, Popover } from 'react-bootstrap';
+import { find, map, sortBy } from 'lodash';
 
+import { visualizationRegistry } from '@/visualizations';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
 import EditInPlaceText from './EditInPlaceText';
 import Overlay from './Overlay';
+import Parameters from './Parameters';
 import QueryEditor from './QueryEditor';
+import QueryExecutionStatus from './QueryExecutionStatus';
 import QueryMetadata from './QueryMetadata';
-import { OverlayTrigger, Popover } from 'react-bootstrap';
+import SchemaBrowser from './SchemaBrowser';
+import VisualizationRenderer from './VisualizationRenderer';
 
+function RdTab(props) {
+  return (
+    <li className={'rd-tab' + (props.tabId === props.selectedTab ? ' active' : '')}>
+      <a href={`${props.basePath}#${props.tabId}`}>{props.name}{...props.children}</a>
+    </li>
+  );
+}
+
+RdTab.propTypes = {
+  tabId: PropTypes.string.isRequired,
+  selectedTab: PropTypes.string.isRequired,
+  basePath: PropTypes.string.isRequired,
+  name: PropTypes.string.isRequired,
+  children: PropTypes.arrayOf(React.Component).isRequired,
+};
 
 export default class QueryView extends React.Component {
+  constructor(props) {
+    super(props);
+    this.queryEditor = React.createRef();
+  }
 
   render() {
-    const dataSourceVersionMsg = this.props.DataSource.version({id: this.props.query.data_source_id}).message;
+    const dataSourceVersionMsg = this.props.DataSource.version({ id: this.props.query.data_source_id }).message;
     const archivedPopover = (
       <Popover id="query-archived-popover">
         This query is archived and can&apos;t be used in dashboards, and won&apos;t appear in search results.
@@ -44,7 +69,7 @@ export default class QueryView extends React.Component {
     if (!this.props.query.is_archived &&
         this.props.query.id &&
         (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin'))) {
-      ownerButtons.push(
+      ownerButtons.push((
         <li>
           <a
             role="button"
@@ -54,9 +79,9 @@ export default class QueryView extends React.Component {
           >Archive
           </a>
         </li>
-      );
+      ));
       if (this.props.showPermissionsControl) {
-        ownerButtons.push(
+        ownerButtons.push((
           <li>
             <a
               role="button"
@@ -66,13 +91,13 @@ export default class QueryView extends React.Component {
             >Manage Permissions
             </a>
           </li>
-        );
+        ));
       }
     }
-    if (!query.is_draft &&
-        query.id != undefined &&
-        (isQueryOwner || currentUser.hasPermission('admin'))) {
-      ownerButtons.push(
+    if (!this.props.query.is_draft &&
+        this.props.query.id !== undefined &&
+        (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin'))) {
+      ownerButtons.push((
         <li>
           <a
             role="button"
@@ -82,7 +107,7 @@ export default class QueryView extends React.Component {
           >Unpublish
           </a>
         </li>
-      );
+      ));
     }
     return (
       <div className="query-page-wrapper">
@@ -164,7 +189,7 @@ export default class QueryView extends React.Component {
                     </li>
                     <li className="divider" />
                     {ownerButtons}
-                    <li className="divider" ng-if="!query.is_archived"></li>
+                    <li className="divider" ng-if="!query.is_archived" />
                     <li ng-if="query.id != undefined"><a ng-click="showApiKey()">Show API Key</a></li>
                     <li ng-show="canEdit" ng-if="query.id && (query.version > 1)">
                       <a ng-click="compareQueryVersion()">Query Versions</a>
@@ -184,19 +209,20 @@ export default class QueryView extends React.Component {
                 placeholder="Select Data Source..."
                 options={this.props.dataSources.map(d => ({ value: d.id, label: d.name }))}
               />
-              {this.state.dataSource.options.doc_url != '' && this.state.dataSource.options.doc_url ? <a href={this.state.dataSource.options.doc_url}>{this.state.dataSource.type_name} documentation</a> : '' }
-              {this.state.dataSource.options.doc_url == '' || !this.state.dataSource.options.doc_url ? <span>{dataSource.type_name} documentation</span> : ''}
-              {msg.includes('no') ? <span className='fa fa-exclamation-circle' title={dataSourceVersionMsg} /> : <span>{dataSourceVersionMsg}</span>}
+              {this.state.dataSource.options.doc_url !== '' && this.state.dataSource.options.doc_url ? <a href={this.state.dataSource.options.doc_url}>{this.state.dataSource.type_name} documentation</a> : '' }
+              {this.state.dataSource.options.doc_url === '' || !this.state.dataSource.options.doc_url ? <span>{this.state.dataSource.type_name} documentation</span> : ''}
+              {dataSourceVersionMsg.includes('no') ? <span className="fa fa-exclamation-circle" title={dataSourceVersionMsg} /> : <span>{dataSourceVersionMsg}</span>}
             </div>
             {this.props.sourceMode ?
               <div className="editor__left__schema">
-                  <SchemaBrowser
-                      schema={this.state.schema}
-                      tableToggleString={this.state.dataSource.options.toggle_table_string}
-                      onRefresh={this.refreshSchema}
-                      />
-                </div> :
-              <div style="flex-grow: 1;">&nbsp;</div>
+                <SchemaBrowser
+                  schema={this.state.schema}
+                  tableToggleString={this.state.dataSource.options.toggle_table_string}
+                  onRefresh={this.refreshSchema}
+                  editorPaste={this.editorPaste}
+                />
+              </div> :
+              <div style={{ 'flex-grow': 1 }}>&nbsp;</div>
             }
             <QueryMetadata
               mobile={false}
@@ -210,29 +236,38 @@ export default class QueryView extends React.Component {
 
           <div className="content">
             <div className="flex-fill p-relative">
-              <div className="p-absolute d-flex flex-column p-l-15 p-r-15" style="left: 0; top: 0; right: 0; bottom: 0;">
+              <div
+                className="p-absolute d-flex flex-column p-l-15 p-r-15"
+                style={{
+                  left: 0,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              >
                 {this.props.sourceMode ?
-                 <div className="row editor" resizable r-directions="['bottom']" r-flex="true" resizable-toggle
-                 style="min-height: 11px; max-height: 70vh;">
-                 <QueryEditor
-                 style="width: 100%; height: 100%;"
-                 queryText={this.props.query.query}
-                 autocompleteQuery={this.autocompleteQuery}
-                 schema={this.state.schema}
-                 syntax={this.state.dataSource.syntax}
-                 isQueryOwner={this.props.isQueryOwner}
-                 updateDataSource={this.updateDataSource}
-                 executeQuery={this.executeQuery}
-                 canExecuteQuery={this.props.canExecuteQuery}
-                 listenForResize={this.listenForResize}
-                 saveQuery={this.saveQuery}
-                 updateQuery={this.updateQuery}
-                 dataSource={this.state.dataSource}
-                 dataSources={this.props.dataSources}
-                 />
-                 </div> : ''}
+                  <div className="row editor" resizable r-directions="['bottom']" r-flex="true" resizable-toggle
+                    style="min-height: 11px; max-height: 70vh;">
+                    <QueryEditor
+                      ref={this.queryEditor}
+                      style={{width: '100%', height: '100%'}}
+                      queryText={this.props.query.query}
+                      autocompleteQuery={this.autocompleteQuery}
+                      schema={this.state.schema}
+                      syntax={this.state.dataSource.syntax}
+                      isQueryOwner={this.props.isQueryOwner}
+                      updateDataSource={this.updateDataSource}
+                      executeQuery={this.executeQuery}
+                      canExecuteQuery={this.props.canExecuteQuery}
+                      listenForResize={this.listenForResize}
+                      saveQuery={this.saveQuery}
+                      updateQuery={this.updateQuery}
+                      dataSource={this.state.dataSource}
+                      dataSources={this.props.dataSources}
+                    />
+                  </div> : ''}
                 <QueryMetadata
-                  mobile={true}
+                  mobile
                   query={this.props.query}
                   saveQuery={this.saveQuery}
                   canEdit={this.canEdit}
@@ -287,38 +322,43 @@ export default class QueryView extends React.Component {
                               <RdTab
                                 tabId="table"
                                 name="Table"
+                                selected={this.state.selectedTab}
                                 basePath={this.props.query.getUrl(this.props.sourceMode)}
-                              /> : map(sortBy(this.props.query.visualizations, 'id'), (vis, i) =>
+                              /> : map(sortBy(this.props.query.visualizations, 'id'), (vis, i) => (
                                 <RdTab
                                   tabId={vis.id}
                                   name={vis.name}
-                                  basePath={this.props.query.getUrl(sourceMode)}
+                                  selected={this.state.selectedTab}
+                                  basePath={this.props.query.getUrl(this.props.sourceMode)}
                                 >
                                   {this.props.canEdit && !((i > 0) && (vis.type === 'TABLE')) ?
                                     <span
                                       className="remove"
                                       onClick={e => this.deleteVisualization(e, vis)}
-                                    > &times;</span> : ''}
+                                    > &times;
+                                    </span> : ''}
                                   <span
                                     className="btn btn-xs btn-success"
                                     onClick={() => this.openAddToDashboardForm(vis)}
-                                  > +</span>
+                                  > +
+                                  </span>
                                 </RdTab>
-                              )}
-                      <li className="rd-tab">{this.props.sourceMode && this.props.canEdit ?
-                                              <a onClick={this.openVisualizationEditor}>&plus; New Visualization</a> : ''}</li>
+                              ))}
+                            <li className="rd-tab">{this.props.sourceMode && this.props.canEdit ?
+                              <a onClick={this.openVisualizationEditor}>&plus; New Visualization</a> : ''}
+                            </li>
                           </ul>
-                          {!this.props.query.visualizations.length ?
-                            <div className="query__vis m-t-15 p-b-15 scrollbox">
-                              <filters filters="filters"></filters>
-                              <grid-renderer query-result="queryResult" items-per-page="50"></grid-renderer>
-                            </div> : '' }
-                         <div className="query__vis m-t-15 scrollbox">
-                          <VisualizationRenderer
-                            visualization={find(this.props.query.visualizations,
-                                                { id: this.state.selectedTab })}
-                            queryResult={this.props.queryResult}
-                          />
+                          <div className="query__vis m-t-15 scrollbox">
+                           <VisualizationRenderer
+                             visualization={this.props.query.visualizations.length ?
+                                            find(this.props.query.visualizations,
+                                                 { id: this.state.selectedTab }) :
+                                            {
+                                              type: visualizationRegistry.CHART.type,
+                                              options: visualizationRegistry.CHART.defaultOptions,
+                                            }}
+                             queryResult={this.props.queryResult}
+                           />
                         </div>
                       </div>
                     </div> : ''}

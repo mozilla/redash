@@ -120,17 +120,29 @@ function getColumnsToDisplay(columns, options, clientConfig) {
 
 export default class GridRenderer extends React.Component {
   static propTypes = {
-    options: PropTypes.object.isRequired,
+    itemsPerPage: PropTypes.number,
+    options: PropTypes.object,
     queryResult: PropTypes.object.isRequired,
+    filters: PropTypes.array.isRequired,
   }
+  static defaultProps = {
+    itemsPerPage: null,
+    options: {},
+  };
 
   render() {
     // TODO filters
-    const gridRows = this.props.queryResult.getData();
+    const gridRows = this.props.queryResult.getData(this.props.filters);
     const columns = this.props.queryResult.getColumns();
     const columnsOptions = getColumnsOptions(columns, this.props.options.columns);
     const gridColumns = getColumnsToDisplay(columns, columnsOptions, this.props.clientConfig);
 
-    return <DynamicTable rows={gridRows} columns={gridColumns} items-per-page={this.props.options.itemsPerPage} />;
+    return (
+      <DynamicTable
+        rows={gridRows}
+        columns={gridColumns}
+        items-per-page={this.props.itemsPerPage || this.props.options.itemsPerPage}
+      />
+    );
   }
 }
