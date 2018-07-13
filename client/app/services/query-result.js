@@ -211,24 +211,24 @@ function QueryResultService($resource, $timeout, $q, QueryResultError) {
       return this.query_result.data.rows;
     }
 
-    getData() {
+    getData(filters) {
       if (!this.query_result.data) {
         return null;
       }
 
-      function filterValues(filters) {
-        if (!filters) {
+      function filterValues(fs) {
+        if (!fs) {
           return null;
         }
 
-        return filters.reduce(
+        return fs.reduce(
           (str, filter) =>
             str + filter.current
           , '',
         );
       }
 
-      const filters = this.getFilters();
+      filters = filters || this.getFilters();
       const filterFreeze = filterValues(filters);
 
       if (this.filterFreeze !== filterFreeze) {
