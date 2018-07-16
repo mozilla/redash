@@ -12,22 +12,22 @@ export default class VisualizationRenderer extends React.Component {
     super(props);
     this.state = {
       ready: false,
-      filters: [],
+      filters: this.props.queryResult.getFilters(),
     };
     this.props.queryResult.deferred.promise.then(() => this.setState({ ready: true }));
   }
 
   setFilters = (filters) => {
-    this.props.queryResult
+    this.props.queryResult.filters = filters;
+    this.setState({ filters });
   }
   render() {
-    // TODO dashboard filters
     const Vis = visualizationRegistry[this.props.visualization.type].renderer;
     if (this.state.ready) {
       return (
         <React.Fragment>
           {/* XXX replace this mutation with a clean separation of filter info from selection state */}
-          <Filters filters={this.props.queryResult.getFilters()} onChange={this.setFilters} />
+          <Filters filters={this.state.filters} onChange={this.setFilters} />
           <Vis
             filters={this.state.filters}
             options={this.props.visualization.options}

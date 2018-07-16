@@ -131,7 +131,6 @@ export default class GridRenderer extends React.Component {
   };
 
   render() {
-    // TODO filters
     const gridRows = this.props.queryResult.getData(this.props.filters);
     const columns = this.props.queryResult.getColumns();
     const columnsOptions = getColumnsOptions(columns, this.props.options.columns);

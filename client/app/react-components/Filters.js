@@ -1,3 +1,4 @@
+// XXX The filters stuff in query-results.js needs to be significantly reworked to be more react friendly
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
@@ -6,7 +7,7 @@ import { isArray } from 'lodash';
 import Select from 'react-select';
 
 const Filter = PropTypes.shape({
-  current: PropTypes.string.isRequired,
+  current: PropTypes.array.isRequired,
   multiple: PropTypes.bool.isRequired,
   friendlyName: PropTypes.string.isRequired,
   values: PropTypes.arrayOf(PropTypes.string),
@@ -28,15 +29,24 @@ export default class Filters extends React.Component {
 
     if (filter.column.type === 'date') {
       if (firstValue && moment.isMoment(firstValue)) {
-        return firstValue.format(this.props.clientConfig.dateFormat);
+        firstValue = firstValue.format(this.props.clientConfig.dateFormat);
       }
     } else if (filter.column.type === 'datetime') {
       if (firstValue && moment.isMoment(firstValue)) {
-        return firstValue.format(this.props.clientConfig.dateTimeFormat);
+        firstValue = firstValue.format(this.props.clientConfig.dateTimeFormat);
       }
     }
 
-    return firstValue;
+    return { label: firstValue, value: firstValue, filter };
+  }
+  changeFilters = (change) => {
+    const f = change.filter;
+    if (f.multiple) {
+      f.current = [...f.current, change.value];
+    } else {
+      f.current = [change.value];
+    }
+    this.props.onChange([...this.props.filters]);
   }
 
   render() {
@@ -47,16 +57,17 @@ export default class Filters extends React.Component {
     return (
       <div className="parameter-container container bg-white">
         <div className="row">
-          {this.props.filters.map(filter => (
-            <div className="col-sm-6 p-l-0 filter-container">
-              <label>{filter.friendlyName}</label>
+          {this.props.filters.map(fi => (
+            <div key={fi.name} className="col-sm-6 p-l-0 filter-container">
+              <label>{fi.friendlyName}</label>
               <Select
-                id={'filter-' + filter.name}
-                options={(filter.multiple ? multiPreamble : []) + filter.values.map(v => this.filterValue(v, filter))}
-                value={filter.current}
+                id={'filter-' + fi.name}
+                options={(fi.multiple ? multiPreamble : []).concat(fi.values.map(v => this.filterValue(v, fi)))}
+                value={fi.multiple ? fi.current : fi.current[0]}
+                multi={fi.multiple}
                 clearable={false}
-                onChange={this.props.onChange}
-                placeholder={`Select value for ${filter.friendlyName}...`}
+                onChange={this.changeFilters}
+                placeholder={`Select value for ${fi.friendlyName}...`}
               />
             </div>
           ))}
