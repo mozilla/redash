@@ -2,9 +2,11 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
-import { OverlayTrigger, Popover } from 'react-bootstrap';
+import { DropDownButton, MenuItem, OverlayTrigger, Popover } from 'react-bootstrap';
 import { find, map, sortBy } from 'lodash';
+import moment from 'moment';
 
+import { durationHumanize, prettySize } from '@/filters';
 import { visualizationRegistry } from '@/visualizations';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
 import EditInPlaceText from './EditInPlaceText';
@@ -19,7 +21,7 @@ import VisualizationRenderer from './VisualizationRenderer';
 function RdTab(props) {
   return (
     <li className={'rd-tab' + (props.tabId === props.selectedTab ? ' active' : '')}>
-      <a href={`${props.basePath}#${props.tabId}`}>{props.name}{...props.children}</a>
+      <a onClick={e => props.onClick(e, props.tabId)} href={`${props.basePath}#${props.tabId}`}>{props.name}{...props.children}</a>
     </li>
   );
 }
@@ -30,15 +32,76 @@ RdTab.propTypes = {
   basePath: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   children: PropTypes.arrayOf(React.Component).isRequired,
+  onClick: PropTypes.func.isRequired,
 };
 
 export default class QueryView extends React.Component {
+  static propTypes = {
+    currentUser: PropTypes.object.isRequired,
+    query: PropTypes.object.isRequired,
+    dataSources: PropTypes.arrayOf(PropTypes.object).isRequired,
+    queryResult: PropTypes.object,
+    sourceMode: PropTypes.bool.isRequired,
+    canEdit: PropTypes.bool.isRequired,
+    showPermissionsControl: PropTypes.bool.isRequired,
+  }
+
+  static propDefaults = {
+    queryResult: null,
+  }
   constructor(props) {
     super(props);
+    this.state = {
+      isDirty: false,
+      selectedTab: this.props.query.visualizations.length ? this.props.query.visualizations[0].id : 'Table',
+      dataSource: this.getDataSource(this.props.dataSources),
+      schema: null,
+      showDataset: true,
+      queryExecuting: false,
+    }
+    this.getSchema();
     this.queryEditor = React.createRef();
   }
 
+  getDataSource(dataSources) {
+    // Try to get the query's data source id
+    let dataSourceId = this.props.query.data_source_id;
+
+    // If there is no source yet, then parse what we have in localStorage
+    //   e.g. `null` -> `NaN`, malformed data -> `NaN`, "1" -> 1
+    if (dataSourceId === undefined) {
+      dataSourceId = parseInt(localStorage.lastSelectedDataSourceId, 10);
+    }
+
+    const dataSource = find(dataSources, ds => ds.id === dataSourceId);
+    // If we had an invalid value in localStorage (e.g. nothing, deleted source),
+    // then use the first data source
+
+    return dataSource || dataSources[0];
+
+  }
+
+  getSchema(refresh) {
+    this.state.dataSource.getSchema(refresh).then((data) => {
+      if (data.schema) {
+        this.setState({ schema: data.schema });
+      } else if (data.error.code === SCHEMA_NOT_SUPPORTED) {
+        this.setState({ schema: undefined });
+      } else if (data.error.code === SCHEMA_LOAD_ERROR) {
+        toastr.error('Schema refresh failed. Please try again later.');
+      } else {
+        toastr.error('Schema refresh failed. Please try again later.');
+      }
+    });
+  }
+
+  refreshSchema = () => this.getSchema(true);
+
+  canExecuteQuery = () => this.props.currentUser.hasPermission('execute_query') && this.state.dataSource.view_only
+  setSelectedTab = (e, selectedTab) => this.setState({ selectedTab })
+
   render() {
+    const data = this.props.queryResult.getData();
     const dataSourceVersionMsg = this.props.DataSource.version({ id: this.props.query.data_source_id }).message;
     const archivedPopover = (
       <Popover id="query-archived-popover">
@@ -70,27 +133,19 @@ export default class QueryView extends React.Component {
         this.props.query.id &&
         (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin'))) {
       ownerButtons.push((
-        <li>
-          <a
-            role="button"
-            tabIndex="-1"
-            onClick={this.archiveQuery}
-            onKeyPress={this.archiveQuery}
+        <MenuItem
+          eventKey="archiveQuery"
+          onSelect={this.archiveQuery}
           >Archive
-          </a>
-        </li>
+        </MenuItem>
       ));
       if (this.props.showPermissionsControl) {
         ownerButtons.push((
-          <li>
-            <a
-              role="button"
-              tabIndex="-1"
-              onKeyPress={this.showManagePermissionsModal}
-              onClick={this.showManagePermissionsModal}
+          <MenuItem
+              eventKey="managePermissionsModal"
+              onSelect={this.showManagePermissionsModal}
             >Manage Permissions
-            </a>
-          </li>
+          </MenuItem>
         ));
       }
     }
@@ -98,12 +153,9 @@ export default class QueryView extends React.Component {
         this.props.query.id !== undefined &&
         (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin'))) {
       ownerButtons.push((
-        <li>
-          <a
-            role="button"
-            tabIndex="-1"
-            onKeyPress={this.togglePublished}
-            onClick={this.togglePublished}
+        <MenuItem
+          eventKey="togglePublished"
+          onSelect={this.togglePublished}
           >Unpublish
           </a>
         </li>
@@ -113,8 +165,8 @@ export default class QueryView extends React.Component {
       <div className="query-page-wrapper">
         <div className="container">
           {this.props.canCreateQuery === false && this.props.query.isNew() ? noCreatePermission : ''}
-          {this.props.noDataSources && this.props.currentUser.isAdmin ? makeDataSources : ''}
-          {this.props.noDataSources && !this.props.currentUser.isAdmin ? noDataSources : ''}
+          {this.state.dataSources.length && this.props.currentUser.isAdmin ? makeDataSources : ''}
+          {this.props.dataSources.length && !this.props.currentUser.isAdmin ? noDataSources : ''}
           {this.props.canEdit ? <AlertUnsavedChanges isDirty={this.state.isDirty} $on={this.props.$on} /> : ''}
 
           <div className="row p-l-15 p-b-10 m-l-0 m-r-0 page-header--new page-header--query">
@@ -127,7 +179,7 @@ export default class QueryView extends React.Component {
                   ignoreBlanks="true"
                   value={this.props.query.name}
                 />
-                {this.props.query.is_draft && !this.props.query.is_archived ? <span className="label label-default">Unvpublished</span> : ''}
+                {this.props.query.is_draft && !this.props.query.is_archived ? <span className="label label-default">Unpublished</span> : ''}
                 {this.props.query.is_archived ?
                   <OverlayTrigger trigger="mouseenter" overlay={archivedPopover}>
                     <span className="label label-warning">Archived</span>
@@ -173,29 +225,26 @@ export default class QueryView extends React.Component {
                 </React.Fragment> : ''}
 
               {this.props.query.id && this.moreMenuIsPopulated() ?
-                <div ng-show="" id="query-more-menu" className="btn-group" role="group" uib-dropdown>
-                  <button className="btn btn-default dropdown-toggle" uib-dropdown-toggle>
-                    <span className="zmdi zmdi-more" />
-                  </button>
-                  <ul className="dropdown-menu pull-right" uib-dropdown-menu>
-                    <li className={!this.props.query.id || !this.canForkQuery() ? 'disabled' : ''}>
-                      <a
-                        role="button"
-                        tabIndex="-1"
-                        onKeyPress={this.duplicateQuery}
-                        onClick={this.duplicateQuery}
-                      >Fork
-                      </a>
-                    </li>
-                    <li className="divider" />
-                    {ownerButtons}
-                    <li className="divider" ng-if="!query.is_archived" />
-                    <li ng-if="query.id != undefined"><a ng-click="showApiKey()">Show API Key</a></li>
-                    <li ng-show="canEdit" ng-if="query.id && (query.version > 1)">
-                      <a ng-click="compareQueryVersion()">Query Versions</a>
-                    </li>
-                  </ul>
-                </div> : ''}
+                <DropDownButton
+                  id="query-more-menu"
+                  className="btn btn-default"
+                  pullRight
+                  title={<span className="zmdi zmdi-more" />}
+                >
+                  <MenuItem
+                    eventKey="duplicateQuery"
+                    className={!this.props.query.id || !this.canForkQuery() ? 'disabled' : ''}
+                    onSelect={this.duplicateQuery}
+                  >
+                      Fork
+                  </MenuItem>
+                  <MenuItem divider />
+                  {...ownerButtons}
+                  {this.props.query.is_archived ? '' : <MenuItem divider />}
+                  {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem>}
+                  {this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
+                      <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem>}
+                </DropDownButton> : ''}
             </div>
           </div>
         </div>
@@ -216,7 +265,7 @@ export default class QueryView extends React.Component {
             {this.props.sourceMode ?
               <div className="editor__left__schema">
                 <SchemaBrowser
-                  schema={this.state.schema}
+                  schema={this.state.dataSource.schema}
                   tableToggleString={this.state.dataSource.options.toggle_table_string}
                   onRefresh={this.refreshSchema}
                   editorPaste={this.editorPaste}
@@ -253,12 +302,12 @@ export default class QueryView extends React.Component {
                       style={{width: '100%', height: '100%'}}
                       queryText={this.props.query.query}
                       autocompleteQuery={this.autocompleteQuery}
-                      schema={this.state.schema}
+                      schema={this.state.dataSource.schema}
                       syntax={this.state.dataSource.syntax}
                       isQueryOwner={this.props.isQueryOwner}
                       updateDataSource={this.updateDataSource}
                       executeQuery={this.executeQuery}
-                      canExecuteQuery={this.props.canExecuteQuery}
+                      canExecuteQuery={this.canExecuteQuery()}
                       listenForResize={this.listenForResize}
                       saveQuery={this.saveQuery}
                       updateQuery={this.updateQuery}
@@ -312,7 +361,7 @@ export default class QueryView extends React.Component {
                           }}
                         >
                           {this.props.queryResult.getLog() ?
-                            <div className="p-10" ng-show="showLog">
+                            <div className="p-10">
                               <p>Log Information:</p>
                               {this.props.queryResult.getLog().map(l => <p>{l}</p>)}
                             </div> : ''}
@@ -324,12 +373,14 @@ export default class QueryView extends React.Component {
                                 name="Table"
                                 selected={this.state.selectedTab}
                                 basePath={this.props.query.getUrl(this.props.sourceMode)}
+                                onClick={this.setSelectedTab}
                               /> : map(sortBy(this.props.query.visualizations, 'id'), (vis, i) => (
                                 <RdTab
                                   tabId={vis.id}
                                   name={vis.name}
                                   selected={this.state.selectedTab}
                                   basePath={this.props.query.getUrl(this.props.sourceMode)}
+                                  onClick={this.setSelectedTab}
                                 >
                                   {this.props.canEdit && !((i > 0) && (vis.type === 'TABLE')) ?
                                     <span
@@ -349,19 +400,20 @@ export default class QueryView extends React.Component {
                             </li>
                           </ul>
                           <div className="query__vis m-t-15 scrollbox">
-                           <VisualizationRenderer
-                             visualization={this.props.query.visualizations.length ?
-                                            find(this.props.query.visualizations,
-                                                 { id: this.state.selectedTab }) :
-                                            {
-                                              type: visualizationRegistry.CHART.type,
-                                              options: visualizationRegistry.CHART.defaultOptions,
-                                            }}
-                             queryResult={this.props.queryResult}
-                           />
+                            <VisualizationRenderer
+                              visualization={this.props.query.visualizations.length ?
+                                             find(
+                                               this.props.query.visualizations,
+                                               { id: this.state.selectedTab },
+                                             ) : {
+                                               type: visualizationRegistry.CHART.type,
+                                               options: visualizationRegistry.CHART.defaultOptions,
+                                             }}
+                              queryResult={this.props.queryResult}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </div> : ''}
+                      </div> : ''}
                   </div>
                 </section>
               </div>
@@ -383,8 +435,8 @@ export default class QueryView extends React.Component {
                   aria-expanded="false"
                   title={<span>Download <span className="hidden-xs">Dataset </span></span>}
                   onSelect={this.downloadQueryResult}
+                  pullRight={!this.props.query.isNew()}
                 >
-                  {/* XXX pull-right? */}
                   <MenuItem eventKey="csv" className="dropdown-menu">
                     <span className="fa fa-file-o" /> Download as CSV File
                   </MenuItem>
@@ -393,11 +445,11 @@ export default class QueryView extends React.Component {
                   </MenuItem>
                 </DropDownButton>
 
-                {this.props.queryResult.getData() ?
+                {data ?
                   <span className="query-metadata__bottom">
                     <span className="query-metadata__property">
-                      <strong>{this.props.queryResult.getData().length}</strong>
-                      {pluralize(queryResult.getData().length)}
+                      <strong>{data.length}</strong>
+                      {data.length === 1 ? 'row' : 'rows'}
                     </span>
                     <span className="query-metadata__property">
                       {this.state.queryExecuting ?
@@ -405,7 +457,7 @@ export default class QueryView extends React.Component {
                         <span>Running&hellip;</span>}
                       <span className="hidden-xs">runtime</span>
                     </span>
-                    {queryResult.query_result.data.metadata.data_scanned ?
+                    {data.metadata.data_scanned ?
                       <span className="query-metadata__property">
                         Data Scanned
                         <strong>
@@ -415,12 +467,15 @@ export default class QueryView extends React.Component {
                   </span> : ''}
 
                 <div>
-                  <span className="query-metadata__property"><span className="hidden-xs">Updated </span><rd-time-ago value="queryResult.query_result.retrieved_at"></rd-time-ago></span>
+                  <span className="query-metadata__property">
+                    <span className="hidden-xs">Updated </span>
+                    {moment(this.props.queryResult.query_result.retrieved_at).fromNow()}
+                  </span>
 
                   <button
                     className="m-l-5 btn btn-primary"
                     onClick={this.executeQuery}
-                    disabled={this.state.queryExecuting || !this.props.canExecuteQuery()}
+                    disabled={this.state.queryExecuting || !this.canExecuteQuery()}
                     title="Refresh Dataset"
                   >
                     <span className="zmdi zmdi-play" />
