@@ -255,6 +255,11 @@ function QueryViewCtrl(
     ).$promise;
   };
 
+  $scope.reactSaveQuery = (customOptions, data) => {
+    $scope.query = Object.assign(Query.newQuery(), $scope.query, data);
+    return $scope.saveQuery(customOptions, data);
+  };
+
   // toastr.success('It seems like the query has been modified by another user. ' +
   //   'Please copy/backup your changes and reload this page.', { timeOut: 0 });
 
@@ -488,13 +493,14 @@ export default function init(ngModule) {
   );
   ngModule.component(
     'queryMetadata',
-    react2angular(QueryMetadata, null, ['$uibModal']),
+    react2angular(QueryMetadata, null, ['clientConfig']),
   );
 
   ngModule.controller('QueryViewCtrl', QueryViewCtrl);
 
   return {
     '/queries/:queryId': {
+      // template: `<query-page route="route"></query-page>`,
       template,
       layout: 'fixed',
       controller: 'QueryViewCtrl',
