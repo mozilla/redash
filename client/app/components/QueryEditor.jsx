@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { map } from 'lodash';
 import Tooltip from 'antd/lib/tooltip';
-import { react2angular } from 'react2angular';
+import { PromiseState } from 'react-refetch';
 
 import AceEditor from 'react-ace';
 import ace from 'brace';
@@ -55,27 +55,29 @@ function buildKeywordsFromSchema(schema) {
 class QueryEditor extends React.Component {
   static propTypes = {
     queryText: PropTypes.string.isRequired,
-    schema: Schema, // eslint-disable-line react/no-unused-prop-types
+    autocompleteQuery: PropTypes.bool, // eslint-disable-line react/no-unused-prop-types
     addNewParameter: PropTypes.func.isRequired,
+    schema: PropTypes.instanceOf(PromiseState).isRequired, // eslint-disable-line react/no-unused-prop-types
     dataSources: PropTypes.arrayOf(DataSource),
     dataSource: DataSource,
     canEdit: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
+    syntax: PropTypes.string,
     isQueryOwner: PropTypes.bool.isRequired,
     updateDataSource: PropTypes.func.isRequired,
-    canExecuteQuery: PropTypes.func.isRequired,
+    canExecuteQuery: PropTypes.bool.isRequired,
     executeQuery: PropTypes.func.isRequired,
     queryExecuting: PropTypes.bool.isRequired,
     saveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
     listenForResize: PropTypes.func.isRequired,
     listenForEditorCommand: PropTypes.func.isRequired,
-
-  };
+  }
 
   static defaultProps = {
     schema: null,
-    dataSource: {},
+    autocompleteQuery: false,
+    dataSource: { options: { doc: '' } },
     dataSources: [],
   };
 
@@ -102,20 +104,19 @@ class QueryEditor extends React.Component {
       editor.commands.bindKey('Ctrl+P', null);
       editor.commands.bindKey('Ctrl+L', null);
 
-      // eslint-disable-next-line react/prop-types
-      this.props.QuerySnippet.query((snippets) => {
-        const snippetManager = snippetsModule.snippetManager;
-        const m = {
-          snippetText: '',
-        };
-        m.snippets = snippetManager.parseSnippetFile(m.snippetText);
-        snippets.forEach((snippet) => {
-          m.snippets.push(snippet.getSnippet());
-        });
-        snippetManager.register(m.snippets || [], m.scope);
-      });
+      // this.props.QuerySnippet.query((snippets) => {
+      //   const snippetManager = snippetsModule.snippetManager;
+      //   const m = {
+      //     snippetText: '',
+      //   };
+      //   m.snippets = snippetManager.parseSnippetFile(m.snippetText);
+      //   snippets.forEach((snippet) => {
+      //     m.snippets.push(snippet.getSnippet());
+      //   });
+      //   snippetManager.register(m.snippets || [], m.scope);
+      // });
       editor.focus();
-      this.props.listenForResize(() => editor.resize());
+      self.props.listenForResize((e) => { console.log(e); editor.resize(); });
       this.props.listenForEditorCommand((e, command, ...args) => {
         switch (command) {
           case 'focus': {
@@ -137,23 +138,22 @@ class QueryEditor extends React.Component {
     };
 
     this.formatQuery = () => {
-      // eslint-disable-next-line react/prop-types
-      const format = this.props.Query.format;
-      format(this.props.dataSource.syntax || 'sql', this.props.queryText)
+      this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText)
         .then(this.props.updateQuery)
-        .catch(error => toastr.error(error));
+        .catch(this.props.toastr.error);
     };
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
-    if (!nextProps.schema) {
+    if (!nextProps.schema.fulfilled) {
       return { keywords: [], autocompleteQuery: false };
-    } else if (nextProps.schema !== prevState.schema) {
+    } else if (nextProps.schema.value.schema !== prevState.schema) {
+      const schema = nextProps.schema.value.schema;
       return {
-        schema: nextProps.schema,
-        keywords: buildKeywordsFromSchema(nextProps.schema),
-        autocompleteQuery: (nextProps.schema.reduce((totalLength, table) =>
-          totalLength + table.columns.length, 0) <= 5000),
+        schema,
+        keywords: buildKeywordsFromSchema(schema),
+        autocompleteQuery: (schema.reduce((totalLength, table) =>
+          totalLength + table.columns.length, 0) <= 5000 && nextProps.autocompleteQuery),
       };
     }
     return null;

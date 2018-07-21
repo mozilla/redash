@@ -1,18 +1,26 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
+import { PromiseState } from 'react-refetch';
+
+const statuses = {
+  1: 'waiting',
+  2: 'processing',
+  3: 'done',
+  4: 'failed',
+};
+
 
 export default class QueryExecutionStatus extends React.Component {
   static propTypes = {
-    query: PropTypes.object.isRequired,
-    queryResult: PropTypes.object.isRequired,
-    // XXX temp hack
-    status: PropTypes.string,
+    queryId: PropTypes.number.isRequired,
+    queryResult: PropTypes.instanceOf(PromiseState).isRequired,
+    executeQueryResponse: PropTypes.instanceOf(PromiseState),
   }
 
 
   static defaultProps = {
-    status: null,
+    executeQueryResponse: {},
   }
   constructor(props) {
     super(props);
@@ -27,7 +35,7 @@ export default class QueryExecutionStatus extends React.Component {
   }
 
   componentDidUpdate() {
-    if (this.props.status === 'processing' || this.props.status === 'waiting') {
+    if (this.status() === 'processing' || this.status() === 'waiting') {
       this.startTimer();
     }
   }
@@ -41,13 +49,14 @@ export default class QueryExecutionStatus extends React.Component {
   startTimer = () => {
     const self = this;
     this.currentTimer = setInterval(() => {
-      const timestamp = self.props.queryResult.getUpdatedAt();
+      const timestamp = this.props.queryResult.fulfilled ? this.props.queryResult.value.retrieved_at : moment();
       self.setState({
         currentTime: moment(moment() - moment(timestamp)).utc().format('HH:mm:ss'),
-        error: self.props.queryResult.getError(),
+        error: self.props.executeQueryResponse.value.error || undefined,
       });
-      if (self.currentTimer && self.props.status !== 'processing' && self.props.status !== 'waiting') {
+      if (self.currentTimer && self.status() !== 'processing' && self.status() !== 'waiting') {
         clearInterval(self.currentTimer);
+        self.setState({ currentTime: '00:00:00' });
         self.currentTimer = null;
       }
     }, 1000);
@@ -55,14 +64,18 @@ export default class QueryExecutionStatus extends React.Component {
 
   cancelExecution = () => {
     this.setState({ cancelling: true });
-    this.props.queryResult.cancelExecution();
-    this.props.Events.record('cancel_execute', 'query', this.props.query.id);
+    this.props.cancelExecution(this.props.executeQueryResponse.value.job.id);
+    this.props.Events.record('cancel_execute', 'query', this.props.queryId);
   }
 
+  status = () => statuses[this.props.executeQueryResponse.value.status]
+
   render() {
+    if (!this.props.executeQueryResponse.fulfilled || !this.props.executeQueryResponse.value) return null;
+    const status = this.status();
     let display;
     let error;
-    if (this.props.status === 'processing') {
+    if (status === 'processing') {
       display = (
         <div className="alert alert-info m-t-15">
           Executing query&hellip;

@@ -1,6 +1,7 @@
-import registry from '@/visualizations/registry';
-import GridRenderer from './GridRenderer';
-import GridEditor from './GridEditor';
+import GridEditor from '@/react-components/GridEditor';
+import GridRenderer from '@/react-components/GridRenderer';
+import visualizationRegistry from '@/visualizations/registry';
+import './table-editor.less';
 
 export default function () {
   registry.TABLE = Object.freeze({

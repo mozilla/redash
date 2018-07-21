@@ -4,11 +4,14 @@ import { SCHEMA_NOT_SUPPORTED, SCHEMA_LOAD_ERROR } from '@/services/data-source'
 import { getTags } from '@/services/tags';
 import QueryExecutionStatus from '@/components/queries/QueryExecutionStatus';
 import QueryMetadata from '@/components/queries/QueryMetadata';
-import template from './query.html';
 
 const DEFAULT_TAB = 'table';
 
-function QueryViewCtrl(
+function QueryViewCtrl($scope, $route) {
+  $scope.queryId = $route.current.params.queryId;
+}
+// eslint-disable-next-line no-unused-vars
+function OldQueryViewCtrl(
   $rootScope,
   $scope,
   Events,
@@ -529,18 +532,9 @@ export default function init(ngModule) {
 
   return {
     '/queries/:queryId': {
-      // template: `<query-page route="route"></query-page>`,
-      template,
+      template: ({ queryId }) => `<query-view-top query-id="${queryId}" source-mode="false" />`,
       layout: 'fixed',
-      controller: 'QueryViewCtrl',
       reloadOnSearch: false,
-      resolve: {
-        query: (Query, $route) => {
-          'ngInject';
-
-          return Query.get({ id: $route.current.params.queryId }).$promise;
-        },
-      },
     },
   };
 }

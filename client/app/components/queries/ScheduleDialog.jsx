@@ -17,6 +17,16 @@ function padWithZeros(size, v) {
 const hourOptions = map(range(0, 24), partial(padWithZeros, 2));
 const minuteOptions = map(range(0, 60, 5), partial(padWithZeros, 2));
 
+function scheduleInLocalTime(schedule) {
+  const parts = schedule.split(':');
+  return moment
+    .utc()
+    .hour(parts[0])
+    .minute(parts[1])
+    .local()
+    .format('HH:mm');
+}
+
 export default class ScheduleDialog extends React.Component {
   static propTypes = {
     show: PropTypes.bool.isRequired,
@@ -35,11 +45,11 @@ export default class ScheduleDialog extends React.Component {
   setScheduleUntil = e => this.props.saveQuery({}, { schedule_until: e.target.value })
   render() {
     const schedule = this.props.query.schedule;
-    const hasDailySchedule = this.props.query.hasDailySchedule();
+    const hasDailySchedule = schedule && schedule.match(/\d\d:\d\d/) !== null;
     let hour;
     let minute;
     if (hasDailySchedule) {
-      const parts = this.props.query.scheduleInLocalTime().split(':');
+      const parts = scheduleInLocalTime(this.props.query.schedule).split(':');
       minute = parts[1];
       hour = parts[0];
     } else {

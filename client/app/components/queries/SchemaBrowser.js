@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { PromiseState } from 'react-refetch';
 
 import { Collapse } from 'react-bootstrap';
 import List from 'react-virtualized/dist/commonjs/List';
@@ -7,24 +8,24 @@ import AutoSizer from 'react-virtualized/dist/commonjs/AutoSizer';
 
 export default class SchemaBrowser extends React.Component {
   static propTypes = {
-    schema: PropTypes.array,
+    schema: PropTypes.instanceOf(PromiseState).isRequired,
     tableToggleString: PropTypes.string,
     onRefresh: PropTypes.func.isRequired,
     editorPaste: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
-    schema: [],
     tableToggleString: null,
   }
 
   constructor(props) {
     super(props);
-    this.state = { expanded: new Array(this.props.schema.length), schemaFilter: '' };
+    const size = this.props.schema.fulfilled ? new Array(this.props.schema.value.schema.length) : 0;
+    this.state = { expanded: size, schemaFilter: '' };
     this.list = React.createRef();
   }
 
-  getTableSize = ({ index }) => (22 + (this.state.expanded[index] ? 18 * this.props.schema[index].columns.length : 0))
+  getTableSize = ({ index }) => (22 + (this.state.expanded[index] ? 18 * this.props.schema.value.schema[index].columns.length : 0))
 
   itemSelected = (e) => {
     this.props.editorPaste(e.target.dataset.name);
@@ -43,7 +44,7 @@ export default class SchemaBrowser extends React.Component {
 
 
   schemaRows = ({ index, key, style }) => {
-    const table = this.props.schema[index];
+    const table = this.props.schema.value.schema[index];
     const showColumns = !!this.state.expanded[index];
     if (!table.name.match(new RegExp(this.state.schemaFilter))) return null;
     if (this.state.versionToggle && table.name.match(new RegExp(this.props.tableToggleString))) return null;
@@ -85,8 +86,7 @@ export default class SchemaBrowser extends React.Component {
   updateSchemaFilter = schemaFilter => this.setState({ schemaFilter });
 
   render() {
-    if (!this.props.schema) return null;
-
+    if (!this.props.schema.fulfilled) return null;
     return (
       <div className="schema-container">
         <div className="schema-control">
@@ -94,7 +94,7 @@ export default class SchemaBrowser extends React.Component {
             type="text"
             placeholder="Search schema..."
             className="form-control"
-            disabled={this.props.schema.length === 0}
+            disabled={this.props.schema.value.schema.length === 0}
             onChange={this.updateSchemaFilter}
             value={this.state.schemaFilter}
           />
@@ -121,7 +121,7 @@ export default class SchemaBrowser extends React.Component {
           {({ width, height }) => (
             <List
               ref={this.list}
-              rowCount={this.props.schema.length}
+              rowCount={this.props.schema.value.schema.length}
               rowHeight={this.getTableSize}
               width={width}
               height={height}
