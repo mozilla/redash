@@ -1,7 +1,11 @@
 import { map } from 'lodash';
-import template from './query.html';
 
-function QuerySourceCtrl(
+function QuerySourceCtrl($scope, $route) {
+  $scope.queryId = $route.current.params.queryId;
+}
+
+// eslint-disable-next-line no-unused-vars
+function OldQuerySourceCtrl(
   Events,
   toastr,
   $controller,
@@ -128,33 +132,21 @@ export default function init(ngModule) {
 
   return {
     '/queries/new': {
-      template,
+      template: '<query-view-top query-id="null" source-mode="true" />',
       layout: 'fixed',
       controller: 'QuerySourceCtrl',
       reloadOnSearch: false,
-      resolve: {
-        query: function newQuery(Query) {
-          'ngInject';
-
-          return Query.newQuery();
-        },
-        dataSources(DataSource) {
-          'ngInject';
-
-          return DataSource.query().$promise;
-        },
-      },
     },
     '/queries/:queryId/source': {
-      template,
+      template: '<query-view-top query-id="queryId" source-mode="true" />',
       layout: 'fixed',
       controller: 'QuerySourceCtrl',
       reloadOnSearch: false,
       resolve: {
-        query: (Query, $route) => {
+        queryId: ($route) => {
           'ngInject';
 
-          return Query.get({ id: $route.current.params.queryId }).$promise;
+          return $route.current.params.queryId;
         },
       },
     },

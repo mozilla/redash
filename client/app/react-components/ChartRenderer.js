@@ -29,14 +29,14 @@ const DEFAULT_OPTIONS = {
 };
 
 export default class ChartRenderer extends React.PureComponent {
+  static DEFAULT_OPTIONS = DEFAULT_OPTIONS;
+
   static propTypes = {
     // eslint-disable-next-line react/no-unused-prop-types
     queryResult: PropTypes.object.isRequired,
     options: PropTypes.object.isRequired,
     filters: PropTypes.array.isRequired,
   }
-
-  static DEFAULT_OPTIONS = DEFAULT_OPTIONS;
 
   render() {
     let chartSeries;

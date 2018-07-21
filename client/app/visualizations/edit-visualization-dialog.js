@@ -1,7 +1,7 @@
 import { map } from 'lodash';
 import { copy } from 'angular';
 
-import { visualizationRegistry } from '@/visualizations';
+import visualizationRegistry from '@/visualizations/registry';
 import template from './edit-visualization-dialog.html';
 
 

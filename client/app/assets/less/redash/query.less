@@ -13,6 +13,12 @@ body.fixed-layout {
       flex-grow: 1;
       display: flex;
     }
+    // XXX hack, probably need a better answer here
+    > div > query-view-top {
+      flex-grow: 1;
+      display: flex;
+    }
+
   }
 }
 
@@ -379,6 +385,7 @@ a.label-tag {
   // **********************************************************************
   .resizable {
     position: relative;
+    transition: flex-basis 300ms ease-in-out;
     &.no-transition {
       transition: none !important;
     }

@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { map } from 'lodash';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { PromiseState } from 'react-refetch';
 
 import AceEditor from 'react-ace';
 import ace from 'brace';
@@ -64,14 +65,17 @@ function buildKeywordsFromSchema(schema) {
 export default class QueryEditor extends React.Component {
   static propTypes = {
     queryText: PropTypes.string.isRequired,
-    schema: Schema, // eslint-disable-line react/no-unused-prop-types
+    formatQuery: PropTypes.func.isRequired,
+    autocompleteQuery: PropTypes.bool, // eslint-disable-line react/no-unused-prop-types
+    schema: PropTypes.instanceOf(PromiseState).isRequired, // eslint-disable-line react/no-unused-prop-types
     dataSources: PropTypes.arrayOf(DataSource),
     dataSource: DataSource,
     canEdit: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
+    syntax: PropTypes.string,
     isQueryOwner: PropTypes.bool.isRequired,
     updateDataSource: PropTypes.func.isRequired,
-    canExecuteQuery: PropTypes.func.isRequired,
+    canExecuteQuery: PropTypes.bool.isRequired,
     executeQuery: PropTypes.func.isRequired,
     queryExecuting: PropTypes.bool.isRequired,
     saveQuery: PropTypes.func.isRequired,
@@ -79,13 +83,10 @@ export default class QueryEditor extends React.Component {
     addNewParameter: PropTypes.func.isRequired,
     listenForResize: PropTypes.func.isRequired,
     listenForEditorCommand: PropTypes.func.isRequired,
-    autocompleteQuery: PropTypes.bool, // eslint-disable-line react/no-unused-prop-types
-
   }
 
   static defaultProps = {
     autocompleteQuery: false,
-    schema: null,
     dataSource: { options: { doc: '' } },
     dataSources: [],
   }
@@ -114,19 +115,19 @@ export default class QueryEditor extends React.Component {
       editor.commands.bindKey('Ctrl+P', null);
       editor.commands.bindKey('Ctrl+L', null);
 
-      this.props.QuerySnippet.query((snippets) => {
-        const snippetManager = snippetsModule.snippetManager;
-        const m = {
-          snippetText: '',
-        };
-        m.snippets = snippetManager.parseSnippetFile(m.snippetText);
-        snippets.forEach((snippet) => {
-          m.snippets.push(snippet.getSnippet());
-        });
-        snippetManager.register(m.snippets || [], m.scope);
-      });
+      //   self.props.QuerySnippet.query((snippets) => {
+      //     const snippetManager = snippetsModule.snippetManager;
+      //     const m = {
+      //       snippetText: '',
+      //     };
+      //     m.snippets = snippetManager.parseSnippetFile(m.snippetText);
+      //     snippets.forEach((snippet) => {
+      //       m.snippets.push(snippet.getSnippet());
+      //     });
+      //     snippetManager.register(m.snippets || [], m.scope);
+      //   });
       editor.focus();
-      this.props.listenForResize(() => editor.resize());
+      self.props.listenForResize((e) => { console.log(e); editor.resize(); });
       this.props.listenForEditorCommand((e, command, ...args) => {
         switch (command) {
           case 'focus': {
@@ -150,21 +151,22 @@ export default class QueryEditor extends React.Component {
     };
 
     this.formatQuery = () => {
-      this.props.Query.format(this.props.dataSource.syntax || 'sql', this.props.queryText)
+      this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText)
         .then(this.props.updateQuery)
-        .catch(error => toastr.error(error));
+        .catch(this.props.toastr.error);
     };
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
-    if (!nextProps.schema) {
+    if (!nextProps.schema.fulfilled) {
       return { ...prevState, keywords: [], autocompleteQuery: false };
-    } else if (nextProps.schema !== prevState.schema) {
+    } else if (nextProps.schema.value.schema !== prevState.schema) {
+      const schema = nextProps.schema.value.schema;
       return {
         ...prevState,
-        schema: nextProps.schema,
-        keywords: buildKeywordsFromSchema(nextProps.schema),
-        autocompleteQuery: (nextProps.schema.reduce((totalLength, table) =>
+        schema,
+        keywords: buildKeywordsFromSchema(schema),
+        autocompleteQuery: (schema.reduce((totalLength, table) =>
           totalLength + table.columns.length, 0) <= 5000 && nextProps.autocompleteQuery),
       };
     }
@@ -238,7 +240,7 @@ export default class QueryEditor extends React.Component {
                   </button>
                 </OverlayTrigger> : null }
               <OverlayTrigger placement="top" overlay={executeTooltip}>
-                <button type="button" className="btn btn-primary m-l-5" disabled={this.props.queryExecuting || !this.props.canExecuteQuery()} onClick={this.props.executeQuery}>
+                <button type="button" className="btn btn-primary m-l-5" disabled={this.props.queryExecuting || !this.props.canExecuteQuery} onClick={this.props.executeQuery}>
                   <span className="zmdi zmdi-play" />
                   <span className="hidden-xs">Execute</span>
                 </button>

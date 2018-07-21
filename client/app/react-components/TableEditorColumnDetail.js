@@ -160,7 +160,6 @@ export default function TableEditorColumnDetail({ updateColumn, column }) {
             onChange={e => updateColumn({ imageWidth: e.target.value })}
             type="number"
             placeholder="Width"
-            aria-labelledby={`table-editor-${column.name}-imagesize-label`}
           />
           <span className="form-control-static m-l-5 m-r-5">&times;</span>
           <input
@@ -169,7 +168,6 @@ export default function TableEditorColumnDetail({ updateColumn, column }) {
             onChange={e => updateColumn({ imageHeight: e.target.value })}
             type="number"
             placeholder="Height"
-            aria-labelledby={`table-editor-${column.name}-imagesize-label`}
           />
         </div>
       </div>

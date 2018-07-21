@@ -1,5 +1,5 @@
 import {
-  some, extend, defaults, has, partial, intersection, without, includes, isUndefined,
+  has, partial, intersection, without, includes,
   sortBy, each, map, keys, difference,
 } from 'lodash';
 import React from 'react';
@@ -7,79 +7,11 @@ import { react2angular } from 'react2angular';
 
 import ChartEditor from '@/react-components/ChartEditor';
 import ChartRenderer from '@/react-components/ChartRenderer';
-import { visualizationRegistry } from '@/visualizations';
+import visualizationRegistry from '@/visualizations/registry';
 import editorTemplate from './chart-editor.html';
 
-<<<<<<< HEAD
-const DEFAULT_OPTIONS = {
-  globalSeriesType: 'column',
-  sortX: true,
-  legend: { enabled: true },
-  yAxis: [{ type: 'linear' }, { type: 'linear', opposite: true }],
-  xAxis: { type: '-', labels: { enabled: true } },
-  error_y: { type: 'data', visible: true },
-  series: { stacking: null, error_y: { type: 'data', visible: true } },
-  seriesOptions: {},
-  valuesOptions: {},
-  columnMapping: {},
-
-  // showDataLabels: false, // depends on chart type
-  numberFormat: '0,0[.]00000',
-  percentFormat: '0[.]00%',
-  // dateTimeFormat: 'DD/MM/YYYY HH:mm', // will be set from clientConfig
-  textFormat: '', // default: combination of {{ @@yPercent }} ({{ @@y }} ± {{ @@yError }})
-
-  defaultColumns: 3,
-  defaultRows: 8,
-  minColumns: 1,
-  minRows: 5,
-};
-
-function ChartRenderer() {
-  return {
-    restrict: 'E',
-    scope: {
-      queryResult: '=',
-      options: '=?',
-    },
-    template,
-    replace: false,
-    controller($scope, clientConfig) {
-      $scope.chartSeries = [];
-
-      function zIndexCompare(series) {
-        if ($scope.options.seriesOptions[series.name]) {
-          return $scope.options.seriesOptions[series.name].zIndex;
-        }
-        return 0;
-      }
-
-      function reloadData() {
-        if (!isUndefined($scope.queryResult) && $scope.queryResult.getData()) {
-          const data = $scope.queryResult.getChartData($scope.options.columnMapping);
-          $scope.chartSeries = sortBy(data, zIndexCompare);
-        }
-      }
-
-      function reloadChart() {
-        reloadData();
-        $scope.plotlyOptions = extend({
-          showDataLabels: $scope.options.globalSeriesType === 'pie',
-          dateTimeFormat: clientConfig.dateTimeFormat,
-        }, DEFAULT_OPTIONS, $scope.options);
-      }
-
-      $scope.$watch('options', reloadChart, true);
-      $scope.$watch('queryResult && queryResult.getData()', reloadData);
-    },
-  };
-}
-
-function ChartEditor(ColorPalette, clientConfig) {
-=======
 // eslint-disable-next-line no-unused-vars
 function OldChartEditor(clientConfig) {
->>>>>>> chart editor, renderer
   return {
     restrict: 'E',
     template: editorTemplate,
@@ -88,78 +20,6 @@ function OldChartEditor(clientConfig) {
       options: '=?',
     },
     link(scope) {
-<<<<<<< HEAD
-      scope.currentTab = 'general';
-      scope.colors = extend({ Automatic: null }, ColorPalette);
-
-      scope.stackingOptions = {
-        Disabled: null,
-        Stack: 'stack',
-      };
-
-      scope.changeTab = (tab) => {
-        scope.currentTab = tab;
-      };
-
-      scope.chartTypes = {
-        line: { name: 'Line', icon: 'line-chart' },
-        column: { name: 'Bar', icon: 'bar-chart' },
-        area: { name: 'Area', icon: 'area-chart' },
-        pie: { name: 'Pie', icon: 'pie-chart' },
-        scatter: { name: 'Scatter', icon: 'circle-o' },
-        bubble: { name: 'Bubble', icon: 'circle-o' },
-        box: { name: 'Box', icon: 'square-o' },
-      };
-
-      if (clientConfig.allowCustomJSVisualizations) {
-        scope.chartTypes.custom = { name: 'Custom', icon: 'code' };
-      }
-
-      scope.xAxisScales = [
-        { label: 'Auto Detect', value: '-' },
-        { label: 'Datetime', value: 'datetime' },
-        { label: 'Linear', value: 'linear' },
-        { label: 'Logarithmic', value: 'logarithmic' },
-        { label: 'Category', value: 'category' },
-      ];
-      scope.yAxisScales = ['linear', 'logarithmic', 'datetime', 'category'];
-
-      scope.chartTypeChanged = () => {
-        keys(scope.options.seriesOptions).forEach((key) => {
-          scope.options.seriesOptions[key].type = scope.options.globalSeriesType;
-        });
-        scope.options.showDataLabels = scope.options.globalSeriesType === 'pie';
-        scope.$applyAsync();
-      };
-
-      scope.showSizeColumnPicker = () => some(scope.options.seriesOptions, options => options.type === 'bubble');
-
-      scope.updateSeriesList = (s) => {
-        scope.form.seriesList = s;
-      };
-
-      scope.updateColorsList = (c) => {
-        scope.$apply(() => { scope.form.colorsList = c; });
-      };
-
-      scope.updateSeriesOptions = (opts) => {
-        scope.$apply(() => { scope.options.seriesOptions = opts; });
-      };
-
-      scope.updateValuesOptions = (opts) => {
-        scope.$apply(() => { scope.options.valuesOptions = opts; });
-      };
-
-
-      if (scope.options.customCode === undefined) {
-        scope.options.customCode = `// Available variables are x, ys, element, and Plotly
-// Type console.log(x, ys); for more info about x and ys
-// To plot your graph call Plotly.plot(element, ...)
-// Plotly examples and docs: https://plot.ly/javascript/`;
-      }
-
-=======
->>>>>>> chart editor, renderer
       function refreshColumns() {
         scope.columns = scope.queryResult.getColumns();
         scope.columnNames = map(scope.columns, i => i.name);
@@ -330,18 +190,6 @@ function OldChartEditor(clientConfig) {
           }
         });
       }
-
-      function setOptionsDefaults() {
-        if (scope.options) {
-          // For existing visualization - set default options
-          defaults(scope.options, extend({}, DEFAULT_OPTIONS, {
-            showDataLabels: scope.options.globalSeriesType === 'pie',
-            dateTimeFormat: clientConfig.dateTimeFormat,
-          }));
-        }
-      }
-      setOptionsDefaults();
-      scope.$watch('options', setOptionsDefaults);
 
       scope.templateHint = `
         <div class="p-b-5">Use special names to access additional properties:</div>

@@ -8,11 +8,11 @@ export default function Overlay(props) {
         width: '100%',
         position: 'absolute',
         top: 50,
-        'z-index': 2000,
+        zIndex: 2000,
       }}
       >
         <div className="well well-lg" style={{ width: '70%', margin: 'auto' }}>
-          {...props.children}
+          {props.children}
         </div>
       </div>
     </div>

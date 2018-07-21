@@ -5,9 +5,6 @@ import { react2angular } from 'react2angular';
 import VisualizationOptionsEditor from '@/react-components/VisualizationOptionsEditor';
 import VisualizationRenderer from '@/react-components/VisualizationRenderer';
 
-// eslint-disable-next-line no-unused-vars
-export const visualizationRegistry = {};
-
 function VisualizationProvider() {
   this.visualizations = {};
   // this.visualizationTypes = {};

@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { visualizationRegistry } from '@/visualizations';
+import visualizationRegistry from '@/visualizations/registry';
 
 export default class VisualizationOptionsEditor extends React.Component {
   static propTypes = {

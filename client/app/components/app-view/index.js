@@ -41,6 +41,8 @@ class AppViewComponent {
     this.layout = layouts.defaultSignedOut;
     this.handler = handler;
 
+    $rootScope.onChangeLocation = cb => $rootScope.$on('$locationChangeStart', cb);
+
     $rootScope.$on('$routeChangeStart', (event, route) => {
       this.handler.reset();
 

@@ -1,6 +1,6 @@
 import GridEditor from '@/react-components/GridEditor';
 import GridRenderer from '@/react-components/GridRenderer';
-import { visualizationRegistry } from '@/visualizations';
+import visualizationRegistry from '@/visualizations/registry';
 import './table-editor.less';
 
 const DEFAULT_OPTIONS = {

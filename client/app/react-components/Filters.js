@@ -40,13 +40,13 @@ export default class Filters extends React.Component {
     return { label: firstValue, value: firstValue, filter };
   }
   changeFilters = (change) => {
-    const f = change.filter;
+    const f = { ...change.filter };
     if (f.multiple) {
       f.current = [...f.current, change.value];
     } else {
       f.current = [change.value];
     }
-    this.props.onChange([...this.props.filters]);
+    this.props.onChange({ ...this.props.filters, [change.label]: f });
   }
 
   render() {
@@ -63,7 +63,7 @@ export default class Filters extends React.Component {
               <Select
                 id={'filter-' + fi.name}
                 options={(fi.multiple ? multiPreamble : []).concat(fi.values.map(v => this.filterValue(v, fi)))}
-                value={fi.multiple ? fi.current : fi.current[0]}
+                value={fi.current && (fi.multiple ? fi.current : fi.current[0])}
                 multi={fi.multiple}
                 clearable={false}
                 onChange={this.changeFilters}

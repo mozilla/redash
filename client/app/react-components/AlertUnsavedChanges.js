@@ -7,13 +7,13 @@ const confirmMessage = `${unloadMessage}\n\nAre you sure you want to leave this 
 export default class AlertUnsavedChanges extends React.Component {
   static propTypes = {
     isDirty: PropTypes.bool.isRequired,
-    $on: PropTypes.func.isRequired,
+    onChangeLocation: PropTypes.func.isRequired,
   }
 
   componentDidMount() {
     this._onbeforeunload = window.onbeforeunload;
     window.onbeforeunload = () => (this.props.isDirty ? unloadMessage : null);
-    this.props.$on('$locationChangeStart', (event, next, current) => {
+    this.props.onChangeLocation((event, next, current) => {
       if (next.split('?')[0] === current.split('?')[0] || next.split('#')[0] === current.split('#')[0]) {
         return;
       }
@@ -24,7 +24,11 @@ export default class AlertUnsavedChanges extends React.Component {
     });
   }
 
-  componentDidUnmount() {
+  componentWillUnmount() {
     window.onbeforeunload = this._onbeforeunload;
+  }
+
+  render() {
+    return '';
   }
 }

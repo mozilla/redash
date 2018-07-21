@@ -1,8 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
-import { scheduleHumanize } from '@/filters/index';
 
+import { scheduleHumanize } from '@/filters/index';
 import ScheduleDialog from './ScheduleDialog';
 
 function timeAgo(when) {
@@ -16,8 +16,6 @@ export default class QueryMetadata extends React.Component {
     saveQuery: PropTypes.func.isRequired,
     canEdit: PropTypes.bool.isRequired,
     canScheduleQuery: PropTypes.bool.isRequired,
-    // XXX temp hack
-    schedule: PropTypes.string, // eslint-disable-line react/require-default-props
   };
   constructor(props) {
     super(props);
@@ -43,7 +41,7 @@ export default class QueryMetadata extends React.Component {
             <span className="m-r-5">Created by</span>
             <img alt="" src={this.props.query.user.profile_image_url} className="profile__image_thumb" /> <strong>{timeAgo(this.props.query.created_at)}</strong>
           </div>
-          {this.props.query.isNew() ? null :
+          {!this.props.query.id ? null :
           <div className="col-xs-4 text-center">
             <span className="m-r-5">Updated by</span>
             <img alt={this.props.query.user.name} src={this.props.query.last_modified_by.profile_image_url} className="profile__image_thumb" /><strong>{timeAgo(this.props.query.updated_at)}</strong>
@@ -57,14 +55,14 @@ export default class QueryMetadata extends React.Component {
               onClose={this.closeScheduleForm}
             />
             <span className="query-metadata__property">Refresh Schedule</span>
-            {this.props.query.isNew() ?
+            {!this.props.query.id ?
               <span>Never</span> :
               <a role="button" tabIndex="0" onKeyPress={this.openScheduleForm} onClick={this.openScheduleForm}>{scheduleHumanize(this.props.schedule)}</a>}
           </div>
         </div>
       );
     }
-    if (this.props.query.isNew()) {
+    if (!this.props.query.id) {
       return null;
     }
     return (
@@ -99,7 +97,7 @@ export default class QueryMetadata extends React.Component {
                   refreshOptions={this.props.clientConfig.queryRefreshIntervals}
                   onClose={this.closeScheduleForm}
                 />
-                <a role="button" tabIndex="0" onKeyPress={this.openScheduleForm} onClick={this.openScheduleForm}>{scheduleHumanize(this.props.schedule)}</a>
+                <a role="button" tabIndex="0" onKeyPress={this.openScheduleForm} onClick={this.openScheduleForm}>{scheduleHumanize(this.props.query.schedule)}</a>
               </td>
             </tr>
           </tbody>
