@@ -30,7 +30,7 @@ const AddToDashboardForm = {
       });
 
       // (response)
-      widget.$save().then(() => {
+      widget.save().then(() => {
         // (dashboard)
         this.selectedDashboard = Dashboard.get({ slug: dash.slug }, () => {});
         this.close();
