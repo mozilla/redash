@@ -5,6 +5,18 @@ from redash.permissions import ACCESS_TYPE_MODIFY
 from redash.serializers import serialize_dashboard
 
 
+class TestRecentDashboardResourceGet(BaseTestCase):
+    def test_get_recent_dashboard_list_does_not_include_deleted(self):
+        d1 = self.factory.create_dashboard()
+        expected = d1.to_dict()
+        d2 = self.factory.create_dashboard() # this shouldn't be required but test fails without it
+        rv = self.make_request('post', '/api/dashboards/{0}'.format(d1.id),
+                       data={'name': 'New Name', 'layout': '[]', 'is_archived': True})
+        rvrecent = self.make_request('get', '/api/dashboards/recent')
+        self.assertEquals(rvrecent.status_code, 200)
+        actual = json.loads(rvrecent.data)
+        self.assertNotIn(expected['id'], actual)
+
 class TestDashboardListResource(BaseTestCase):
     def test_create_new_dashboard(self):
         dashboard_name = 'Test Dashboard'
