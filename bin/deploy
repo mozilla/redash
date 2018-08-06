@@ -14,6 +14,6 @@ printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build
   "$CIRCLE_BUILD_URL" \
 > version.json
 
-docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+docker login -u $DOCKER_USER -p $DOCKER_PASS
 docker build -t $DOCKERHUB_REPO:$VERSION .
 docker push $DOCKERHUB_REPO:$VERSION
