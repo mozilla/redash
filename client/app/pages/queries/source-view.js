@@ -111,6 +111,10 @@ function QuerySourceCtrl(
     $scope.autocompleteQuery = !$scope.autocompleteQuery;
   };
 
+  $scope.listenForResize = (f) => {
+    $scope.$on('angular-resizable.resizing', f);
+  };
+
   $scope.listenForEditorCommand = f => $scope.$on('query-editor.command', f);
   $scope.listenForResize = f => $scope.$parent.$on('angular-resizable.resizing', f);
 
