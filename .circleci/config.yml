@@ -14,8 +14,6 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - run: |
-          printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' "$CIRCLE_SHA1" "$CIRCLE_TAG" "$CIRCLE_PROJECT_USERNAME" "$CIRCLE_PROJECT_REPONAME" "$CIRCLE_BUILD_URL" > version.json
       - run:
           command: docker build -t app:build .
           no_output_timeout: 20m
@@ -48,7 +46,7 @@ jobs:
       - store_test_results:
           path: /tmp/test-reports/
 
-  deploy:
+  deploy-master:
     docker:
       - image: docker:18.02.0-ce
     working_directory: ~/mozilla/redash
@@ -59,13 +57,20 @@ jobs:
           name: Deploy to Dockerhub
           no_output_timeout: 20m
           command: |
-            # Deploy master
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              ./bin/deploy "master"
-            else
-            # Deploy a release tag...
-              ./bin/deploy "rc"
-            fi
+            ./bin/deploy "master"
+
+  deploy-rc:
+    docker:
+      - image: docker:18.02.0-ce
+    working_directory: ~/mozilla/redash
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Deploy to Dockerhub
+          no_output_timeout: 20m
+          command: |
+            ./bin/deploy "rc"
 
   deploy-milestone:
     docker:
@@ -102,7 +107,7 @@ workflows:
               ignore:
                 - gh-pages
 
-      - deploy:
+      - deploy-master:
           requires:
             - test
           filters:
@@ -111,6 +116,15 @@ workflows:
             branches:
               only:
                 - master
+
+      - deploy-rc:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only:
                 - release
 
       - deploy-milestone:
