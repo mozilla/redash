@@ -72,7 +72,6 @@ export default class QueryEditor extends React.Component {
     dataSource: DataSource,
     canEdit: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
-    syntax: PropTypes.string,
     isQueryOwner: PropTypes.bool.isRequired,
     updateDataSource: PropTypes.func.isRequired,
     canExecuteQuery: PropTypes.bool.isRequired,
@@ -83,6 +82,8 @@ export default class QueryEditor extends React.Component {
     addNewParameter: PropTypes.func.isRequired,
     listenForResize: PropTypes.func.isRequired,
     listenForEditorCommand: PropTypes.func.isRequired,
+    queryExecuting: PropTypes.bool.isRequired,
+    refEditor: PropTypes.element.isRequired,
   }
 
   static defaultProps = {
@@ -93,7 +94,6 @@ export default class QueryEditor extends React.Component {
 
   constructor(props) {
     super(props);
-    this.refEditor = React.createRef();
     this.state = {
       schema: null, // eslint-disable-line react/no-unused-state
       keywords: [], // eslint-disable-line react/no-unused-state
@@ -186,7 +186,7 @@ export default class QueryEditor extends React.Component {
         <div className="container p-15 m-b-10" style={{ height: '100%' }}>
           <div style={{ height: 'calc(100% - 40px)', marginBottom: '0px' }} className="editor__container">
             <AceEditor
-              ref={this.refEditor}
+              ref={this.props.refEditor}
               theme="textmate"
               mode={this.props.dataSource.syntax || 'sql'}
               value={this.props.queryText}
@@ -203,7 +203,6 @@ export default class QueryEditor extends React.Component {
               showPrintMargin={false}
               wrapEnabled={false}
               onLoad={this.onLoad}
-              onPaste={this.onPaste}
               onChange={(queryText) => { this.props.updateQuery(queryText); }}
             />
           </div>

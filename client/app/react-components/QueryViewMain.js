@@ -152,7 +152,16 @@ class QueryViewMain extends React.Component {
 
   canExecuteQuery = () => this.props.currentUser.hasPermission('execute_query') && !this.props.dataSource.view_only
 
-  editorPaste = text => text;
+  editorPaste = (text) => {
+    const editor = this.queryEditor.current.editor;
+    editor.session.doc.replace(editor.selection.getRange(), text);
+    const range = editor.selection.getRange();
+    window.setTimeout(() => {
+      editor.selection.setRange(range);
+    }, 0);
+  }
+
+  editorFocus = () => this.queryEditor.current.editor.focus()
 
   saveQuery = () => this.props.updateAndSaveQuery({})
 
@@ -201,7 +210,7 @@ class QueryViewMain extends React.Component {
                   direction="bottom"
                 >
                   <QueryEditor
-                    ref={this.queryEditor}
+                    refEditor={this.queryEditor}
                     style={{ width: '100%', height: '100%' }}
                     queryText={this.props.query.query}
                     formatQuery={this.props.formatQuery}
