@@ -20,7 +20,7 @@ export default class SchemaBrowser extends React.Component {
 
   constructor(props) {
     super(props);
-    const size = this.props.schema.fulfilled ? new Array(this.props.schema.value.schema.length) : 0;
+    const size = this.props.schema.fulfilled ? new Array(this.props.schema.value.schema.length) : [];
     this.state = { expanded: size, schemaFilter: '' };
     this.list = React.createRef();
   }
