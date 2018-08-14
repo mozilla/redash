@@ -151,10 +151,8 @@ export default class QueryEditor extends React.Component {
     };
 
     this.formatQuery = () => {
-      this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText)
-        .then(this.props.updateQuery)
-        .catch(this.props.toastr.error);
-    };
+      this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText);
+    }
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -203,7 +201,7 @@ export default class QueryEditor extends React.Component {
               showPrintMargin={false}
               wrapEnabled={false}
               onLoad={this.onLoad}
-              onChange={(queryText) => { this.props.updateQuery(queryText); }}
+              onChange={this.props.updateQuery}
             />
           </div>
 

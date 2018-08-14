@@ -104,7 +104,7 @@ function filterData(filters, queryResult) {
 class QueryViewMain extends React.Component {
   static propTypes = {
     currentUser: PropTypes.object.isRequired,
-    query: PropTypes.object.isRequired,
+    query: PropTypes.instanceOf(PromiseState).isRequired,
     updateAndSaveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
     queryResult: PropTypes.instanceOf(PromiseState).isRequired,
@@ -168,7 +168,7 @@ class QueryViewMain extends React.Component {
   updateQueryText = newText => this.props.updateQuery({
     query: newText,
     options: {
-      ...this.props.query.options,
+      ...this.props.query.value.options,
       parameters: parseQuery(newText),
     },
   })
@@ -179,7 +179,7 @@ class QueryViewMain extends React.Component {
         <QueryViewNav
           canEdit={this.props.canEdit}
           currentUser={this.props.currentUser}
-          query={this.props.query}
+          query={this.props.query.value}
           updateAndSaveQuery={this.props.updateAndSaveQuery}
           dataSource={this.props.dataSource}
           dataSources={this.props.dataSources}
@@ -212,11 +212,10 @@ class QueryViewMain extends React.Component {
                   <QueryEditor
                     refEditor={this.queryEditor}
                     style={{ width: '100%', height: '100%' }}
-                    queryText={this.props.query.query}
+                    queryText={this.props.query.value.query}
                     formatQuery={this.props.formatQuery}
                     autocompleteQuery={this.autocompleteQuery}
                     schema={this.props.schema}
-                    syntax={this.props.dataSource.syntax}
                     isQueryOwner={this.props.isQueryOwner}
                     updateDataSource={this.updateDataSource}
                     executeQuery={this.props.executeQuery}
@@ -230,16 +229,16 @@ class QueryViewMain extends React.Component {
                 </FlexResizable> : ''}
               <QueryMetadata
                 mobile
-                query={this.props.query}
+                query={this.props.query.value}
                 saveQuery={this.saveQuery}
                 canEdit={this.props.canEdit}
                 canScheduleQuery={this.props.currentUser.hasPermission('schedule_query')}
-                schedule={this.props.query.schedule}
+                schedule={this.props.query.value.schedule}
                 clientConfig={this.props.clientConfig}
               />
               <QueryViewVisualizations
                 clientConfig={this.props.clientConfig}
-                query={this.props.query}
+                query={this.props.query.value}
                 updateQuery={this.props.updateQuery}
                 searchQueries={this.props.searchQueries}
                 data={this.state.filteredData}
@@ -255,7 +254,7 @@ class QueryViewMain extends React.Component {
           </div>
           <div className="bottom-controller-container">
             <QueryViewFooter
-              query={this.props.query}
+              query={this.props.query.value}
               queryResult={this.props.queryResult}
               canEdit={this.props.canEdit}
               filteredData={this.state.filteredData}
@@ -276,9 +275,10 @@ function fetchDataSource(props) {
     const schemaURL = `${props.clientConfig.basePath}api/data_sources/${props.dataSource.id}/schema`;
 
     return {
+      query: { value: props.baseQuery },
       // dataSourceVersion: {
       //  url: versionURL,
-      // },
+      //},
       schema: {
         url: schemaURL,
       },
@@ -289,28 +289,28 @@ function fetchDataSource(props) {
           refreshing: true,
         },
       }),
-      formatQuery: () => ({
-        value: (syntax, query) => {
-          if (syntax === 'json') {
-            try {
-              return { value: JSON.stringify(JSON.parse(query), ' ', 4) };
-            } catch (err) {
-              return { value: Promise.reject(err) };
-            }
-          } else if (syntax === 'sql') {
-            return {
-              url: `${props.clientConfig.basePath}api/queries/format`,
-              body: { query },
-              then: response => ({ value: response.data.query }),
-            };
-          } else {
-            return { value: Promise.reject(new Error('Query formatting is not supported for your data source syntax.')) };
+      formatQuery: (syntax, query) => {
+        if (syntax === 'json') {
+          try {
+            return { query: { force: true, refreshing: true, value: { ...props.baseQuery, query: JSON.stringify(JSON.parse(query), ' ', 4) } } };
+          } catch (err) {
+            return { query: { value: Promise.reject(err) } };
           }
-        },
-        andThen: queryText => ({
-          query: { value: { ...props.query, query: queryText }, force: true, refreshing: true },
-        }),
-      }),
+        } else if (syntax === 'sql') {
+          return {
+            query: {
+              url: `${props.clientConfig.basePath}api/queries/format`,
+              method: 'POST',
+              body: JSON.stringify({ query }),
+              then: response => ({ force: true, refreshing: true, value: { ...props.baseQuery, query: response.query } }),
+              force: true,
+              refreshing: true,
+            },
+          };
+        } else {
+          return { query: { force: true, refreshing: true, value: Promise.reject(new Error('Query formatting is not supported for your data source syntax.')) } };
+        }
+      },
     };
   }
   return {};
