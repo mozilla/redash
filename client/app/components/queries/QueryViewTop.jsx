@@ -83,16 +83,16 @@ class QueryViewTop extends React.Component {
       this.toastRef.current.error('Query could not be saved'));
   }
 
-  updateQuery = changes => this.setState(Object.assign({}, this.state.query, changes))
+  updateQuery = changes => this.setState({ query: Object.assign({}, this.state.query, changes) })
 
   render() {
     if (!(this.props.query.fulfilled && this.props.dataSources && this.props.dataSources.fulfilled)) {
       return null;
     }
-    const query = this.props.query.value;
+    const query = this.state.query;
     const dataSources = this.props.dataSources.value;
     const dataSource = this.getDataSource();
-    const canEdit = this.props.currentUser.canEdit(this.props.query) || this.props.query.can_edit;
+    const canEdit = this.props.currentUser.canEdit(this.state.query) || this.state.query.can_edit;
     return (
       <div className="query-page-wrapper">
         {canEdit ? <AlertUnsavedChanges isDirty={this.state.isDirty} onChangeLocation={this.onChangeLocation} /> : ''}
@@ -113,7 +113,7 @@ class QueryViewTop extends React.Component {
           canEdit={canEdit}
           currentUser={this.props.currentUser}
           basePath={this.props.basePath}
-          query={query}
+          baseQuery={query}
           queryResult={this.props.queryResult}
           updateAndSaveQuery={this.updateAndSaveQuery}
           dataSource={dataSource}
