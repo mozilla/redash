@@ -225,15 +225,15 @@ export default class QueryEditor extends React.Component {
               <select className="form-control datasource-small flex-fill w-100" onChange={this.props.updateDataSource} disabled={!this.props.isQueryOwner}>
                 {this.props.dataSources.map(ds => <option label={ds.name} value={ds.id} key={`ds-option-${ds.id}`}>{ds.name}</option>)}
               </select>
-              {hasDoc ? <a href={this.props.dataSource.options.doc_url}>{this.props.dataSource.type_name} documentation</a> : ''}
-              {hasDoc ? this.props.dataSource.type_name : ''}
+              {hasDoc ? <a href={this.props.dataSource.options.doc_url}>{this.props.dataSource.type_name} documentation</a> : null}
+              {hasDoc ? this.props.dataSource.type_name : null}
 
               {this.props.canEdit ?
                 <OverlayTrigger placement="top" overlay={saveTooltip}>
                   <button className="btn btn-default m-l-5" onClick={this.props.saveQuery} title="Save">
                     <span className="fa fa-floppy-o" />
                     <span className="hidden-xs">Save</span>
-                    {this.props.isDirty ? '*' : ''}
+                    {this.props.isDirty ? '*' : null}
                   </button>
                 </OverlayTrigger> : null }
               <OverlayTrigger placement="top" overlay={executeTooltip}>

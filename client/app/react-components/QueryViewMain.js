@@ -226,7 +226,7 @@ class QueryViewMain extends React.Component {
                     dataSource={this.props.dataSource}
                     dataSources={this.props.dataSources}
                   />
-                </FlexResizable> : ''}
+                </FlexResizable> : null}
               <QueryMetadata
                 mobile
                 query={this.props.query.value}

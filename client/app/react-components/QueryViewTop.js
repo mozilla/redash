@@ -95,7 +95,7 @@ class QueryViewTop extends React.Component {
     const canEdit = this.props.currentUser.canEdit(this.state.query) || this.state.query.can_edit;
     return (
       <div className="query-page-wrapper">
-        {canEdit ? <AlertUnsavedChanges isDirty={this.state.isDirty} onChangeLocation={this.onChangeLocation} /> : ''}
+        {canEdit ? <AlertUnsavedChanges isDirty={this.state.isDirty} onChangeLocation={this.onChangeLocation} /> : null}
         <ToastContainer ref={this.toastRef} className="toast" />
         <QueryViewHeader
           canEdit={canEdit}
