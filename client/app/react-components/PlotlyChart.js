@@ -33,15 +33,14 @@ const timeSeriesToPlotlySeries = (ss) => {
 
 export default class PlotlyChart extends React.Component {
   static propTypes = {
-    // XXX make this required after porting next layer up
-    options: PropTypes.object,
+    options: PropTypes.object.isRequired,
     // eslint-disable-next-line react/no-unused-prop-types
     series: PropTypes.array.isRequired,
     customCode: PropTypes.string,
 
   }
 
-  static defaultProps = { options: null, customCode: null };
+  static defaultProps = { customCode: null };
 
   constructor(props) {
     super(props);
@@ -56,7 +55,6 @@ export default class PlotlyChart extends React.Component {
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
-    if (!nextProps.options) { return {}; }
     if (nextProps.options.globalSeriesType === 'custom') {
       const [x, ys] = timeSeriesToPlotlySeries(nextProps.series);
       return { x, ys, revision: prevState.revision + 1 };

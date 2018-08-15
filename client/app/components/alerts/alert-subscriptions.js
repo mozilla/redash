@@ -137,7 +137,7 @@ class AlertSubscriptions extends React.Component {
           >Add
           </button>
           <span className="pull-right m-t-5">
-            {this.props.currentUser.isAdmin ? <a href="destinations/new">Create New Destination</a> : ''}
+            {this.props.currentUser.isAdmin ? <a href="destinations/new">Create New Destination</a> : null}
           </span>
         </div>
         <hr />
@@ -151,7 +151,7 @@ class AlertSubscriptions extends React.Component {
                    className="btn btn-xs btn-danger pull-right"
                    onClick={() => this.unsubscribe(s)}
                  >Remove
-                 </button> : ''
+                 </button> : null
               }
             </div>
           ))}
