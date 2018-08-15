@@ -47,12 +47,11 @@ jobs:
           path: /tmp/test-reports/
 
   deploy-master:
-    docker:
-      - image: docker:18.02.0-ce
+    machine:
+      enable: true
     working_directory: ~/mozilla/redash
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Deploy to Dockerhub
           no_output_timeout: 20m
@@ -60,12 +59,11 @@ jobs:
             ./bin/deploy "master"
 
   deploy-rc:
-    docker:
-      - image: docker:18.02.0-ce
+    machine:
+      enable: true
     working_directory: ~/mozilla/redash
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Deploy to Dockerhub
           no_output_timeout: 20m
@@ -73,12 +71,11 @@ jobs:
             ./bin/deploy "rc"
 
   deploy-milestone:
-    docker:
-      - image: docker:18.02.0-ce
+    machine:
+      enable: true
     working_directory: ~/mozilla/redash
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Deploy milestone to Dockerhub
           no_output_timeout: 20m
