@@ -115,7 +115,7 @@ export default class QueryEditor extends React.Component {
       editor.commands.bindKey('Ctrl+P', null);
       editor.commands.bindKey('Ctrl+L', null);
 
-      //   self.props.QuerySnippet.query((snippets) => {
+      //   this.props.QuerySnippet.query((snippets) => {
       //     const snippetManager = snippetsModule.snippetManager;
       //     const m = {
       //       snippetText: '',
@@ -127,27 +127,7 @@ export default class QueryEditor extends React.Component {
       //     snippetManager.register(m.snippets || [], m.scope);
       //   });
       editor.focus();
-      self.props.listenForResize((e) => { console.log(e); editor.resize(); });
-      this.props.listenForEditorCommand((e, command, ...args) => {
-        switch (command) {
-          case 'focus': {
-            editor.focus();
-            break;
-          }
-          case 'paste': {
-            const [text] = args;
-            editor.session.doc.replace(editor.selection.getRange(), text);
-            const range = editor.selection.getRange();
-            this.props.updateQuery(editor.session.getValue());
-            window.setTimeout(() => {
-              editor.selection.setRange(range);
-            });
-            break;
-          }
-          default:
-            break;
-        }
-      });
+      this.props.listenForResize(() => editor.resize());
     };
 
     this.formatQuery = () => {
