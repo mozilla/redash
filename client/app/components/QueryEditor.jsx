@@ -117,7 +117,7 @@ class QueryEditor extends React.Component {
       //   snippetManager.register(m.snippets || [], m.scope);
       // });
       editor.focus();
-      self.props.listenForResize((e) => { console.log(e); editor.resize(); });
+      self.props.listenForResize((e) => { editor.resize(); });
       this.props.listenForEditorCommand((e, command, ...args) => {
         switch (command) {
           case 'focus': {
