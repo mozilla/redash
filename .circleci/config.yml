@@ -35,12 +35,12 @@ jobs:
       - run: sudo pip install -r requirements.txt
       - run: sudo npm install
       - run: sudo npm run build
-      - run: 
+      - run:
           command: pytest --junitxml=/tmp/test-reports/pytest/junit.xml tests/
           environment:
             REDASH_REDIS_URL: redis://localhost:6379/0
             REDASH_DATABASE_URL: "postgresql://postgres@localhost/postgres"
-      - store_artifacts: 
+      - store_artifacts:
           path: /tmp/test-reports/
           destination: tr1
       - store_test_results:
@@ -108,8 +108,6 @@ workflows:
           requires:
             - test
           filters:
-            tags:
-              only: /.*/
             branches:
               only:
                 - master
@@ -118,8 +116,6 @@ workflows:
           requires:
             - test
           filters:
-            tags:
-              only: /.*/
             branches:
               only:
                 - release
