@@ -156,7 +156,7 @@ class Parameter {
         this.setValue([query[keyStart], query[keyEnd]]);
       }
     } else {
-      const key = `p_${this.name}_${this.query.id}`;
+      const key = `p_${this.name}_${this.queryId}`;
       if (has(query, key)) {
         this.setValue(query[key]);
       }
