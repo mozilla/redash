@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { each } from 'lodash';
 import visualizationRegistry from '@/visualizations/registry';
 import Filters from './Filters';
+
 
 export default class VisualizationRenderer extends React.Component {
   static propTypes = {
@@ -9,7 +11,7 @@ export default class VisualizationRenderer extends React.Component {
     visualization: PropTypes.object.isRequired,
     setFilters: PropTypes.func.isRequired,
     filters: PropTypes.array.isRequired,
-    data: PropTypes.array.isRequired,
+    data: PropTypes.object.isRequired,
   }
 
   render() {

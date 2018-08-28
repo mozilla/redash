@@ -7,7 +7,7 @@ import Select from 'react-select';
 import { Modal } from 'react-bootstrap';
 import { SortableContainer, SortableElement, SortableHandle, arrayMove } from 'react-sortable-hoc';
 import DateTimeInput from './DateTimeInput';
-import DateTimeRangeInput from '@/components/DateTimeRangeInput';
+import DateTimeRangeInput from './DateTimeRangeInput';
 import QueryBasedParameter from './QueryBasedParameter';
 
 function extractEnumOptions(enumOptions) {
@@ -118,7 +118,7 @@ export default class Parameters extends React.Component {
             onSelect={e => this.onParamChange(e, value)}
             withSeconds
           />);
-      } else if (['datetime-range', 'date-range'].find(value.type)) {
+      } else if (value.type === 'datetime-range' || value.type === 'date-range') {
         paramInput = (
           <DateTimeRangeInput
             clientConfig={this.props.clientConfig}

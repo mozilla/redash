@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
-import { includes, some, union, uniq } from 'lodash';
+import { includes, map, some, union, uniq } from 'lodash';
 import moment from 'moment';
 
 import FlexResizable from './FlexResizable';
@@ -75,9 +75,10 @@ function getFilters(queryResult) {
         name,
         friendlyName: getColumnFriendlyName(name),
         column: col,
-        values: [],
+        values: uniq(map(queryResult.data.rows, name), v => (moment.isMoment(v) ? v.unix() : v)),
         multiple: (type === 'multiFilter') || (type === 'multi-filter'),
       };
+      filter.current = [filter.values[0]];
       filters.push(filter);
     }
   });
@@ -97,7 +98,7 @@ function filterData(filters, queryResult) {
           // We compare with either the value or the String representation of the value,
           // because Select2 casts true/false to "true"/"false".
           return (v === value || String(value) === v);
-        }))), true),
+        })), true)),
   };
 }
 
@@ -136,7 +137,7 @@ class QueryViewMain extends React.Component {
   static getDerivedStateFromProps(newProps, oldState) {
     if (newProps.queryResult &&
         newProps.queryResult.fulfilled &&
-        oldState.queryResult !== newProps.queryResult.value) {
+        oldState.queryResult !== newProps.queryResult.value.query_result) {
       const data = newProps.queryResult.value.query_result;
       const filters = getFilters(data);
       return {
@@ -148,7 +149,7 @@ class QueryViewMain extends React.Component {
     return null;
   }
 
-  setFilters = filters => this.setState({ filters })
+  setFilters = filters => this.setState({ filters, filteredData: filterData(filters, this.state.queryResult) })
 
   canExecuteQuery = () => this.props.currentUser.hasPermission('execute_query') && !this.props.dataSource.view_only
 
@@ -225,6 +226,7 @@ class QueryViewMain extends React.Component {
                     updateQuery={this.updateQueryText}
                     dataSource={this.props.dataSource}
                     dataSources={this.props.dataSources}
+                    KeyboardShortcuts={this.props.KeyboardShortcuts}
                   />
                 </FlexResizable> : null}
               <QueryMetadata

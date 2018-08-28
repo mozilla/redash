@@ -39,14 +39,16 @@ export default class Filters extends React.Component {
 
     return { label: firstValue, value: firstValue, filter };
   }
-  changeFilters = (change) => {
+  changeFilters = (change, i) => {
     const f = { ...change.filter };
     if (f.multiple) {
       f.current = [...f.current, change.value];
     } else {
       f.current = [change.value];
     }
-    this.props.onChange({ ...this.props.filters, [change.label]: f });
+    const filters = Array.from(this.props.filters);
+    filters[i] = f;
+    this.props.onChange(filters);
   }
 
   render() {
@@ -57,7 +59,7 @@ export default class Filters extends React.Component {
     return (
       <div className="parameter-container container bg-white">
         <div className="row">
-          {this.props.filters.map(fi => (
+          {this.props.filters.map((fi, i) => (
             <div key={fi.name} className="col-sm-6 p-l-0 filter-container">
               <label>{fi.friendlyName}</label>
               <Select
@@ -66,7 +68,7 @@ export default class Filters extends React.Component {
                 value={fi.current && (fi.multiple ? fi.current : fi.current[0])}
                 multi={fi.multiple}
                 clearable={false}
-                onChange={this.changeFilters}
+                onChange={ch => this.changeFilters(ch, i)}
                 placeholder={`Select value for ${fi.friendlyName}...`}
               />
             </div>

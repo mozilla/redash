@@ -17,7 +17,7 @@ function RdTab(props) {
 }
 
 RdTab.propTypes = {
-  tabId: PropTypes.string.isRequired,
+  tabId: PropTypes.number.isRequired,
   selectedTab: PropTypes.object.isRequired,
   // basePath: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,

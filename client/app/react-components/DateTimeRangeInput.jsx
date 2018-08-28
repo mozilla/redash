@@ -8,7 +8,7 @@ import 'antd/lib/style/core/iconfont.less';
 import 'antd/lib/input/style/index.less';
 import 'antd/lib/date-picker/style/index.less';
 
-function DateTimeRangeInput({
+export default function DateTimeRangeInput({
   value,
   withSeconds,
   onSelect,
@@ -53,8 +53,3 @@ DateTimeRangeInput.defaultProps = {
   withSeconds: false,
   onSelect: () => {},
 };
-
-export default function init(ngModule) {
-  ngModule.component('dateTimeRangeInput', react2angular(DateTimeRangeInput, null, ['clientConfig']));
-}
-
