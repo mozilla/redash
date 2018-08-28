@@ -167,7 +167,7 @@ export default class Parameters extends React.Component {
             onSelect={e => this.onParamChange(e, value)}
             withSeconds
           />);
-      } else if (['datetime-range', 'date-range'].find(value.type)) {
+      } else if (value.type === 'datetime-range' || value.type === 'date-range') {
         paramInput = (
           <DateTimeRangeInput
             clientConfig={this.props.clientConfig}

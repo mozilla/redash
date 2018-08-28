@@ -123,6 +123,7 @@ class QueryViewTop extends React.Component {
           executeQuery={this.props.executeQuery}
           executeQueryResponse={this.props.executeQueryResponse}
           updateQuery={this.updateQuery}
+          KeyboardShortcuts={this.props.KeyboardShortcuts}
         />
       </div>
     );

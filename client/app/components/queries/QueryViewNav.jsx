@@ -35,7 +35,7 @@ export default class QueryViewNav extends React.Component {
       <FlexResizable direction="right" elementName="nav">
         <div className="editor__left__data-source">
           <Select
-            value={this.props.dataSource}
+            value={{ value: this.props.dataSource.id, label: this.props.dataSource.name }}
             onChange={this.props.setDataSource}
             disabled={!isQueryOwner || !this.props.sourceMode}
             placeholder="Select Data Source..."
