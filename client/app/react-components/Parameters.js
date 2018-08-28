@@ -47,6 +47,7 @@ function parseParameter(origParam, value) {
 export default class Parameters extends React.Component {
   static propTypes = {
     clientConfig: PropTypes.object.isRequired,
+    queryId: PropTypes.number.isRequired,
     parameters: PropTypes.array.isRequired,
     syncValues: PropTypes.bool.isRequired,
     editable: PropTypes.bool.isRequired,
@@ -65,15 +66,15 @@ export default class Parameters extends React.Component {
   }
 
   onParamChange = (e, param, index) => {
+    const newParams = [...this.props.parameters];
+    newParams[index] = parseParameter(param, e.target.value);
     if (this.props.syncValues) {
       const searchParams = new URLSearchParams(window.location.search);
-      this.parameters.forEach((p) => {
-        searchParams.set(`p_${p.name}_${p.queryId}`, p.value);
+      newParams.forEach((p) => {
+        searchParams.set(`p_${p.name}_${this.props.queryId}`, p.value);
       });
       history.pushState(null, '', `${window.location.pathname}?${searchParams.toString()}`);
     }
-    const newParams = [...this.props.parameters];
-    newParams[index] = parseParameter(param, e.target.value);
     this.props.onChange(newParams);
   };
 
@@ -98,7 +99,7 @@ export default class Parameters extends React.Component {
       let paramInput;
       if (value.type === 'enum') {
         paramInput = (
-          <select id={value.name} value={value.value} onChange={e => this.onParamChange(e, value)} className="form-control">
+          <select id={value.name} value={value.value} onChange={onChange} className="form-control">
             {extractEnumOptions(value.enumOptions).map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>);
       } else if (value.type === 'query') {
@@ -154,7 +155,7 @@ export default class Parameters extends React.Component {
     const SortableList = SortableContainer(({ items }) => (
       <div className="parameter-container form-inline bg-white">
         {items.map((param, index) => (
-          <SortableItem key={`item-${param.name}`} index={index} value={param} />
+          <SortableItem key={`item-${param.name}`} index={index} sortIndex={index} value={param} />
         ))}
       </div>
     ));

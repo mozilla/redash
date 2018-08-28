@@ -1,10 +1,45 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import 'react-select/dist/react-select.css';
+import { each } from 'lodash';
 import { DropdownButton, MenuItem, OverlayTrigger, Popover } from 'react-bootstrap';
 
 import EditInPlaceText from './EditInPlaceText';
 import Overlay from './Overlay';
+
+function getUrl(q, source, hash) {
+  let url = `queries/${q.id}`;
+
+  if (source) {
+    url += '/source';
+  }
+
+  let params = '';
+  if (window.location.search) {
+    const searchParams = new URLSearchParams(window.location.search);
+    each(searchParams.entries(), ([value, name]) => {
+      if (value === null) {
+        return;
+      }
+
+      if (params !== '') {
+        params += '&';
+      }
+
+      params += `p_${encodeURIComponent(name)}_${q.id}=${encodeURIComponent(value)}`;
+    });
+  }
+
+  if (params !== '') {
+    url += `?${params}`;
+  }
+
+  if (hash) {
+    url += `#${hash}`;
+  }
+
+  return url;
+}
 
 export default class QueryViewHeader extends React.Component {
   static propTypes = {
@@ -131,23 +166,15 @@ export default class QueryViewHeader extends React.Component {
              (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin')) ?
                <button className="btn btn-default btn-publish" onClick={this.togglePublished}>
                  <span className="fa fa-paper-plane" /> Publish
-               </button> : ''}
+               </button> : null}
 
-            {this.props.query.id && this.props.canViewSource && this.props.sourceMode ?
-              <React.Fragment>
-                <a
-                  href={this.props.query.getUrl(true, this.props.selectedTab)}
-                  className="btn btn-default btn--showhide"
-                ><i className="fa fa-code" aria-hidden="true" />
-                  Edit Source
-                </a>
-                <a
-                  href={this.props.query.getUrl(false, this.props.selectedTab)}
-                  className="btn btn-default btn--showhide"
-                ><i className="fa fa-table" aria-hidden="true" />
-                  Show Data Only
-                </a>
-              </React.Fragment> : ''}
+            {this.props.query.id && this.props.currentUser.hasPermission('view_source') ?
+              <a
+                href={getUrl(this.props.query, !this.props.sourceMode, this.props.selectedTab)}
+                className="btn btn-default btn--showhide"
+              ><i className={'fa fa-' + (this.props.sourceMode ? 'table' : 'code')} aria-hidden="true" />
+                {this.props.sourceMode ? 'Show Data Only' : 'Edit Source'}
+              </a> : null}
 
             {this.props.query.id ?
               <DropdownButton

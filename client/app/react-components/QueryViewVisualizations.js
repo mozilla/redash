@@ -47,7 +47,7 @@ export default class QueryViewVisualizations extends React.Component {
     };
   }
 
-  setParameters = parameters => this.props.updateQuery({ options: { ...this.query.options, parameters } })
+  setParameters = parameters => this.props.updateQuery({ options: { ...this.props.query.options, parameters } })
 
   setSelectedTab = (e, tabId) => this.setState({ selectedTab: find(this.props.query.visualizations, { id: tabId }) })
 
@@ -67,6 +67,7 @@ export default class QueryViewVisualizations extends React.Component {
             <div className="p-t-15 p-b-15">
               <Parameters
                 clientConfig={this.props.clientConfig}
+                queryId={this.props.query.id}
                 parameters={this.props.query.options.parameters}
                 syncValues={!!this.props.query.id}
                 editable={this.props.sourceMode && this.props.canEdit}
