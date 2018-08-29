@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { map } from 'lodash';
-import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Button, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { PromiseState } from 'react-refetch';
 
 import AceEditor from 'react-ace';
@@ -196,9 +196,9 @@ export default class QueryEditor extends React.Component {
                 </button>
               </OverlayTrigger>
               <OverlayTrigger placement="top" overlay={acTooltip}>
-                <button type="button" className="btn btn-default" onClick={() => this.setState({ autocompleteQuery: !this.state.autocompleteQuery })} active={this.state.autocompleteQuery}>
+                <Button active={this.state.autocompleteQuery} bsStyle="default" onClick={() => this.setState({ autocompleteQuery: !this.state.autocompleteQuery })} >
                   <span className="fa fa-magic" />
-                </button>
+                </Button>
               </OverlayTrigger>
 
 
