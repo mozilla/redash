@@ -37,6 +37,7 @@ export default class QueryViewNav extends React.Component {
           <Select
             value={{ value: this.props.dataSource.id, label: this.props.dataSource.name }}
             onChange={this.props.setDataSource}
+            clearable={false}
             disabled={!isQueryOwner || !this.props.sourceMode}
             placeholder="Select Data Source..."
             options={this.props.dataSources.map(d => ({ value: d.id, label: d.name }))}

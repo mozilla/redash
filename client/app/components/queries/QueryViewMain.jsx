@@ -108,6 +108,7 @@ class QueryViewMain extends React.Component {
     query: PropTypes.instanceOf(PromiseState).isRequired,
     updateAndSaveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
+    isDirty: PropTypes.bool.isRequired,
     queryResult: PropTypes.instanceOf(PromiseState).isRequired,
     dataSources: PropTypes.array.isRequired,
     dataSource: PropTypes.object.isRequired,
@@ -217,10 +218,12 @@ class QueryViewMain extends React.Component {
                     formatQuery={this.props.formatQuery}
                     autocompleteQuery={this.autocompleteQuery}
                     schema={this.props.schema}
+                    isDirty={this.props.isDirty}
                     isQueryOwner={this.props.isQueryOwner}
                     updateDataSource={this.updateDataSource}
                     executeQuery={this.props.executeQuery}
                     canExecuteQuery={this.canExecuteQuery()}
+                    canEdit={this.props.canEdit}
                     listenForResize={this.listenForResize}
                     saveQuery={this.saveQuery}
                     updateQuery={this.updateQueryText}

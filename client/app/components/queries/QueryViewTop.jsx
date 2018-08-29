@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
-import { ToastContainer } from 'react-toastr';
+import { ToastContainer, ToastMessage } from 'react-toastr';
 import QueryViewHeader from './QueryViewHeader';
 import QueryViewMain from './QueryViewMain';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
@@ -28,7 +28,6 @@ class QueryViewTop extends React.Component {
     super(props);
     this.toastRef = React.createRef();
     this.state = {
-      isDirty: false,
       query: null,
       // XXX get this with refetch?
       // latestQueryData: null,
@@ -78,12 +77,12 @@ class QueryViewTop extends React.Component {
   updateAndSaveQuery = (changes) => {
     const query = Object.assign({}, this.state.query, changes);
     this.setState({ query });
-    this.props.saveQuery(query).then(() =>
-      this.toastRef.current.success('Query saved')).catch(() =>
-      this.toastRef.current.error('Query could not be saved'));
+    this.props.saveQuery(query);
   }
 
   updateQuery = changes => this.setState({ query: Object.assign({}, this.state.query, changes) })
+
+  isDirty = () => this.state.query.query !== this.props.query.value.query
 
   render() {
     if (!(this.props.query.fulfilled && this.props.dataSources && this.props.dataSources.fulfilled)) {
@@ -93,10 +92,14 @@ class QueryViewTop extends React.Component {
     const dataSources = this.props.dataSources.value;
     const dataSource = this.getDataSource();
     const canEdit = this.props.currentUser.canEdit(this.state.query) || this.state.query.can_edit;
+    let maybeToastMessage = null;
+    if (this.props.saveQueryResponse) {
+      maybeToastMessage = <ToastMessage message={this.props.saveQueryResponse.fulfilled ? 'Query saved' : this.props.saveQueryResponse.rejected ? 'Query could not be saved' : false} />;
+    }
     return (
       <div className="query-page-wrapper">
-        {canEdit ? <AlertUnsavedChanges isDirty={this.state.isDirty} onChangeLocation={this.onChangeLocation} /> : null}
-        <ToastContainer ref={this.toastRef} className="toast" />
+        {canEdit ? <AlertUnsavedChanges isDirty={this.isDirty()} onChangeLocation={this.onChangeLocation} /> : null}
+        {maybeToastMessage}!
         <QueryViewHeader
           canEdit={canEdit}
           query={query}
@@ -116,6 +119,7 @@ class QueryViewTop extends React.Component {
           baseQuery={query}
           queryResult={this.props.queryResult}
           updateAndSaveQuery={this.updateAndSaveQuery}
+          isDirty={this.isDirty()}
           dataSource={dataSource}
           dataSources={dataSources}
           setDataSource={this.setDataSource}
