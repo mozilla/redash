@@ -94,12 +94,12 @@ class QueryViewTop extends React.Component {
     const canEdit = this.props.currentUser.canEdit(this.state.query) || this.state.query.can_edit;
     let maybeToastMessage = null;
     if (this.props.saveQueryResponse) {
-      maybeToastMessage = <ToastMessage message={this.props.saveQueryResponse.fulfilled ? 'Query saved' : this.props.saveQueryResponse.rejected ? 'Query could not be saved' : false} />;
+      maybeToastMessage = <div id="toast-container" className="toast-bottom-right"><ToastMessage type={this.props.saveQueryResponse.fulfilled ? 'success' : this.props.saveQueryResponse.rejected ? 'error' : null} message={this.props.saveQueryResponse.fulfilled ? 'Query saved' : this.props.saveQueryResponse.rejected ? 'Query could not be saved' : false} /></div>;
     }
     return (
       <div className="query-page-wrapper">
         {canEdit ? <AlertUnsavedChanges isDirty={this.isDirty()} onChangeLocation={this.onChangeLocation} /> : null}
-        {maybeToastMessage}!
+        {maybeToastMessage}
         <QueryViewHeader
           canEdit={canEdit}
           query={query}
