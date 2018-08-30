@@ -117,18 +117,21 @@ export default class SchemaBrowser extends React.Component {
               </span>
             </button> : ''}
         </div>
-        <AutoSizer>
-          {({ width, height }) => (
-            <List
-              ref={this.list}
-              rowCount={this.props.schema.value.schema.length}
-              rowHeight={this.getTableSize}
-              width={width}
-              height={height}
-              rowRenderer={this.schemaRows}
-              className="schema-browser"
-            />)}
-        </AutoSizer>
+        {/* Styles added to tweak AutoSizer/flexbox interaction */}
+        <div style={{ flex: '1 1 auto', marginBottom: 10 }}>
+          <AutoSizer>
+            {({ width, height }) => (
+              <List
+                ref={this.list}
+                rowCount={this.props.schema.value.schema.length}
+                rowHeight={this.getTableSize}
+                width={width}
+                height={height}
+                rowRenderer={this.schemaRows}
+                className="schema-browser"
+              />)}
+          </AutoSizer>
+        </div>
       </div>
     );
   }

@@ -240,6 +240,7 @@ class QueryViewMain extends React.Component {
                 canScheduleQuery={this.props.currentUser.hasPermission('schedule_query')}
                 schedule={this.props.query.value.schedule}
                 clientConfig={this.props.clientConfig}
+                updateQuery={this.updateAndSaveQuery}
               />
               <QueryViewVisualizations
                 clientConfig={this.props.clientConfig}

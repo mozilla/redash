@@ -55,7 +55,6 @@ export default class QueryViewHeader extends React.Component {
   }
 
   saveName = name => name;
-  saveDescription = desc => desc;
 
   togglePublished = () => {
     this.props.Events.record('toggle_published', 'query', this.props.query.id);
@@ -145,18 +144,6 @@ export default class QueryViewHeader extends React.Component {
                   <span className="label label-warning">Archived</span>
                 </OverlayTrigger> : ''}
             </h3>
-
-            <em>
-              <EditInPlaceText
-                className="edit-in-place"
-                editable={this.props.canEdit}
-                onDone={this.saveDescription}
-                editor="textarea"
-                placeholderText="No description"
-                ignoreBlanks={false}
-                value={this.props.query.description}
-              />
-            </em>
           </div>
 
           <div className="col-sm-4 col-xs-5 p-0 source-control text-right">

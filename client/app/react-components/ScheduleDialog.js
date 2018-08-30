@@ -32,17 +32,17 @@ export default class ScheduleDialog extends React.Component {
     show: PropTypes.bool.isRequired,
     query: PropTypes.object.isRequired,
     refreshOptions: PropTypes.arrayOf(PropTypes.number).isRequired,
-    saveQuery: PropTypes.func.isRequired,
+    updateQuery: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
   }
 
-  setTime = (h, m) => this.props.saveQuery({}, {
+  setTime = (h, m) => this.props.updateQuery({
     schedule: moment().hour(h).minute(m).utc()
       .format('HH:mm'),
   })
-  setInterval = e => this.props.saveQuery({}, { schedule: e.target.value })
-  setKeep = e => this.props.saveQuery({}, { schedule_resultset_size: e.target.value })
-  setScheduleUntil = e => this.props.saveQuery({}, { schedule_until: e.target.value })
+  setInterval = e => this.props.updateQuery({ schedule: e.target.value })
+  setKeep = e => this.props.updateQuery({ schedule_resultset_size: e.target.value })
+  setScheduleUntil = e => this.props.updateQuery({ schedule_until: e.target.value })
   render() {
     const schedule = this.props.query.schedule;
     const hasDailySchedule = schedule && schedule.match(/\d\d:\d\d/) !== null;
@@ -65,7 +65,7 @@ export default class ScheduleDialog extends React.Component {
         <Modal.Body>
           <div className="radio">
             <label>
-              <input type="radio" checked={!hasDailySchedule} onChange={() => this.saveQuery({}, { schedule })} />
+              <input type="radio" checked={!hasDailySchedule} onChange={() => this.updateQuery({ schedule })} />
               <select
                 disabled={hasDailySchedule}
                 value={schedule}
