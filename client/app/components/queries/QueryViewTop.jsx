@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
-import { ToastContainer, ToastMessage } from 'react-toastr';
+import { ToastMessageAnimated } from 'react-toastr';
 import QueryViewHeader from './QueryViewHeader';
 import QueryViewMain from './QueryViewMain';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
@@ -35,11 +35,24 @@ class QueryViewTop extends React.Component {
   }
 
   static getDerivedStateFromProps(newProps, oldState) {
+    const state = {};
+    if (newProps.query.pending) {
+      state.query = null;
+    }
     // create shallow copy of query contents once loaded
     if (!oldState.query && newProps.query.fulfilled) {
-      return { query: { ...newProps.query.value } };
+      state.query = { ...newProps.query.value };
     }
-    return null;
+    if (newProps.saveQueryResponse) {
+      if (newProps.saveQueryResponse.pending) {
+        state.toast = null;
+      } else if (newProps.saveQueryResponse.fulfilled) {
+        state.toast = 'success';
+      } else if (newProps.saveQueryResponse.rejected) {
+        state.toast = 'error';
+      }
+    }
+    return state;
   }
 
 
@@ -92,14 +105,14 @@ class QueryViewTop extends React.Component {
     const dataSources = this.props.dataSources.value;
     const dataSource = this.getDataSource();
     const canEdit = this.props.currentUser.canEdit(this.state.query) || this.state.query.can_edit;
-    let maybeToastMessage = null;
-    if (this.props.saveQueryResponse) {
-      maybeToastMessage = <div id="toast-container" className="toast-bottom-right"><ToastMessage type={this.props.saveQueryResponse.fulfilled ? 'success' : this.props.saveQueryResponse.rejected ? 'error' : null} message={this.props.saveQueryResponse.fulfilled ? 'Query saved' : this.props.saveQueryResponse.rejected ? 'Query could not be saved' : false} /></div>;
-    }
+    const toastMessages = {
+      success: 'Query saved',
+      error: 'Query could not be saved',
+    };
     return (
       <div className="query-page-wrapper">
         {canEdit ? <AlertUnsavedChanges isDirty={this.isDirty()} onChangeLocation={this.onChangeLocation} /> : null}
-        {maybeToastMessage}
+        {this.state.toast && <div id="toast-container" className="toast-bottom-right"><ToastMessageAnimated type={this.state.toast} message={toastMessages[this.state.toast]} /></div>}
         <QueryViewHeader
           canEdit={canEdit}
           query={query}
@@ -156,9 +169,10 @@ function fetchQuery(props) {
       saveQuery: newQuery => ({
         query: { value: newQuery },
         saveQueryResponse: {
+          force: true,
           url: `${props.clientConfig.basePath}api/queries/${props.queryId}`,
           method: 'POST',
-          body: newQuery,
+          body: JSON.stringify(newQuery),
         },
       }),
       executeQuery: query => ({
