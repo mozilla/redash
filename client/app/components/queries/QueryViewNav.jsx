@@ -61,7 +61,7 @@ export default class QueryViewNav extends React.Component {
         <QueryMetadata
           mobile={false}
           query={this.props.query}
-          saveQuery={this.props.updateAndSaveQuery}
+          updateQuery={this.props.updateAndSaveQuery}
           canEdit={this.props.canEdit}
           canScheduleQuery={canScheduleQuery}
           clientConfig={this.props.clientConfig}
