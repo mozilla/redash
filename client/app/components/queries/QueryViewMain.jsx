@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
-import { includes, map, some, union, uniq } from 'lodash';
+import { difference, includes, map, some, union, uniq } from 'lodash';
 import moment from 'moment';
 
 import FlexResizable from './FlexResizable';
@@ -167,13 +167,30 @@ class QueryViewMain extends React.Component {
 
   saveQuery = () => this.props.updateAndSaveQuery({})
 
-  updateQueryText = newText => this.props.updateQuery({
-    query: newText,
-    options: {
-      ...this.props.query.value.options,
-      parameters: parseQuery(newText),
-    },
-  })
+  updateQueryText = (newText) => {
+    let paramNames;
+    try {
+      paramNames = parseQuery(newText);
+    } catch (p) {
+      // don't update params if parse fails
+    }
+    if (this.props.query.options && this.props.query.options.parameters) {
+      paramNames = difference(paramNames, map(this.props.query.options.parameters, 'name'));
+    }
+    this.props.updateQuery({
+      query: newText,
+      options: {
+        ...this.props.query.value.options,
+        parameters: map(paramNames, n => ({
+          title: n,
+          name: n,
+          type: 'text',
+          value: null,
+          global: false,
+        })),
+      },
+    });
+  }
 
   render() {
     return (
