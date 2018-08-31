@@ -65,9 +65,9 @@ export default class Parameters extends React.Component {
     };
   }
 
-  onParamChange = (e, param, index) => {
+  onParamChange = (value, param, index) => {
     const newParams = [...this.props.parameters];
-    newParams[index] = parseParameter(param, e.target.value);
+    newParams[index] = parseParameter(param, value);
     if (this.props.syncValues) {
       const searchParams = new URLSearchParams(window.location.search);
       newParams.forEach((p) => {
@@ -84,6 +84,12 @@ export default class Parameters extends React.Component {
 
   showParameterSettings = param => this.setState({ showSettings: param })
 
+  updateParameterSettings = (settings, index) => {
+    const params = [...this.props.parameters];
+    params[index] = { ...params[index], ...settings };
+    this.props.onChange(params);
+  }
+
   searchQueries = searchText => fetch(`${this.props.clientConfig.basePath}api/queries/search?q=${searchText}`).then(r => r.json()).then(qs => qs.map(q => ({ value: q.id, label: q.name })))
 
   render() {
@@ -94,7 +100,7 @@ export default class Parameters extends React.Component {
     /* eslint-disable-next-line jsx-a11y/label-has-for */
     const LabelHandle = SortableHandle(({ value }) => <label className="parameter-label" htmlFor={value.name}>{value.title}</label>);
     const SortableItem = SortableElement(({ value, sortIndex }) => {
-      const onChange = e => this.onParamChange(e, value, sortIndex);
+      const onChange = e => this.onParamChange(e.target.value, value, sortIndex);
       const paramText = formatParameter(value);
       let paramInput;
       if (value.type === 'enum') {
@@ -109,14 +115,14 @@ export default class Parameters extends React.Component {
           <DateTimeInput
             clientConfig={this.props.clientConfig}
             value={value.ngModel}
-            onSelect={e => this.onParamChange(e, value)}
+            onSelect={onChange}
           />);
       } else if (value.type === 'datetime-with-seconds') {
         paramInput = (
           <DateTimeInput
             clientConfig={this.props.clientConfig}
             value={value.ngModel}
-            onSelect={e => this.onParamChange(e, value)}
+            onSelect={onChange}
             withSeconds
           />);
       } else if (value.type === 'datetime-range' || value.type === 'date-range') {
@@ -124,14 +130,14 @@ export default class Parameters extends React.Component {
           <DateTimeRangeInput
             clientConfig={this.props.clientConfig}
             value={value.ngModel}
-            onSelect={e => this.onParamChange(e, value)}
+            onSelect={onChange}
           />);
       } else if (value.type === 'datetime-range-with-seconds') {
         paramInput = (
           <DateTimeRangeInput
             clientConfig={this.props.clientConfig}
             value={value.ngModel}
-            onSelect={e => this.onParamChange(e, value)}
+            onSelect={onChange}
             withSeconds
           />);
       } else {
@@ -143,7 +149,7 @@ export default class Parameters extends React.Component {
           {this.props.editable ? (
             <button
               className="btn btn-default btn-xs"
-              onClick={() => this.showParameterSettings(value)}
+              onClick={() => this.showParameterSettings(sortIndex)}
             >
               <i className="zmdi zmdi-settings" />
             </button>) : ''}
@@ -159,22 +165,30 @@ export default class Parameters extends React.Component {
         ))}
       </div>
     ));
-    let modal = '';
-    if (this.state.showSettings) {
+    let modal = null;
+    if (this.state.showSettings != null) {
+      const param = this.props.parameters[this.state.showSettings];
+      const setParamType = e => this.updateParameterSettings({ type: e.target.value }, this.state.showSettings);
+      const setParamTitle = e => this.updateParameterSettings({ title: e.target.value }, this.state.showSettings);
+      const setParamGlobal = e => this.updateParameterSettings({ global: e.target.value }, this.state.showSettings);
+      const setParamEnumOptions = e => this.updateParameterSettings(
+        { enumOptions: e.target.value },
+        this.state.showSettings,
+      );
       modal = (
-        <Modal show={!!this.state.showSettings}>
-          <Modal.Header>
-            <Modal.Title>{this.state.showSettings.name}</Modal.Title>
+        <Modal show onHide={() => this.setState({ showSettings: null })}>
+          <Modal.Header closeButton>
+            <Modal.Title>{param.name}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <div className="form">
               <div className="form-group">
                 <label>Title</label>
-                <input type="text" className="form-control" value={this.state.showSettings.title} onChange={this.setParamTitle} />
+                <input type="text" className="form-control" value={param.title} onChange={setParamTitle} />
               </div>
               <div className="form-group">
                 <label>Type</label>
-                <select value={this.showSettings.type} onChange={this.setParamType} className="form-control">
+                <select value={param.type} onChange={setParamType} className="form-control">
                   <option value="text">Text</option>
                   <option value="number">Number</option>
                   <option value="enum">Dropdown List</option>
@@ -186,19 +200,19 @@ export default class Parameters extends React.Component {
               </div>
               <div className="form-group">
                 <label>
-                  <input type="checkbox" className="form-inline" checked={this.state.showSettings.global} onChange={this.setParamGlobal} />
+                  <input type="checkbox" className="form-inline" checked={param.global} onChange={setParamGlobal} />
                   Global
                 </label>
               </div>
-              {this.state.showSettings.type === 'enum' ?
+              {param.type === 'enum' ?
                 <div className="form-group">
                   <label>Dropdown List Values (newline delimited)</label>
-                  <textarea className="form-control" rows="3" value={this.state.showSettings.enumOptions} onChange={this.setParamEnumOptions} />
-                </div> : this.state.showSettings.type === 'query' ?
+                  <textarea className="form-control" rows="3" value={param.enumOptions} onChange={setParamEnumOptions} />
+                </div> : param.type === 'query' ?
                   <div className="form-group">
                     <label>Query to load dropdown values from:</label>
                     <Select.Async
-                      value={this.state.showSettings.queryId}
+                      value={param.queryId}
                       placeholder="Search a query by name"
                       loadOptions={searchText => (searchText.length > 3 ? this.searchQueries(searchText) : null)}
                     />
