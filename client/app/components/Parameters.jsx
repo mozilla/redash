@@ -1,15 +1,14 @@
-/* eslint-disable no-nested-ternary */
-
 import { capitalize, includes, words } from 'lodash';
 import { react2angular } from 'react2angular';
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
-import Select from 'antd/lib/select';
-import Modal from 'antd/lib/modal';
+
 import { SortableContainer, SortableElement, SortableHandle, arrayMove } from 'react-sortable-hoc';
 import DateTimeInput from './DateTimeInput';
-import DateTimeRangeInput from '@/components/DateTimeRangeInput';
+import DateTimeRangeInput from './DateTimeRangeInput';
+import ParameterSettings from './ParameterSettings';
 import QueryBasedParameter from './QueryBasedParameter';
 import parameterSettingsTemplate from './parameter-settings.html';
 
@@ -111,7 +110,6 @@ export default class Parameters extends React.Component {
     super(props);
     this.state = {
       showSettings: null,
-      querySearchResults: [],
     };
   }
 
@@ -134,13 +132,13 @@ export default class Parameters extends React.Component {
 
   showParameterSettings = param => this.setState({ showSettings: param })
 
-  updateParameterSettings = (settings, index) => {
+  updateParameter = (settings) => {
     const params = [...this.props.parameters];
-    params[index] = { ...params[index], ...settings };
+    params[this.state.showSettings] = { ...params[this.state.showSettings], ...settings };
     this.props.onChange(params);
   }
 
-  searchQueries = searchText => searchText.length > 3 && window.fetch(`${this.props.clientConfig.basePath}api/queries/search?q=${searchText}`).then(r => r.json()).then(qs => this.setState({ querySearchResults: qs }))
+  hideModal = () => this.setState({ showSettings: null })
 
   render() {
     const searchParams = new window.URLSearchParams(window.location.search);
@@ -214,77 +212,22 @@ export default class Parameters extends React.Component {
         ))}
       </div>
     ));
-    let modal = null;
-    if (this.state.showSettings != null) {
-      const param = this.props.parameters[this.state.showSettings];
-      const setParamType = e => this.updateParameterSettings({ type: e.target.value }, this.state.showSettings);
-      const setParamTitle = e => this.updateParameterSettings({ title: e.target.value }, this.state.showSettings);
-      const setParamGlobal = e => this.updateParameterSettings({ global: e.target.value }, this.state.showSettings);
-      const setParamEnumOptions = e => this.updateParameterSettings(
-        { enumOptions: e.target.value },
-        this.state.showSettings,
-      );
-      modal = (
-        <Modal
-          visible
-          title={param.name}
-          footer={null}
-          onCancel={() => this.setState({ showSettings: null })}
-        >
-          <div className="form">
-            <div className="form-group">
-              <label>Title</label>
-              <input type="text" className="form-control" value={param.title} onChange={this.setParamTitle} />
-            </div>
-            <div className="form-group">
-              <label>Type</label>
-              <select value={param.type} onChange={this.setParamType} className="form-control">
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="enum">Dropdown List</option>
-                <option value="query">Query Based Dropdown List</option>
-                <option value="date">Date</option>
-                <option value="datetime-local">Date and Time</option>
-                <option value="datetime-with-seconds">Date and Time (with seconds)</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>
-                <input type="checkbox" className="form-inline" checked={param.global} onChange={this.setParamGlobal} />
-                Global
-              </label>
-            </div>
-            {param.type === 'enum' ?
-              <div className="form-group">
-                <label>Dropdown List Values (newline delimited)</label>
-                <textarea className="form-control" rows="3" value={param.enumOptions} onChange={this.setParamEnumOptions} />
-              </div> : param.type === 'query' ?
-                <div className="form-group">
-                  <label>Query to load dropdown values from:</label>
-                  <Select
-                    value={param.queryId}
-                    placeholder="Search a query by name"
-                    onSearch={this.searchQueries}
-                    onChange={this.setQuery}
-                    notFoundContent={null}
-                  >
-                    {this.state.querySearchResults.map(q => <Select.Option key={q.id}>{q.name}</Select.Option>)}
-                  </Select>
-                </div> : '' }
-          </div>
-        </Modal>
-      );
-    }
     return (
       <React.Fragment>
-        {modal}
+        <ParameterSettings
+          show={this.state.showSettings != null}
+          parameter={this.props.parameters[this.state.showSettings]}
+          updateParameter={this.updateParameter}
+          onHide={this.hideModal}
+          clientConfig={this.props.clientConfig}
+        />
         <SortableList useDragHandle axis="x" distance={4} items={this.props.parameters} onSortEnd={this.onSortEnd} />
       </React.Fragment>
     );
   }
 }
 
-export default function init(ngModule) {
+function init(ngModule) {
   ngModule.component('parameters', react2angular(Parameters, null, ['Query', '$uibModal']));
   ngModule.component('queryBasedParameter', react2angular(QueryBasedParameter, null, ['Query']));
   ngModule.component('parameterSettings', ParameterSettingsComponent);

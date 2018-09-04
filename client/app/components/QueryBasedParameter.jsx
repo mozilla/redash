@@ -43,9 +43,16 @@ function optionsFromQueryResult(queryResult) {
 }
 
 export default class QueryBasedParameter extends React.Component {
-  propTypes = {
+  static propTypes = {
     param: PropTypes.object.isRequired,
     queryId: PropTypes.number.isRequired,
+  }
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      queryResultOptions: [],
+    };
   }
 
   componentDidUpdate(prevProps) {
@@ -58,10 +65,6 @@ export default class QueryBasedParameter extends React.Component {
         }
       });
     }
-  }
-
-  initialState = {
-    queryResultOptions: null,
   }
 
   render() {
