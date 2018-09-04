@@ -1,13 +1,10 @@
-/* eslint-disable no-nested-ternary */
-
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
-import Select from 'react-select';
-import { Modal } from 'react-bootstrap';
 import { SortableContainer, SortableElement, SortableHandle, arrayMove } from 'react-sortable-hoc';
 import DateTimeInput from './DateTimeInput';
 import DateTimeRangeInput from './DateTimeRangeInput';
+import ParameterSettings from './ParameterSettings';
 import QueryBasedParameter from './QueryBasedParameter';
 
 function extractEnumOptions(enumOptions) {
@@ -84,13 +81,12 @@ export default class Parameters extends React.Component {
 
   showParameterSettings = param => this.setState({ showSettings: param })
 
-  updateParameterSettings = (settings, index) => {
+  updateParameter = (settings) => {
     const params = [...this.props.parameters];
-    params[index] = { ...params[index], ...settings };
+    params[this.state.showSettings] = { ...params[this.state.showSettings], ...settings };
     this.props.onChange(params);
   }
-
-  searchQueries = searchText => fetch(`${this.props.clientConfig.basePath}api/queries/search?q=${searchText}`).then(r => r.json()).then(qs => qs.map(q => ({ value: q.id, label: q.name })))
+  hideModal = () => this.setState({ showSettings: null })
 
   render() {
     const searchParams = new URLSearchParams(window.location.search);
@@ -165,66 +161,15 @@ export default class Parameters extends React.Component {
         ))}
       </div>
     ));
-    let modal = null;
-    if (this.state.showSettings != null) {
-      const param = this.props.parameters[this.state.showSettings];
-      const setParamType = e => this.updateParameterSettings({ type: e.target.value }, this.state.showSettings);
-      const setParamTitle = e => this.updateParameterSettings({ title: e.target.value }, this.state.showSettings);
-      const setParamGlobal = e => this.updateParameterSettings({ global: e.target.value }, this.state.showSettings);
-      const setParamEnumOptions = e => this.updateParameterSettings(
-        { enumOptions: e.target.value },
-        this.state.showSettings,
-      );
-      modal = (
-        <Modal show onHide={() => this.setState({ showSettings: null })}>
-          <Modal.Header closeButton>
-            <Modal.Title>{param.name}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="form">
-              <div className="form-group">
-                <label>Title</label>
-                <input type="text" className="form-control" value={param.title} onChange={setParamTitle} />
-              </div>
-              <div className="form-group">
-                <label>Type</label>
-                <select value={param.type} onChange={setParamType} className="form-control">
-                  <option value="text">Text</option>
-                  <option value="number">Number</option>
-                  <option value="enum">Dropdown List</option>
-                  <option value="query">Query Based Dropdown List</option>
-                  <option value="date">Date</option>
-                  <option value="datetime-local">Date and Time</option>
-                  <option value="datetime-with-seconds">Date and Time (with seconds)</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>
-                  <input type="checkbox" className="form-inline" checked={param.global} onChange={setParamGlobal} />
-                  Global
-                </label>
-              </div>
-              {param.type === 'enum' ?
-                <div className="form-group">
-                  <label>Dropdown List Values (newline delimited)</label>
-                  <textarea className="form-control" rows="3" value={param.enumOptions} onChange={setParamEnumOptions} />
-                </div> : param.type === 'query' ?
-                  <div className="form-group">
-                    <label>Query to load dropdown values from:</label>
-                    <Select.Async
-                      value={param.queryId}
-                      placeholder="Search a query by name"
-                      loadOptions={searchText => (searchText.length > 3 ? this.searchQueries(searchText) : null)}
-                    />
-                  </div> : '' }
-            </div>
-          </Modal.Body>
-        </Modal>
-      );
-    }
     return (
       <React.Fragment>
-        {modal}
+        <ParameterSettings
+          show={this.state.showSettings != null}
+          parameter={this.props.parameters[this.state.showSettings]}
+          updateParameter={this.updateParameter}
+          onHide={this.hideModal}
+          clientConfig={this.props.clientConfig}
+        />
         <SortableList useDragHandle axis="x" distance={4} items={this.props.parameters} onSortEnd={this.onSortEnd} />
       </React.Fragment>
     );
