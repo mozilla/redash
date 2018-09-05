@@ -16,6 +16,7 @@ import 'brace/theme/textmate';
 import 'brace/ext/searchbox';
 
 import { DataSource, Schema } from './proptypes';
+import ParameterSettings from './ParameterSettings';
 
 const langTools = ace.acequire('ace/ext/language_tools');
 const snippetsModule = ace.acequire('ace/snippets');
@@ -79,11 +80,10 @@ export default class QueryEditor extends React.Component {
     queryExecuting: PropTypes.bool.isRequired,
     saveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
-    addNewParameter: PropTypes.func.isRequired,
     listenForResize: PropTypes.func.isRequired,
-    listenForEditorCommand: PropTypes.func.isRequired,
-    queryExecuting: PropTypes.bool.isRequired,
     refEditor: PropTypes.element.isRequired,
+    parameters: PropTypes.array.isRequired,
+    updateParameters: PropTypes.func.isRequired,
   }
 
   static defaultProps = {
@@ -98,6 +98,7 @@ export default class QueryEditor extends React.Component {
       schema: null, // eslint-disable-line react/no-unused-state
       keywords: [], // eslint-disable-line react/no-unused-state
       autocompleteQuery: false,
+      addNewParameter: false,
     };
     langTools.addCompleter({
       getCompletions: (state, session, pos, prefix, callback) => {
@@ -132,7 +133,7 @@ export default class QueryEditor extends React.Component {
 
     this.formatQuery = () => {
       this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText);
-    }
+    };
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -151,6 +152,35 @@ export default class QueryEditor extends React.Component {
     return prevState;
   }
 
+  addNewParameter = () => {
+    this.setState({ addNewParameter: true });
+    this.props.updateParameters([
+      ...this.props.parameters,
+      {
+        title: '',
+        name: '',
+        type: 'text',
+        value: null,
+        global: false,
+      }]);
+  }
+  updateParameter = p =>
+    this.props.updateParameters([...this.props.parameters.slice(0, -1),
+      { ...this.props.parameters[this.props.parameters.length - 1], ...p }])
+
+  hideNewParameter = () => {
+    this.setState({ addNewParameter: false });
+    if (this.props.parameters[this.props.parameters.length - 1].name === '') {
+      this.props.updateParameters(this.props.parameters.slice(0, -1));
+    }
+    const editor = this.props.refEditor.current.editor;
+    editor.session.doc.replace(
+      editor.selection.getRange(),
+      `{{${this.props.parameters[this.props.parameters.length - 1].name}}}`,
+    );
+    editor.focus();
+  }
+
   render() {
     const modKey = this.props.KeyboardShortcuts.modKey;
     const parameterTooltip = <Tooltip id="parameterTooltip">Add New Parameter (<i>{modKey} + P</i>)</Tooltip>;
@@ -159,8 +189,18 @@ export default class QueryEditor extends React.Component {
     const executeTooltip = <Tooltip id="executeTooltip">{modKey} + Enter</Tooltip>;
     const acTooltip = <Tooltip id="acTooltip">Autocomplete</Tooltip>;
     const hasDoc = this.props.dataSource.options && this.props.dataSource.options.doc;
+
     return (
       <section style={{ height: '100%' }}>
+        <ParameterSettings
+          show={!!this.state.addNewParameter}
+          parameter={this.props.parameters && this.props.parameters[this.props.parameters.length - 1]}
+          updateParameter={this.updateParameter}
+          onHide={this.hideNewParameter}
+          isNewParameter
+          parameters={this.props.parameters}
+          clientConfig={this.props.clientConfig}
+        />
         <div className="container p-15 m-b-10" style={{ height: '100%' }}>
           <div style={{ height: 'calc(100% - 40px)', marginBottom: '0px' }} className="editor__container">
             <AceEditor
@@ -188,7 +228,7 @@ export default class QueryEditor extends React.Component {
           <div className="editor__control">
             <div className="form-inline d-flex">
               <OverlayTrigger placement="top" overlay={parameterTooltip}>
-                <button type="button" className="btn btn-default m-r-5" onClick={this.props.addNewParameter}>&#123;&#123;&nbsp;&#125;&#125;</button>
+                <button type="button" className="btn btn-default m-r-5" onClick={this.addNewParameter}>&#123;&#123;&nbsp;&#125;&#125;</button>
               </OverlayTrigger>
               <OverlayTrigger placement="top" overlay={formatTooltip}>
                 <button type="button" className="btn btn-default" onClick={this.formatQuery}>

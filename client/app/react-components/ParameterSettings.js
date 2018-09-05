@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 import { Modal } from 'react-bootstrap';
+import { find } from 'lodash';
 
 function searchQueries(basePath, searchText) {
   return fetch(`${basePath}api/queries?q=${searchText}`)
@@ -14,12 +15,14 @@ export default function ParameterSettings({
   onHide,
   parameter,
   updateParameter,
+  isNewParameter,
+  parameters,
   clientConfig,
 }) {
   if (!parameter) {
-    // for now
     return null;
   }
+  const setParamName = e => updateParameter({ name: e.target.value });
   const setParamType = e => updateParameter({ type: e.target.value });
   const setParamTitle = e => updateParameter({ title: e.target.value });
   const setParamGlobal = e => updateParameter({ global: e.target.checked });
@@ -44,6 +47,7 @@ export default function ParameterSettings({
         />
       </div>);
   }
+  const parameterAlreadyExists = find(parameters.slice(0, -1), { name: parameter.name });
   return (
     <Modal show={show} onHide={onHide}>
       <Modal.Header closeButton>
@@ -51,6 +55,14 @@ export default function ParameterSettings({
       </Modal.Header>
       <Modal.Body>
         <div className="form">
+          {isNewParameter ?
+            <div className={'form-group' + (parameterAlreadyExists ? ' has-error' : null)}>
+              <label>Keyword</label>
+              <input type="text" className="form-control" value={parameter.name} onChange={setParamName} autoFocus />
+              <div className="help-block">
+                {parameterAlreadyExists ? 'Parameter with this name already exists.' : 'This is what will be added to your query editor' + (parameter.name !== '' ? `: {{ ${parameter.name} }}` : '') }
+              </div>
+            </div> : null }
           <div className="form-group">
             <label>Title</label>
             <input type="text" className="form-control" value={parameter.title} onChange={setParamTitle} />
@@ -84,6 +96,14 @@ ParameterSettings.propTypes = {
   clientConfig: PropTypes.object.isRequired,
   show: PropTypes.bool.isRequired,
   onHide: PropTypes.func.isRequired,
-  parameter: PropTypes.object.isRequired,
+  isNewParameter: PropTypes.bool,
+  parameter: PropTypes.object,
+  parameters: PropTypes.array,
   updateParameter: PropTypes.func.isRequired,
+};
+
+ParameterSettings.defaultProps = {
+  parameter: null,
+  isNewParameter: false,
+  parameters: [],
 };
