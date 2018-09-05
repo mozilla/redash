@@ -51,6 +51,8 @@ export default class QueryViewHeader extends React.Component {
     dataSource: PropTypes.object.isRequired,
     sourceMode: PropTypes.bool.isRequired,
     showPermissionsControl: PropTypes.bool.isRequired,
+    duplicateQuery: PropTypes.func.isRequired,
+    archiveQuery: PropTypes.func.isRequired,
     Events: PropTypes.object.isRequired,
   }
 
@@ -95,7 +97,7 @@ export default class QueryViewHeader extends React.Component {
         <MenuItem
           key="archiveQuery"
           eventKey="archiveQuery"
-          onSelect={this.archiveQuery}
+          onSelect={this.props.archiveQuery}
         >Archive
         </MenuItem>
       ));
@@ -173,7 +175,7 @@ export default class QueryViewHeader extends React.Component {
                 <MenuItem
                   eventKey="duplicateQuery"
                   className={!this.props.currentUser.hasPermission('edit_query') || !this.props.dataSource || this.props.dataSource.view_only ? 'disabled' : ''}
-                  onSelect={this.duplicateQuery}
+                  onSelect={this.props.duplicateQuery}
                 >
                     Fork
                 </MenuItem>
