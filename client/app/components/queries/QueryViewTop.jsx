@@ -142,6 +142,7 @@ class QueryViewTop extends React.Component {
           showPermissionsControl={this.props.clientConfig.showPermissionsControl}
           duplicateQuery={this.duplicateQuery}
           archiveQuery={this.archiveQuery}
+          clientConfig={this.props.clientConfig}
           Events={this.props.Events}
         />
         <QueryViewMain
