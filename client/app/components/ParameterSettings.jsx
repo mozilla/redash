@@ -2,8 +2,25 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'antd/lib/select';
 import Modal from 'antd/lib/modal';
+import { find } from 'lodash';
 
 export default class ParameterSettings extends React.Component {
+
+  static propTypes = {
+    clientConfig: PropTypes.object.isRequired,
+    show: PropTypes.bool.isRequired,
+    onHide: PropTypes.func.isRequired,
+    isNewParameter: PropTypes.bool,
+    parameter: PropTypes.object,
+    parameters: PropTypes.array,
+    updateParameter: PropTypes.func.isRequired,
+  };
+
+  static defaultProps = {
+    parameter: null,
+    isNewParameter: false,
+    parameters: [],
+  }
 
   constructor(props) {
     super(props);
@@ -24,16 +41,20 @@ export default class ParameterSettings extends React.Component {
       onHide,
       parameter,
       updateParameter,
+      isNewParameter,
+      parameters,
     } = this.props;
     if (!show) {
       // for now
       return null;
     }
+    const setParamName = e => updateParameter({ name: e.target.value });
     const setParamType = e => updateParameter({ type: e.target.value });
     const setParamTitle = e => updateParameter({ title: e.target.value });
     const setParamGlobal = e => updateParameter({ global: e.target.checked });
     const setParamEnumOptions = e => updateParameter({ enumOptions: e.target.value });
     const setQueryId = item => updateParameter({ queryId: item.value, queryName: item.label });
+    const parameterAlreadyExists = find(parameters.slice(0, -1), { name: parameter.name });
     return (
       <Modal
         visible
@@ -42,6 +63,14 @@ export default class ParameterSettings extends React.Component {
         onCancel={onHide}
       >
         <div className="form">
+          {isNewParameter ?
+            <div className={'form-group' + (parameterAlreadyExists ? ' has-error' : null)}>
+              <label>Keyword</label>
+              <input type="text" className="form-control" value={parameter.name} onChange={setParamName} autoFocus />
+              <div className="help-block">
+                {parameterAlreadyExists ? 'Parameter with this name already exists.' : 'This is what will be added to your query editor' + (parameter.name !== '' ? `: {{ ${parameter.name} }}` : '') }
+              </div>
+            </div> : null }
           <div className="form-group">
             <label>Title</label>
             <input type="text" className="form-control" value={parameter.title} onChange={setParamTitle} />
@@ -87,10 +116,3 @@ export default class ParameterSettings extends React.Component {
     );
   }
 }
-ParameterSettings.propTypes = {
-  clientConfig: PropTypes.object.isRequired,
-  show: PropTypes.bool.isRequired,
-  onHide: PropTypes.func.isRequired,
-  parameter: PropTypes.object.isRequired,
-  updateParameter: PropTypes.func.isRequired,
-};

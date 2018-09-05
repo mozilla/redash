@@ -16,6 +16,7 @@ import 'brace/theme/textmate';
 import 'brace/ext/searchbox';
 
 import { DataSource, Schema } from './proptypes';
+import ParameterSettings from './ParameterSettings';
 
 const langTools = ace.acequire('ace/ext/language_tools');
 const snippetsModule = ace.acequire('ace/snippets');
@@ -70,9 +71,9 @@ class QueryEditor extends React.Component {
     saveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
     listenForResize: PropTypes.func.isRequired,
-    listenForEditorCommand: PropTypes.func.isRequired,
-    queryExecuting: PropTypes.bool.isRequired,
     refEditor: PropTypes.element.isRequired,
+    parameters: PropTypes.array.isRequired,
+    updateParameters: PropTypes.func.isRequired,
   }
 
   static defaultProps = {
@@ -88,6 +89,7 @@ class QueryEditor extends React.Component {
       schema: null, // eslint-disable-line react/no-unused-state
       keywords: [], // eslint-disable-line react/no-unused-state
       autocompleteQuery: true,
+      addNewParameter: false,
     };
     langTools.addCompleter({
       getCompletions: (state, session, pos, prefix, callback) => {
@@ -140,7 +142,7 @@ class QueryEditor extends React.Component {
 
     this.formatQuery = () => {
       this.props.formatQuery(this.props.dataSource.syntax || 'sql', this.props.queryText);
-    }
+    };
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -158,6 +160,35 @@ class QueryEditor extends React.Component {
     return null;
   }
 
+  addNewParameter = () => {
+    this.setState({ addNewParameter: true });
+    this.props.updateParameters([
+      ...this.props.parameters,
+      {
+        title: '',
+        name: '',
+        type: 'text',
+        value: null,
+        global: false,
+      }]);
+  }
+  updateParameter = p =>
+    this.props.updateParameters([...this.props.parameters.slice(0, -1),
+      { ...this.props.parameters[this.props.parameters.length - 1], ...p }])
+
+  hideNewParameter = () => {
+    this.setState({ addNewParameter: false });
+    if (this.props.parameters[this.props.parameters.length - 1].name === '') {
+      this.props.updateParameters(this.props.parameters.slice(0, -1));
+    }
+    const editor = this.props.refEditor.current.editor;
+    editor.session.doc.replace(
+      editor.selection.getRange(),
+      `{{${this.props.parameters[this.props.parameters.length - 1].name}}}`,
+    );
+    editor.focus();
+  }
+
   render() {
     // eslint-disable-next-line react/prop-types
     const modKey = this.props.KeyboardShortcuts.modKey;
@@ -166,6 +197,15 @@ class QueryEditor extends React.Component {
 
     return (
       <section style={{ height: '100%' }}>
+        <ParameterSettings
+          show={!!this.state.addNewParameter}
+          parameter={this.props.parameters && this.props.parameters[this.props.parameters.length - 1]}
+          updateParameter={this.updateParameter}
+          onHide={this.hideNewParameter}
+          isNewParameter
+          parameters={this.props.parameters}
+          clientConfig={this.props.clientConfig}
+        />
         <div className="container p-15 m-b-10" style={{ height: '100%' }}>
           <div style={{ height: 'calc(100% - 40px)', marginBottom: '0px' }} className="editor__container">
             <AceEditor

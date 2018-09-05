@@ -174,23 +174,31 @@ class QueryViewMain extends React.Component {
     } catch (p) {
       // don't update params if parse fails
     }
-    if (this.props.query.options && this.props.query.options.parameters) {
-      paramNames = difference(paramNames, map(this.props.query.options.parameters, 'name'));
+    if (this.props.query.value.options && this.props.query.value.options.parameters) {
+      const ps = this.props.query.value.options.parameters;
+      const existingParamNames = map(ps, 'name');
+      paramNames = difference(paramNames, existingParamNames);
     }
     this.props.updateQuery({
       query: newText,
       options: {
         ...this.props.query.value.options,
-        parameters: map(paramNames, n => ({
-          title: n,
-          name: n,
-          type: 'text',
-          value: null,
-          global: false,
-        })),
+        parameters: [
+          ...this.props.query.value.options.parameters,
+          ...map(paramNames, n => ({
+            title: n,
+            name: n,
+            type: 'text',
+            value: null,
+            global: false,
+          })),
+        ],
       },
     });
   }
+
+  updateParameters = parameters =>
+    this.props.updateQuery({ options: { ...this.props.query.value.options, parameters } })
 
   render() {
     return (
@@ -246,7 +254,10 @@ class QueryViewMain extends React.Component {
                     updateQuery={this.updateQueryText}
                     dataSource={this.props.dataSource}
                     dataSources={this.props.dataSources}
+                    parameters={this.props.query.value.options.parameters}
+                    updateParameters={this.updateParameters}
                     KeyboardShortcuts={this.props.KeyboardShortcuts}
+                    clientConfig={this.props.clientConfig}
                   />
                 </FlexResizable> : null}
               <QueryMetadata
