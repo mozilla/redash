@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import 'react-select/dist/react-select.css';
 import { each } from 'lodash';
-import { DropdownButton, MenuItem, OverlayTrigger, Popover } from 'react-bootstrap';
+import { DropdownButton, MenuItem, Modal, OverlayTrigger, Popover } from 'react-bootstrap';
 
 import EditInPlaceText from './EditInPlaceText';
 import Overlay from './Overlay';
@@ -53,15 +53,26 @@ export default class QueryViewHeader extends React.Component {
     showPermissionsControl: PropTypes.bool.isRequired,
     duplicateQuery: PropTypes.func.isRequired,
     archiveQuery: PropTypes.func.isRequired,
+    clientConfig: PropTypes.object.isRequired,
     Events: PropTypes.object.isRequired,
   }
 
-  saveName = name => name;
+  constructor(props) {
+    super(props);
+    this.state = {
+      showApiKey: false,
+    };
+  }
+
+  saveName = name => this.props.updateQuery({ name })
 
   togglePublished = () => {
     this.props.Events.record('toggle_published', 'query', this.props.query.id);
     this.props.updateQuery({ is_draft: !this.props.query.is_draft });
   };
+
+  showApiKey = () => this.setState({ showApiKey: true })
+  hideApiKey = () => this.setState({ showApiKey: false })
 
   render() {
     const archivedPopover = (
@@ -131,6 +142,21 @@ export default class QueryViewHeader extends React.Component {
         {!this.props.hasDataSources && !this.props.currentUser.isAdmin ? noDataSources : ''}
 
         <div className="row p-l-15 p-b-10 m-l-0 m-r-0 page-header--new page-header--query">
+          <Modal show={this.state.showApiKey} onHide={this.hideApiKey}>
+            <Modal.Body>
+              <h5>API Key</h5>
+              <pre>{this.props.query.api_key}</pre>
+              <h5>Example API Calls:</h5>
+              <div>
+                Results in CSV format:
+                <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.csv?api_key={this.props.query.api_key}</pre>
+
+                Results in JSON format:
+                <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.json?api_key={this.props.query.api_key}</pre>
+              </div>
+            </Modal.Body>
+          </Modal>
+
           <div className="col-sm-8 col-xs-7 p-0">
             <h3>
               <EditInPlaceText
