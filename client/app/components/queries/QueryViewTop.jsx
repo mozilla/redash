@@ -8,20 +8,19 @@ import AlertUnsavedChanges from './AlertUnsavedChanges';
 
 class QueryViewTop extends React.Component {
   static propTypes = {
-    // queryId: PropTypes.number.isRequired,
+    queryId: PropTypes.number.isRequired,
     query: PropTypes.instanceOf(PromiseState).isRequired,
     saveQuery: PropTypes.func.isRequired,
-    // saveQueryResponse: PropTypes.instanceOf(PromiseState),
     dataSources: PropTypes.instanceOf(PromiseState),
     sourceMode: PropTypes.bool.isRequired,
     $rootScope: PropTypes.object.isRequired,
     executeQuery: PropTypes.func.isRequired,
     executeQueryResponse: PropTypes.instanceOf(PromiseState).isRequired,
+    archiveQuery: PropTypes.func.isRequired,
   }
 
   static defaultProps = {
     dataSources: null,
-    // saveQueryResponse: null,
   }
 
   constructor(props) {
@@ -50,6 +49,8 @@ class QueryViewTop extends React.Component {
         state.toast = 'success';
       } else if (newProps.saveQueryResponse.rejected) {
         state.toast = 'error';
+      } else if (newProps.archiveQueryResponse.rejected) {
+        state.toast = 'archiveError';
       }
     }
     return state;
@@ -95,6 +96,22 @@ class QueryViewTop extends React.Component {
 
   updateQuery = changes => this.setState({ query: Object.assign({}, this.state.query, changes) })
 
+  duplicateQuery = () => window.fetch(
+    `${this.props.clientConfig.basePath}api/queries/${this.props.queryId}/fork`,
+    {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: Number(this.props.queryId) }),
+      headers: new Headers([['Content-Type', 'application/json;charset=UTF-8']]),
+    },
+  ).then((r) => {
+    if (r.ok) {
+      r.json().then(q => window.location.assign(`/queries/${q.id}/source`));
+    }
+  })
+
+  archiveQuery = () => this.props.archiveQuery(this.props.query.value)
+
   isDirty = () => this.state.query.query !== this.props.query.value.query
 
   render() {
@@ -108,6 +125,7 @@ class QueryViewTop extends React.Component {
     const toastMessages = {
       success: 'Query saved',
       error: 'Query could not be saved',
+      archiveError: 'Query could not be archived',
     };
     return (
       <div className="query-page-wrapper">
@@ -122,6 +140,8 @@ class QueryViewTop extends React.Component {
           dataSource={dataSource}
           sourceMode={this.props.sourceMode}
           showPermissionsControl={this.props.clientConfig.showPermissionsControl}
+          duplicateQuery={this.duplicateQuery}
+          archiveQuery={this.archiveQuery}
           Events={this.props.Events}
         />
         <QueryViewMain
@@ -173,6 +193,13 @@ function fetchQuery(props) {
           url: `${props.clientConfig.basePath}api/queries/${props.queryId}`,
           method: 'POST',
           body: JSON.stringify(newQuery),
+        },
+      }),
+      archiveQuery: query => ({
+        query: { value: { ...query, is_archived: true, schedule: null } },
+        archiveQueryResponse: {
+          url: `${props.clientConfig.basePath}api/queries/${query.id}`,
+          method: 'DELETE',
         },
       }),
       executeQuery: query => ({
