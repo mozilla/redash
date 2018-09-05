@@ -39,7 +39,7 @@ class QueryViewTop extends React.Component {
       state.query = null;
     }
     // create shallow copy of query contents once loaded
-    if (!oldState.query && newProps.query.fulfilled) {
+    if (newProps.query.meta.archive || (!oldState.query && newProps.query.fulfilled)) {
       state.query = { ...newProps.query.value };
     }
     if (newProps.saveQueryResponse) {
@@ -196,7 +196,7 @@ function fetchQuery(props) {
         },
       }),
       archiveQuery: query => ({
-        query: { value: { ...query, is_archived: true, schedule: null } },
+        query: { value: { ...query, is_archived: true, schedule: null }, meta: { archive: true } },
         archiveQueryResponse: {
           url: `${props.clientConfig.basePath}api/queries/${query.id}`,
           method: 'DELETE',
