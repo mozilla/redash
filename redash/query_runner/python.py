@@ -46,33 +46,27 @@ class Python(BaseQueryRunner):
         'tuple', 'set', 'list', 'dict', 'bool',
     )
 
-    default_doc_url = ("http://redash.readthedocs.io/en/latest/"
-                       "datasources.html#python")
+    configuration_properties = {
+        'allowedImportModules': {
+            'type': 'string',
+            'title': 'Modules to import prior to running the script'
+        },
+        'additionalModulesPaths': {
+            'type': 'string'
+        },
+        "toggle_table_string": {
+            "type": "string",
+            "title": "Toggle Table String",
+            "default": "_v",
+            "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
+        }
+    }
 
     @classmethod
     def configuration_schema(cls):
         return {
             'type': 'object',
-            'properties': {
-                'allowedImportModules': {
-                    'type': 'string',
-                    'title': 'Modules to import prior to running the script'
-                },
-                'additionalModulesPaths': {
-                    'type': 'string'
-                },
-                "doc_url": {
-                    "type": "string",
-                    "title": "Documentation URL",
-                    "default": cls.default_doc_url
-                },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
-                }
-            },
+            'properties': cls.configuration_properties
         }
 
     @classmethod

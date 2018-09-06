@@ -36,51 +36,45 @@ types_map = {
 
 class Impala(BaseSQLQueryRunner):
     noop_query = "show schemas"
-    default_doc_url = ("http://www.cloudera.com/documentation/enterprise/"
-                       "latest/topics/impala_langref.html")
+    configuration_properties = {
+        "host": {
+            "type": "string"
+        },
+        "port": {
+            "type": "number"
+        },
+        "protocol": {
+            "type": "string",
+            "title": "Please specify beeswax or hiveserver2"
+        },
+        "database": {
+            "type": "string"
+        },
+        "use_ldap": {
+            "type": "boolean"
+        },
+        "ldap_user": {
+            "type": "string"
+        },
+        "ldap_password": {
+            "type": "string"
+        },
+        "timeout": {
+            "type": "number"
+        },
+        "toggle_table_string": {
+            "type": "string",
+            "title": "Toggle Table String",
+            "default": "_v",
+            "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
+        }
+    }
 
     @classmethod
     def configuration_schema(cls):
         return {
             "type": "object",
-            "properties": {
-                "host": {
-                    "type": "string"
-                },
-                "port": {
-                    "type": "number"
-                },
-                "protocol": {
-                    "type": "string",
-                    "title": "Please specify beeswax or hiveserver2"
-                },
-                "database": {
-                    "type": "string"
-                },
-                "use_ldap": {
-                    "type": "boolean"
-                },
-                "ldap_user": {
-                    "type": "string"
-                },
-                "ldap_password": {
-                    "type": "string"
-                },
-                "timeout": {
-                    "type": "number"
-                },
-                "doc_url": {
-                    "type": "string",
-                    "title": "Documentation URL",
-                    "default": cls.default_doc_url
-                },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
-                }
-            },
+            "properties": cls.configuration_properties,
             "required": ["host"],
             "secret": ["ldap_password"]
         }

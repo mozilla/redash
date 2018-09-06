@@ -584,14 +584,13 @@ class DataSource(BelongsToOrgMixin, db.Model):
             'type': self.type,
             'syntax': self.query_runner.syntax,
             'paused': self.paused,
-            'pause_reason': self.pause_reason,
-            'type_name': self.query_runner.name(),
+            'pause_reason': self.pause_reason
         }
 
-        schema = get_configuration_schema_for_query_runner_type(self.type)
-        self.options.set_schema(schema)
-        d['options'] = self.options.to_dict(mask_secrets=True)
         if all:
+            schema = get_configuration_schema_for_query_runner_type(self.type)
+            self.options.set_schema(schema)
+            d['options'] = self.options.to_dict(mask_secrets=True)
             d['queue_name'] = self.queue_name
             d['scheduled_queue_name'] = self.scheduled_queue_name
             d['groups'] = self.groups

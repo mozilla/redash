@@ -138,8 +138,6 @@ class FieldMapping:
 
 class JiraJQL(BaseHTTPQueryRunner):
     noop_query = '{"queryType": "count"}'
-    default_doc_url = ("https://confluence.atlassian.com/jirasoftwarecloud/"
-                       "advanced-searching-764478330.html")
     response_error = "JIRA returned unexpected status code"
     requires_authentication = True
     url_title = 'JIRA URL'
