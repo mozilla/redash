@@ -94,11 +94,11 @@ export default class QueryViewVisualizations extends React.Component {
                 }}
               >
                 {this.props.queryResult.fulfilled &&
-                 this.props.queryResult.value.data &&
-                 this.props.queryResult.value.data.log ?
+                 this.props.queryResult.value.query_result.data &&
+                 this.props.queryResult.value.data.query_result.log ?
                   <div className="p-10">
                     <p>Log Information:</p>
-                    {this.props.queryResult.value.data.log.map(l => <p>{l}</p>)}
+                    {this.props.queryResult.value.query_result.data.log.map(l => <p>{l}</p>)}
                   </div> : ''}
 
                 <ul className="tab-nav">
