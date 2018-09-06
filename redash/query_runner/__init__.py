@@ -53,8 +53,8 @@ class NotSupported(Exception):
 
 class BaseQueryRunner(object):
     noop_query = None
-    default_doc_url = None
     data_source_version_query = None
+    configuration_properties = None
 
     def __init__(self, configuration):
         self.syntax = 'sql'
@@ -79,6 +79,12 @@ class BaseQueryRunner(object):
     @classmethod
     def configuration_schema(cls):
         return {}
+
+    @classmethod
+    def add_configuration_property(cls, property, value):
+        if cls.configuration_properties is None:
+            raise NotImplementedError()
+        cls.configuration_properties[property] = value
 
     def get_data_source_version(self):
         if self.data_source_version_query is None:
@@ -175,40 +181,36 @@ class BaseHTTPQueryRunner(BaseQueryRunner):
     url_title = 'URL base path'
     username_title = 'HTTP Basic Auth Username'
     password_title = 'HTTP Basic Auth Password'
+    configuration_properties = {
+        'url': {
+            'type': 'string',
+            'title': url_title,
+        },
+        'username': {
+            'type': 'string',
+            'title': username_title,
+        },
+        'password': {
+            'type': 'string',
+            'title': password_title,
+        },
+        "toggle_table_string": {
+            "type": "string",
+            "title": "Toggle Table String",
+            "default": "_v",
+            "info": (
+                "This string will be used to toggle visibility of "
+                "tables in the schema browser when editing a query "
+                "in order to remove non-useful tables from sight."
+            ),
+        }
+    }
 
     @classmethod
     def configuration_schema(cls):
         schema = {
             'type': 'object',
-            'properties': {
-                'url': {
-                    'type': 'string',
-                    'title': cls.url_title,
-                },
-                'username': {
-                    'type': 'string',
-                    'title': cls.username_title,
-                },
-                'password': {
-                    'type': 'string',
-                    'title': cls.password_title,
-                },
-                "doc_url": {
-                    "type": "string",
-                    "title": "Documentation URL",
-                    "default": cls.default_doc_url,
-                },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": (
-                        "This string will be used to toggle visibility of "
-                        "tables in the schema browser when editing a query "
-                        "in order to remove non-useful tables from sight."
-                    ),
-                }
-            },
+            'properties': cls.configuration_properties,
             'required': ['url'],
             'secret': ['password']
         }

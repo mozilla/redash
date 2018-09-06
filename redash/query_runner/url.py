@@ -2,9 +2,6 @@ from redash.query_runner import BaseHTTPQueryRunner, register
 
 
 class Url(BaseHTTPQueryRunner):
-    default_doc_url = ("http://redash.readthedocs.io/en/latest/"
-                       "datasources.html#url")
-
     @classmethod
     def annotate_query(cls):
         return False
