@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import { ToastMessageAnimated } from 'react-toastr';
+
+import visualizationRegistry from '@/visualizations/registry';
 import QueryViewHeader from './QueryViewHeader';
 import QueryViewMain from './QueryViewMain';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
@@ -41,6 +43,14 @@ class QueryViewTop extends React.Component {
     // create shallow copy of query contents once loaded
     if (newProps.query.meta.archive || (!oldState.query && newProps.query.fulfilled)) {
       state.query = { ...newProps.query.value };
+      if (!state.query.visualizations || state.query.visualizations.length === 0) {
+        state.query.visualizations = [{
+          type: visualizationRegistry.TABLE.type,
+          name: visualizationRegistry.TABLE.name,
+          description: '',
+          options: visualizationRegistry.TABLE.defaultOptions,
+        }];
+      }
     }
     if (newProps.saveQueryResponse) {
       if (newProps.saveQueryResponse.pending) {

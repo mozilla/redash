@@ -1,9 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { find, map, sortBy } from 'lodash';
+import { map, sortBy } from 'lodash';
 import { PromiseState } from 'react-refetch';
 
-import visualizationRegistry from '@/visualizations/registry';
 import QueryExecutionStatus from './QueryExecutionStatus';
 import VisualizationRenderer from './VisualizationRenderer';
 import Parameters from './Parameters';
@@ -28,6 +27,8 @@ RdTab.propTypes = {
 export default class QueryViewVisualizations extends React.Component {
   static propTypes = {
     clientConfig: PropTypes.object.isRequired,
+    visualization: PropTypes.object.isRequired,
+    setVisualization: PropTypes.func.isRequired,
     query: PropTypes.object.isRequired,
     updateQuery: PropTypes.func.isRequired,
     data: PropTypes.array.isRequired,
@@ -39,17 +40,7 @@ export default class QueryViewVisualizations extends React.Component {
     executeQueryResponse: PropTypes.instanceOf(PromiseState).isRequired,
   };
 
-  constructor(props) {
-    super(props);
-    const vis = props.query.visualizations;
-    this.state = {
-      selectedTab: vis && vis.length ? vis[0] : 'TABLE',
-    };
-  }
-
   setParameters = parameters => this.props.updateQuery({ options: { ...this.props.query.options, parameters } })
-
-  setSelectedTab = (e, tabId) => this.setState({ selectedTab: find(this.props.query.visualizations, { id: tabId }) })
 
   render() {
     return (
@@ -95,28 +86,28 @@ export default class QueryViewVisualizations extends React.Component {
               >
                 {this.props.queryResult.fulfilled &&
                  this.props.queryResult.value.query_result.data &&
-                 this.props.queryResult.value.data.query_result.log ?
-                  <div className="p-10">
-                    <p>Log Information:</p>
-                    {this.props.queryResult.value.query_result.data.log.map(l => <p>{l}</p>)}
-                  </div> : ''}
+                 this.props.queryResult.value.query_result.data.log ?
+                   <div className="p-10">
+                     <p>Log Information:</p>
+                     {this.props.queryResult.value.query_result.data.log.map(l => <p>{l}</p>)}
+                   </div> : ''}
 
                 <ul className="tab-nav">
                   {!this.props.query.visualizations.length ?
                     <RdTab
                       tabId="table"
                       name="Table"
-                      selectedTab={this.state.selectedTab}
+                      selectedTab={this.props.visualization}
                       // basePath={this.props.query.getUrl(this.props.sourceMode)}
-                      onClick={this.setSelectedTab}
+                      onClick={this.props.setVisualization}
                     /> : map(sortBy(this.props.query.visualizations, 'id'), (vis, i) => (
                       <RdTab
                         tabId={vis.id}
                         key={vis.name}
                         name={vis.name}
-                        selectedTab={this.state.selectedTab}
+                        selectedTab={this.props.visualization}
                         // basePath={this.props.query.getUrl(this.props.sourceMode)}
-                        onClick={this.setSelectedTab}
+                        onClick={this.props.setVisualization}
                       >
                         {this.props.canEdit && !((i > 0) && (vis.type === 'TABLE')) ?
                           <span
@@ -141,9 +132,7 @@ export default class QueryViewVisualizations extends React.Component {
                     data={this.props.data}
                     setFilters={this.props.setFilters}
                     filters={this.props.filters}
-                    visualization={this.props.query.visualizations.length ?
-                                   this.state.selectedTab :
-                                   visualizationRegistry.TABLE}
+                    visualization={this.props.visualization}
                   />
                 </div>
               </div>
