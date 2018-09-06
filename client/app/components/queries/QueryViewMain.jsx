@@ -142,7 +142,6 @@ class QueryViewMain extends React.Component {
       const data = newProps.queryResult.value.query_result;
       const filters = getFilters(data);
       return {
-        queryResult: data,
         filters,
         filteredData: filterData(filters, data),
       };

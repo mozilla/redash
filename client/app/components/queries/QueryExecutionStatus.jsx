@@ -49,7 +49,7 @@ export default class QueryExecutionStatus extends React.Component {
   startTimer = () => {
     const self = this;
     this.currentTimer = setInterval(() => {
-      const timestamp = this.props.queryResult.fulfilled ? this.props.queryResult.value.retrieved_at : moment();
+      const timestamp = this.props.queryResult.fulfilled ? this.props.queryResult.value.query_result.retrieved_at : moment();
       self.setState({
         currentTime: moment(moment() - moment(timestamp)).utc().format('HH:mm:ss'),
         error: self.props.executeQueryResponse.value.error || undefined,

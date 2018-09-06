@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { PromiseState } from 'react-refetch';
-import { DropdownButton, MenuItem } from 'react-bootstrap';
+import { ButtonGroup, DropdownButton, MenuItem } from 'react-bootstrap';
 import moment from 'moment';
 
 import { durationHumanize, prettySize } from '@/filters';
@@ -25,6 +25,10 @@ export default class QueryViewFooter extends React.Component {
     return null;
   }
 
+  downloadUrl = filetype => `api/queries/${this.props.query.id}/results/${this.props.queryResult.value.query_result.id}.${filetype}`
+
+  downloadFilename = filetype => `${this.props.query.name.replace(' ', '_')}${moment(this.props.queryResult.value.query_result.retrieved_at).format('_YYYY_MM_DD')}.${filetype}`
+
   render() {
     if (!this.props.queryResult.fulfilled) return null;
     const queryResult = this.props.queryResult.value;
@@ -37,24 +41,25 @@ export default class QueryViewFooter extends React.Component {
           >Edit Visualization
           </button> : ''}
         {this.props.query.id ? <button className="m-r-5 btn btn-default" onClick={this.showEmbedDialog}><i className="zmdi zmdi-code" /> Embed</button> : ''}
-
-        <DropdownButton
-          id="download-button"
-          className="m-r-5 btn btn-default"
-          disabled={this.props.queryExecuting || !this.props.filteredData.rows.length}
-          aria-haspopup="true"
-          aria-expanded="false"
-          title={<span>Download <span className="hidden-xs">Dataset </span></span>}
-          onSelect={this.downloadQueryResult}
-          pullRight={!!this.props.query.id}
-        >
-          <MenuItem eventKey="csv" className="dropdown-menu">
-            <span className="fa fa-file-o" /> Download as CSV File
-          </MenuItem>
-          <MenuItem eventKey="xlsx" className="dropdown-menu">
-            <span className="fa fa-file-excel-o" /> Download as Excel File
-          </MenuItem>
-        </DropdownButton>
+        <ButtonGroup className="m-r-5">
+          <DropdownButton
+            dropup
+            id="download-button"
+            disabled={this.props.queryExecuting || !this.props.filteredData.rows.length}
+            aria-haspopup="true"
+            aria-expanded="false"
+            title={<span>Download <span className="hidden-xs">Dataset </span></span>}
+            onSelect={this.downloadQueryResult}
+            pullRight={!!this.props.query.id}
+          >
+            <MenuItem target="_self" href={this.downloadUrl('csv')} download={this.downloadFilename('csv')}>
+              <span className="fa fa-file-o" /> Download as CSV File
+            </MenuItem>
+            <MenuItem target="_self" href={this.downloadUrl('xlsx')} download={this.downloadFilename('xlsx')}>
+              <span className="fa fa-file-excel-o" /> Download as Excel File
+            </MenuItem>
+          </DropdownButton>
+        </ButtonGroup>
 
         {queryResult.data ?
           <span className="query-metadata__bottom">
