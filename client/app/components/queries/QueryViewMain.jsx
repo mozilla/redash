@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
-import { difference, includes, map, some, union, uniq } from 'lodash';
+import { difference, find, includes, map, some, union, uniq } from 'lodash';
 import moment from 'moment';
 
 import FlexResizable from './FlexResizable';
@@ -130,6 +130,7 @@ class QueryViewMain extends React.Component {
       queryExecuting: false,
       filters: [],
       filteredData: { rows: [], columns: [] },
+      visualization: props.query.value.visualizations[0],
     };
     this.queryEditor = React.createRef();
     this.listenForResize = (f) => { this.resizeEditor = f; };
@@ -148,6 +149,7 @@ class QueryViewMain extends React.Component {
     }
     return null;
   }
+  setVisualization = (e, tabId) => this.setState({ visualization: find(this.props.query.value.visualizations, { id: tabId }) })
 
   setFilters = filters => this.setState({ filters, filteredData: filterData(filters, this.state.queryResult) })
 
@@ -282,6 +284,8 @@ class QueryViewMain extends React.Component {
                 filters={this.state.filters}
                 executeQueryResponse={this.props.executeQueryResponse}
                 queryExecuting={this.state.queryExecuting}
+                visualization={this.state.visualization}
+                setVisualization={this.setVisualization}
               />
             </div>
           </div>
@@ -294,6 +298,8 @@ class QueryViewMain extends React.Component {
               selectedTab={this.state.selectedTab}
               queryExecuting={this.state.queryExecuting}
               canExecuteQuery={this.canExecuteQuery()}
+              visualization={this.state.visualization}
+              clientConfig={this.props.clientConfig}
             />
           </div>
         </div>
