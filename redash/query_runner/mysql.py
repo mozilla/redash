@@ -56,8 +56,6 @@ class Mysql(BaseSQLQueryRunner):
             "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight."
         }
     }
-    data_source_version_query = "select version()"
-    data_source_version_post_process = "none"
 
     @classmethod
     def configuration_schema(cls):

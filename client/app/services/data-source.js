@@ -21,9 +21,6 @@ function DataSource($q, $resource, $http) {
       isArray: false,
       url: 'api/data_sources/:id/test',
     },
-    version: {
-      method: 'GET', cache: false, isArray: false, url: 'api/data_sources/:id/version',
-    },
   };
 
   const DataSourceResource = $resource('api/data_sources/:id', { id: '@id' }, actions);
