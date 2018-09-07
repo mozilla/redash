@@ -47,8 +47,6 @@ def _wait(conn, timeout=None):
 
 class PostgreSQL(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
-    data_source_version_query = "select version()"
-    data_source_version_post_process = "split by space take second"
     configuration_properties = {
         "user": {
             "type": "string"
@@ -222,8 +220,6 @@ class Redshift(PostgreSQL):
            "default": "prefer"
         }
     }
-    data_source_version_query = "select version()"
-    data_source_version_post_process = "split by space take last"
 
     @classmethod
     def type(cls):
