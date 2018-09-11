@@ -152,6 +152,8 @@ class QueryViewTop extends React.Component {
           showPermissionsControl={this.props.clientConfig.showPermissionsControl}
           duplicateQuery={this.duplicateQuery}
           archiveQuery={this.archiveQuery}
+          getTags={this.props.getTags}
+          tags={this.props.tags}
           clientConfig={this.props.clientConfig}
           Events={this.props.Events}
         />
@@ -227,6 +229,7 @@ function fetchQuery(props) {
         },
       }),
       job: { value: {} },
+      getTags: () => ({ tags: { url: `${props.clientConfig.basePath}api/queries/tags` } }),
     };
   }
   return {};

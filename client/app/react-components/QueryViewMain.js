@@ -308,7 +308,7 @@ class QueryViewMain extends React.Component {
   }
 }
 
-function fetchDataSource(props) {
+function fetchData(props) {
   if (props.dataSource) {
     // const versionURL = `${props.clientConfig.basePath}api/data_sources/${props.dataSource.id}/version`;
     const schemaURL = `${props.clientConfig.basePath}api/data_sources/${props.dataSource.id}/schema`;
@@ -355,5 +355,5 @@ function fetchDataSource(props) {
   return {};
 }
 
-export default connect(fetchDataSource)(QueryViewMain);
+export default connect(fetchData)(QueryViewMain);
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { Creatable } from 'react-select';
 import 'react-select/dist/react-select.css';
-import { each } from 'lodash';
+import { each, map, sortBy } from 'lodash';
 import { DropdownButton, MenuItem, Modal, OverlayTrigger, Popover } from 'react-bootstrap';
 
 import EditInPlaceText from './EditInPlaceText';
@@ -53,6 +54,7 @@ export default class QueryViewHeader extends React.Component {
     showPermissionsControl: PropTypes.bool.isRequired,
     duplicateQuery: PropTypes.func.isRequired,
     archiveQuery: PropTypes.func.isRequired,
+    getTags: PropTypes.func.isRequired,
     clientConfig: PropTypes.object.isRequired,
     Events: PropTypes.object.isRequired,
   }
@@ -61,6 +63,7 @@ export default class QueryViewHeader extends React.Component {
     super(props);
     this.state = {
       showApiKey: false,
+      tags: this.props.query.tags ? this.props.query.tags.map(t => ({ label: t, value: t })) : [],
     };
   }
 
@@ -73,6 +76,19 @@ export default class QueryViewHeader extends React.Component {
 
   showApiKey = () => this.setState({ showApiKey: true })
   hideApiKey = () => this.setState({ showApiKey: false })
+
+  editTags = () => {
+    this.props.getTags();
+    this.setState({ editTags: true });
+  }
+  hideEditTags = () => this.setState({ editTags: false })
+
+  updateTags = tags => this.setState({ tags })
+
+  saveTags = () => {
+    this.props.updateQuery({ tags: this.state.tags.map(t => t.value) });
+    this.setState({ editTags: false });
+  }
 
   render() {
     const archivedPopover = (
@@ -156,7 +172,27 @@ export default class QueryViewHeader extends React.Component {
               </div>
             </Modal.Body>
           </Modal>
-
+          <Modal show={this.state.editTags} onHide={this.hideEditTags}>
+            <Modal.Header>
+              <Modal.Title>Add/Edit Tags</Modal.Title>
+            </Modal.Header>
+            <Modal.Body closeButton>
+              <Creatable
+                multi
+                placeholder="Add some tags..."
+                value={this.state.tags}
+                isLoading={!this.props.tags || !this.props.tags.fulfilled}
+                options={this.props.tags && this.props.tags.fulfilled &&
+                  map(sortBy(map(this.props.tags.value, (count, tag) => ({ tag, count })), 'count'), item =>
+                    ({ value: item.tag, label: item.tag }))}
+                onChange={this.updateTags}
+              />
+            </Modal.Body>
+            <Modal.Footer>
+              <button className="btn btn-default" onClick={this.hideEditTags}>Close</button>
+              <button className="btn btn-primary" onClick={this.saveTags}>Save</button>
+            </Modal.Footer>
+          </Modal>
           <div className="col-sm-8 col-xs-7 p-0">
             <h3>
               <EditInPlaceText
@@ -166,11 +202,19 @@ export default class QueryViewHeader extends React.Component {
                 ignoreBlanks
                 value={this.props.query.name}
               />
-              {this.props.query.is_draft && !this.props.query.is_archived ? <span className="label label-default">Unpublished</span> : ''}
+              {this.props.query.is_draft && !this.props.query.is_archived ?
+                <span className="label label-default">Unpublished</span> : null }
               {this.props.query.is_archived ?
                 <OverlayTrigger trigger="mouseenter" overlay={archivedPopover}>
                   <span className="label label-warning">Archived</span>
-                </OverlayTrigger> : ''}
+                </OverlayTrigger> : null}
+              {this.props.query.tags.map(t => <span key={t} className="label label-tag">{t}</span>)}
+              {this.props.canEdit ?
+                <a onClick={this.editTags} className="label label-tag">
+                  {this.props.query.tags.length ?
+                    <i className="zmdi zmdi-edit" /> :
+                    <React.Fragment><i className="zmdi zmdi-plus" />Add tag</React.Fragment>}
+                </a> : null}
             </h3>
           </div>
 
@@ -182,7 +226,6 @@ export default class QueryViewHeader extends React.Component {
                <button className="btn btn-default btn-publish" onClick={this.togglePublished}>
                  <span className="fa fa-paper-plane" /> Publish
                </button> : null}
-
             {this.props.query.id && this.props.currentUser.hasPermission('view_source') ?
               <a
                 href={getUrl(this.props.query, !this.props.sourceMode, this.props.selectedTab)}
@@ -200,7 +243,7 @@ export default class QueryViewHeader extends React.Component {
               >
                 <MenuItem
                   eventKey="duplicateQuery"
-                  className={!this.props.currentUser.hasPermission('edit_query') || !this.props.dataSource || this.props.dataSource.view_only ? 'disabled' : ''}
+                  className={!this.props.currentUser.hasPermission('edit_query') || !this.props.dataSource || this.props.dataSource.view_only ? 'disabled' : null}
                   onSelect={this.props.duplicateQuery}
                 >
                     Fork
@@ -208,10 +251,10 @@ export default class QueryViewHeader extends React.Component {
                 <MenuItem divider />
                 {ownerButtons}
                 {this.props.query.is_archived ? '' : <MenuItem divider />}
-                {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : ''}
+                {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : null}
                 {this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
-                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : ''}
-              </DropdownButton> : ''}
+                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null}
+              </DropdownButton> : null}
           </div>
         </div>
       </div>
