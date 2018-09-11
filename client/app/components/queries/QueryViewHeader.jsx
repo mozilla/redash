@@ -1,8 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import 'react-select/dist/react-select.css';
-import { each } from 'lodash';
-import { DropdownButton, MenuItem, Modal, OverlayTrigger, Popover } from 'react-bootstrap';
+import Modal from 'antd/lib/modal';
+import Select from 'antd/lib/select';
+import { each, map, sortBy } from 'lodash';
+import { DropdownButton, MenuItem, OverlayTrigger, Popover } from 'react-bootstrap';
 
 import EditInPlaceText from './EditInPlaceText';
 import Overlay from './Overlay';
@@ -53,6 +54,7 @@ export default class QueryViewHeader extends React.Component {
     showPermissionsControl: PropTypes.bool.isRequired,
     duplicateQuery: PropTypes.func.isRequired,
     archiveQuery: PropTypes.func.isRequired,
+    getTags: PropTypes.func.isRequired,
     clientConfig: PropTypes.object.isRequired,
     Events: PropTypes.object.isRequired,
   }
@@ -61,6 +63,7 @@ export default class QueryViewHeader extends React.Component {
     super(props);
     this.state = {
       showApiKey: false,
+      tags: this.props.query.tags ? this.props.query.tags.map(t => ({ label: t, value: t })) : [],
     };
   }
 
@@ -73,6 +76,19 @@ export default class QueryViewHeader extends React.Component {
 
   showApiKey = () => this.setState({ showApiKey: true })
   hideApiKey = () => this.setState({ showApiKey: false })
+
+  editTags = () => {
+    this.props.getTags();
+    this.setState({ editTags: true });
+  }
+  hideEditTags = () => this.setState({ editTags: false })
+
+  updateTags = tags => this.setState({ tags })
+
+  saveTags = () => {
+    this.props.updateQuery({ tags: this.state.tags.map(t => t.value) });
+    this.setState({ editTags: false });
+  }
 
   render() {
     const archivedPopover = (
@@ -142,21 +158,42 @@ export default class QueryViewHeader extends React.Component {
         {!this.props.hasDataSources && !this.props.currentUser.isAdmin ? noDataSources : ''}
 
         <div className="row p-l-15 p-b-10 m-l-0 m-r-0 page-header--new page-header--query">
-          <Modal show={this.state.showApiKey} onHide={this.hideApiKey}>
-            <Modal.Body>
-              <h5>API Key</h5>
-              <pre>{this.props.query.api_key}</pre>
-              <h5>Example API Calls:</h5>
-              <div>
-                Results in CSV format:
-                <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.csv?api_key={this.props.query.api_key}</pre>
+          <Modal
+            visible={this.state.showApiKey}
+            onCancel={this.hideApiKey}
+            footer={null}
+          >
+            <h5>API Key</h5>
+            <pre>{this.props.query.api_key}</pre>
+            <h5>Example API Calls:</h5>
+            <div>
+              Results in CSV format:
+              <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.csv?api_key={this.props.query.api_key}</pre>
 
-                Results in JSON format:
-                <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.json?api_key={this.props.query.api_key}</pre>
-              </div>
-            </Modal.Body>
+              Results in JSON format:
+              <pre>{this.props.clientConfig.basePath}api/queries/{this.props.query.id}/results.json?api_key={this.props.query.api_key}</pre>
+            </div>
           </Modal>
-
+          <Modal
+            visible={this.state.editTags}
+            onCancel={this.hideEditTags}
+            title="Add/Edit Tags"
+            footer={[
+              <button className="btn btn-default" onClick={this.hideEditTags}>Close</button>,
+              <button className="btn btn-primary" onClick={this.saveTags}>Save</button>,
+            ]}
+          >
+            <Select
+              mode="tags"
+              placeholder="Add some tags..."
+              value={this.state.tags}
+              onChange={this.updateTags}
+            >
+              {(this.props.tags && this.props.tags.fulfilled) ?
+               map(sortBy(map(this.props.tags.value, (count, tag) => ({ tag, count })), 'count'), item =>
+                   (<Select.Option key={item.tag}>{item.tag}</Select.Option>)) : []}
+            </Select>
+          </Modal>
           <div className="col-sm-8 col-xs-7 p-0">
             <h3>
               <EditInPlaceText
@@ -166,11 +203,19 @@ export default class QueryViewHeader extends React.Component {
                 ignoreBlanks
                 value={this.props.query.name}
               />
-              {this.props.query.is_draft && !this.props.query.is_archived ? <span className="label label-default">Unpublished</span> : ''}
+              {this.props.query.is_draft && !this.props.query.is_archived ?
+                <span className="label label-default">Unpublished</span> : null }
               {this.props.query.is_archived ?
                 <OverlayTrigger trigger="mouseenter" overlay={archivedPopover}>
                   <span className="label label-warning">Archived</span>
-                </OverlayTrigger> : ''}
+                </OverlayTrigger> : null}
+              {this.props.query.tags.map(t => <span key={t} className="label label-tag">{t}</span>)}
+              {this.props.canEdit ?
+                <a onClick={this.editTags} className="label label-tag">
+                  {this.props.query.tags.length ?
+                    <i className="zmdi zmdi-edit" /> :
+                    <React.Fragment><i className="zmdi zmdi-plus" />Add tag</React.Fragment>}
+                </a> : null}
             </h3>
           </div>
 
@@ -182,7 +227,6 @@ export default class QueryViewHeader extends React.Component {
                <button className="btn btn-default btn-publish" onClick={this.togglePublished}>
                  <span className="fa fa-paper-plane" /> Publish
                </button> : null}
-
             {this.props.query.id && this.props.currentUser.hasPermission('view_source') ?
               <a
                 href={getUrl(this.props.query, !this.props.sourceMode, this.props.selectedTab)}
@@ -200,7 +244,7 @@ export default class QueryViewHeader extends React.Component {
               >
                 <MenuItem
                   eventKey="duplicateQuery"
-                  className={!this.props.currentUser.hasPermission('edit_query') || !this.props.dataSource || this.props.dataSource.view_only ? 'disabled' : ''}
+                  className={!this.props.currentUser.hasPermission('edit_query') || !this.props.dataSource || this.props.dataSource.view_only ? 'disabled' : null}
                   onSelect={this.props.duplicateQuery}
                 >
                     Fork
@@ -208,10 +252,10 @@ export default class QueryViewHeader extends React.Component {
                 <MenuItem divider />
                 {ownerButtons}
                 {this.props.query.is_archived ? '' : <MenuItem divider />}
-                {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : ''}
+                {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : null}
                 {this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
-                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : ''}
-              </DropdownButton> : ''}
+                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null}
+              </DropdownButton> : null}
           </div>
         </div>
       </div>
