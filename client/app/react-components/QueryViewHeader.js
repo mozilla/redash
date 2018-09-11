@@ -219,13 +219,15 @@ export default class QueryViewHeader extends React.Component {
           </div>
 
           <div className="col-sm-4 col-xs-5 p-0 source-control text-right">
-
+            <span>
             {this.props.query.is_draft &&
              this.props.query.id &&
              (this.props.isQueryOwner || this.props.currentUser.hasPermission('admin')) ?
                <button className="btn btn-default btn-publish" onClick={this.togglePublished}>
                  <span className="fa fa-paper-plane" /> Publish
                </button> : null}
+            </span>
+            <span>
             {this.props.query.id && this.props.currentUser.hasPermission('view_source') ?
               <a
                 href={getUrl(this.props.query, !this.props.sourceMode, this.props.selectedTab)}
@@ -233,12 +235,13 @@ export default class QueryViewHeader extends React.Component {
               ><i className={'fa fa-' + (this.props.sourceMode ? 'table' : 'code')} aria-hidden="true" />
                 {this.props.sourceMode ? 'Show Data Only' : 'Edit Source'}
               </a> : null}
-
+            </span>
             {this.props.query.id ?
               <DropdownButton
                 id="query-more-menu"
                 className="btn btn-default"
                 pullRight
+                noCaret
                 title={<span className="zmdi zmdi-more" />}
               >
                 <MenuItem
