@@ -256,8 +256,9 @@ export default class QueryViewHeader extends React.Component {
                 {ownerButtons}
                 {this.props.query.is_archived ? '' : <MenuItem divider />}
                 {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : null}
-                {this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
-                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null}
+                {/* remove for upstream */
+                 /* this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
+                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null */}
               </DropdownButton> : null}
           </div>
         </div>

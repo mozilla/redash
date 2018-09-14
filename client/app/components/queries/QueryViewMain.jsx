@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
-import { difference, find, includes, map, some, union, uniq } from 'lodash';
+import { difference, find, findIndex, includes, map, some, union, uniq } from 'lodash';
 import moment from 'moment';
 
 import FlexResizable from './FlexResizable';
@@ -130,7 +130,7 @@ class QueryViewMain extends React.Component {
       queryExecuting: false,
       filters: [],
       filteredData: { rows: [], columns: [] },
-      visualization: props.query.value.visualizations[0],
+      visualizationId: null,
     };
     this.queryEditor = React.createRef();
     this.listenForResize = (f) => { this.resizeEditor = f; };
@@ -149,9 +149,22 @@ class QueryViewMain extends React.Component {
     }
     return null;
   }
-  setVisualization = (e, tabId) => this.setState({ visualization: find(this.props.query.value.visualizations, { id: tabId }) })
+  setVisualization = (e, visualizationId) => this.setState({ visualizationId })
 
   setFilters = filters => this.setState({ filters, filteredData: filterData(filters, this.state.queryResult) })
+
+  updateVisualization = (v) => {
+    const visualizations = [...this.props.query.value.visualizations];
+    if (visualizations.length) {
+      const i = findIndex(this.props.query.value.visualizations, { id: v.id });
+      if (i > -1) {
+        visualizations[i] = v;
+      }
+    } else {
+      visualizations[0] = v;
+    }
+    this.props.updateAndSaveQuery({ visualizations });
+  }
 
   canExecuteQuery = () => this.props.currentUser.hasPermission('execute_query') && !this.props.dataSource.view_only
 
@@ -202,6 +215,9 @@ class QueryViewMain extends React.Component {
     this.props.updateQuery({ options: { ...this.props.query.value.options, parameters } })
 
   render() {
+    const visualization = (this.state.visualizationId === null ?
+      this.props.query.value.visualizations[0] :
+      find(this.props.query.value.visualizations, { id: this.state.visualizationId }))
     return (
       <main className="query-fullscreen">
         <QueryViewNav
@@ -284,7 +300,7 @@ class QueryViewMain extends React.Component {
                 filters={this.state.filters}
                 executeQueryResponse={this.props.executeQueryResponse}
                 queryExecuting={this.state.queryExecuting}
-                visualization={this.state.visualization}
+                visualization={visualization}
                 setVisualization={this.setVisualization}
               />
             </div>
@@ -298,7 +314,10 @@ class QueryViewMain extends React.Component {
               selectedTab={this.state.selectedTab}
               queryExecuting={this.state.queryExecuting}
               canExecuteQuery={this.canExecuteQuery()}
-              visualization={this.state.visualization}
+              visualization={visualization}
+              updateVisualization={this.updateVisualization}
+              setFilters={this.setFilters}
+              filters={this.state.filters}
               clientConfig={this.props.clientConfig}
             />
           </div>
