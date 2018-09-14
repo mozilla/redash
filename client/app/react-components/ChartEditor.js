@@ -35,7 +35,7 @@ export default class ChartEditor extends React.Component {
       return () => (
         map(
           filter(
-            props.queryResult.getColumns(),
+            props.queryResult.data.columns,
             c => !includes(map(filter(getColumnsState(), cc => cc !== null), 'value'), c.name),
           ),
           c => ({ value: c.name, label: <span>{c.name} <small className="text-muted">{c.type}</small></span> }),
@@ -65,8 +65,8 @@ export default class ChartEditor extends React.Component {
       e => this.updateOptions({ yAxis: [yAxes[0], { ...yAxes[1], text: e.target.value }] }),
     ];
     this.updateYAxisScale = [
-      type => this.updateOptions({ yAxis: [{ ...yAxes[0], type }, yAxes[1]] }),
-      type => this.updateOptions({ yAxis: [yAxes[0], { ...yAxes[1], type }] }),
+      type => this.updateOptions({ yAxis: [{ ...yAxes[0], type: type.value }, yAxes[1]] }),
+      type => this.updateOptions({ yAxis: [yAxes[0], { ...yAxes[1], type: type.value }] }),
     ];
     this.updateYAxisRangeMin = [
       e => this.updateOptions({ yAxis: [{ ...yAxes[0], rangeMin: e.target.value }, yAxes[1]] }),
@@ -113,7 +113,7 @@ export default class ChartEditor extends React.Component {
     this.updateOptions({
       globalSeriesType: selected.value,
       showDataLabels: this.props.visualization.options.globalSeriesType === 'pie',
-      seriesOptions: { ...sOpts, type: selected.value },
+      seriesOptions: each({ ...sOpts }, (o) => { o.type = selected.value; }),
     });
   }
 
@@ -164,7 +164,7 @@ export default class ChartEditor extends React.Component {
   updateValuesOptions = valuesOptions => this.updateOptions({ valuesOptions })
   updateColorsList = colorsList => this.setState({ colorsList })
   updateCustomCode = customCode => this.updateOptions({ customCode })
-  updateXAxisType = type => this.updateOptions({ xAxis: { ...this.props.visualization.options.xAxis, type } })
+  updateXAxisType = type => this.updateOptions({ xAxis: { ...this.props.visualization.options.xAxis, type: type.value } })
   updateXAxisName = e => this.updateOptions({
     xAxis: {
       ...this.props.visualization.options.xAxis,
@@ -235,7 +235,7 @@ export default class ChartEditor extends React.Component {
                 /> Show data labels
               </label>
             </div> : '' }
-          <div className={'form-group' + (!opts.xAxisColumn ? ' has-error' : '')}>
+          <div className={'form-group' + (!this.getXAxisColumn() ? ' has-error' : '')}>
             <label className="control-label">X Column</label>
             <Select
               placeholder="Choose column..."
@@ -245,7 +245,7 @@ export default class ChartEditor extends React.Component {
             />
           </div>
 
-          <div className={'form-group' + (opts.yAxisColumns && opts.yAxisColumns.length > 0 ? '' : ' has-error')}>
+          <div className={'form-group' + (this.getYAxisColumns().length > 0 ? '' : ' has-error')}>
             <label className="control-label">Y Columns</label>
 
             <Select

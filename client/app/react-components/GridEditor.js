@@ -103,16 +103,13 @@ function getColumnsOptions(columns, visualizationColumns) {
       col => [col.name, _.omit(col, 'order')],
     ));
   }
-
-  _.each(options, col => _.extend(col, visualizationColumns[col.name]));
-
-  return _.sortBy(options, 'order');
+  return _.sortBy(_.map(options, col => ({ ...col, ...visualizationColumns[col.name] })), 'order');
 }
 
 function collectTableColumns(queryResult, clientConfig, newCols) {
   return _.map(
     getColumnsOptions(
-      queryResult.getData() !== null ? queryResult.getColumns() : [],
+      queryResult.data !== null ? queryResult.data.columns : [],
       newCols,
     ),
     col => _.extend(getDefaultFormatOptions(col, clientConfig), col),
@@ -124,6 +121,7 @@ export default class GridEditor extends React.Component {
     visualization: PropTypes.object.isRequired,
     queryResult: PropTypes.object.isRequired,
     updateVisualization: PropTypes.func.isRequired,
+    clientConfig: PropTypes.object.isRequired,
   }
 
   constructor(props) {

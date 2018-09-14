@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { each, extend, filter, fromPairs, includes, map, omit, sortBy } from 'lodash';
+import { extend, filter, fromPairs, includes, map, omit, sortBy } from 'lodash';
 import { createFormatter } from '@/lib/value-format';
 import { getColumnCleanName } from '@/services/query-result';
 
@@ -95,10 +95,7 @@ function getColumnsOptions(columns, visualizationColumns) {
       col => [col.name, omit(col, 'order')],
     ));
   }
-
-  each(options, col => ({ ...col, ...visualizationColumns[col.name] }));
-
-  return sortBy(options, 'order');
+  return sortBy(map(options, col => ({ ...col, ...visualizationColumns[col.name] })), 'order');
 }
 
 function getColumnsToDisplay(columns, options, clientConfig) {

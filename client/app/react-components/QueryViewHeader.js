@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Creatable } from 'react-select';
+import Select from 'react-select';
 import 'react-select/dist/react-select.css';
 import { each, map, sortBy } from 'lodash';
 import { DropdownButton, MenuItem, Modal, OverlayTrigger, Popover } from 'react-bootstrap';
@@ -177,7 +177,7 @@ export default class QueryViewHeader extends React.Component {
               <Modal.Title>Add/Edit Tags</Modal.Title>
             </Modal.Header>
             <Modal.Body closeButton>
-              <Creatable
+              <Select.Creatable
                 multi
                 placeholder="Add some tags..."
                 value={this.state.tags}
@@ -255,8 +255,9 @@ export default class QueryViewHeader extends React.Component {
                 {ownerButtons}
                 {this.props.query.is_archived ? '' : <MenuItem divider />}
                 {this.props.query.id ? <MenuItem onSelect={this.showApiKey} eventKey="showApiKey">Show API Key</MenuItem> : null}
-                {this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
-                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null}
+                {/* remove for upstream */
+                 /* this.props.canEdit && this.props.query.id && (this.props.query.version > 1) ?
+                  <MenuItem eventKey="compareQueryVersion" onSelect={this.compareQueryVersion}>Query Versions</MenuItem> : null */}
               </DropdownButton> : null}
           </div>
         </div>

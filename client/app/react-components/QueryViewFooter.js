@@ -5,6 +5,7 @@ import { ButtonGroup, DropdownButton, MenuItem, Modal } from 'react-bootstrap';
 import moment from 'moment';
 
 import { durationHumanize, prettySize } from '@/filters';
+import VisualizationOptionsEditor from './VisualizationOptionsEditor';
 
 export default class QueryViewFooter extends React.Component {
   static propTypes = {
@@ -14,18 +15,24 @@ export default class QueryViewFooter extends React.Component {
     filteredData: PropTypes.object.isRequired,
     queryExecuting: PropTypes.bool.isRequired,
     canExecuteQuery: PropTypes.bool.isRequired,
+    visualization: PropTypes.object.isRequired,
+    updateVisualization: PropTypes.func.isRequired,
+    setFilters: PropTypes.func.isRequired,
+    filters: PropTypes.array.isRequired,
   }
 
   constructor(props) {
     super(props);
     this.state = {
       showEmbedDialog: false,
+      editVisualization: false,
+      visualization: null,
     };
   }
-  openVisualizationEditor = () => {
-    // set state for displaying vis-editor modal
-    return null;
-  }
+  openVisualizationEditor = () => this.setState({ visualization: this.props.visualization, editVisualization: true })
+  hideVisualizationEditor = () => this.setState({ editVisualization: false })
+  updateVisualization = v => this.setState({ visualization: v })
+  saveVisualization = () => { this.props.updateVisualization(this.state.visualization); this.hideVisualizationEditor() }
 
   showEmbedDialog = () => this.setState({ showEmbedDialog: true });
   hideEmbedDialog = () => this.setState({ showEmbedDialog: false });
@@ -40,6 +47,29 @@ export default class QueryViewFooter extends React.Component {
     const embedUrl = `${this.props.clientConfig.basePath}embed/query/${this.props.query.id}/visualization/${this.props.visualization.id}?api_key=${this.props.query.api_key}`;
     return (
       <div className="bottom-controller">
+        <Modal show={this.state.editVisualization} onHide={this.hideVisualizationEditor} className="modal-xl">
+          <Modal.Header closeButton>
+            <Modal.Title>Visualization Editor</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="row">
+              <VisualizationOptionsEditor
+                queryResult={this.props.queryResult.value.query_result}
+                visualization={this.state.visualization}
+                updateVisualization={this.updateVisualization}
+                filteredData={this.props.filteredData}
+                clientConfig={this.props.clientConfig}
+                filters={this.props.filters}
+                setFilters={this.props.setFilters}
+              />
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <button className="btn btn-default" onClick={this.hideVisualizationEditor}>Cancel</button>
+            <button className="btn btn-primary" onClick={this.saveVisualization}>Save</button>
+          </Modal.Footer>
+        </Modal>
+
         <Modal show={this.state.showEmbedDialog} onHide={this.hideEmbedDialog}>
           <Modal.Header closeButton>
             <Modal.Title>Embed Code</Modal.Title>
