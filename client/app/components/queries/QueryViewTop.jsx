@@ -30,18 +30,24 @@ class QueryViewTop extends React.Component {
     this.toastRef = React.createRef();
     this.state = {
       query: null,
-      // XXX get this with refetch?
-      // latestQueryData: null,
     };
   }
 
   static getDerivedStateFromProps(newProps, oldState) {
     const state = {};
     if (newProps.query.pending) {
-      state.query = null;
+      state.toast = null;
+    } else if (newProps.query.fulfilled && newProps.query.refreshing) {
+      state.toast = 'success';
+    } else if (newProps.query.rejected) {
+      state.toast = 'error';
+    } else if (newProps.archiveQueryResponse && newProps.archiveQueryResponse.rejected) {
+      state.toast = 'archiveError';
     }
     // create shallow copy of query contents once loaded
-    if (newProps.query.meta.archive || (!oldState.query && newProps.query.fulfilled)) {
+    const updatedQuery = (newProps.query.fulfilled &&
+                          (!oldState.query || newProps.query.value.version > oldState.query.version));
+    if (newProps.query.meta.archive || updatedQuery) {
       state.query = { ...newProps.query.value };
       if (!state.query.visualizations || state.query.visualizations.length === 0) {
         state.query.visualizations = [{
@@ -50,17 +56,6 @@ class QueryViewTop extends React.Component {
           description: '',
           options: visualizationRegistry.TABLE.defaultOptions,
         }];
-      }
-    }
-    if (newProps.saveQueryResponse) {
-      if (newProps.saveQueryResponse.pending) {
-        state.toast = null;
-      } else if (newProps.saveQueryResponse.fulfilled) {
-        state.toast = 'success';
-      } else if (newProps.saveQueryResponse.rejected) {
-        state.toast = 'error';
-      } else if (newProps.archiveQueryResponse.rejected) {
-        state.toast = 'archiveError';
       }
     }
     return state;
@@ -91,7 +86,6 @@ class QueryViewTop extends React.Component {
   setDataSource = (dataSource) => {
     this.props.Events.record('update_data_source', 'query', this.props.query.id);
     localStorage.lastSelectedDataSourceId = this.props.query.data_source_id;
-    // this.setState({ latestQueryData: null });
     (this.props.query.id ? this.updateAndSaveQuery : this.updateQuery)({
       data_source_id: dataSource.id,
       latest_query_data_id: null,
@@ -122,10 +116,10 @@ class QueryViewTop extends React.Component {
 
   archiveQuery = () => this.props.archiveQuery(this.props.query.value)
 
-  isDirty = () => this.state.query.query !== this.props.query.value.query
+  isDirty = () => !this.state.query || this.state.query.query !== this.props.query.value.query
 
   render() {
-    if (!(this.props.query.fulfilled && this.props.dataSources && this.props.dataSources.fulfilled)) {
+    if (!(this.state.query && this.props.dataSources && this.props.dataSources.fulfilled)) {
       return null;
     }
     const query = this.state.query;
@@ -200,8 +194,8 @@ function fetchQuery(props) {
         }),
       },
       saveQuery: newQuery => ({
-        query: { value: newQuery },
-        saveQueryResponse: {
+        query: {
+          refreshing: true,
           force: true,
           url: `${props.clientConfig.basePath}api/queries/${props.queryId}`,
           method: 'POST',
