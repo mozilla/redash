@@ -115,18 +115,23 @@ export default class QueryEditor extends React.Component {
       editor.commands.bindKey('Cmd+L', null);
       editor.commands.bindKey('Ctrl+P', null);
       editor.commands.bindKey('Ctrl+L', null);
-
-      //   this.props.QuerySnippet.query((snippets) => {
-      //     const snippetManager = snippetsModule.snippetManager;
-      //     const m = {
-      //       snippetText: '',
-      //     };
-      //     m.snippets = snippetManager.parseSnippetFile(m.snippetText);
-      //     snippets.forEach((snippet) => {
-      //       m.snippets.push(snippet.getSnippet());
-      //     });
-      //     snippetManager.register(m.snippets || [], m.scope);
-      //   });
+      window.fetch(`${this.props.clientConfig.basePath}api/query_snippets`)
+        .then(r => r.json())
+        .then(snippets => {
+          const snippetManager = snippetsModule.snippetManager;
+          const m = {
+            snippetText: '',
+          };
+          m.snippets = snippetManager.parseSnippetFile(m.snippetText);
+          snippets.forEach((s) => {
+            m.snippets.push({
+                name: s.description ? `${s.trigger}: ${s.description}` : s.trigger,
+                content: s.snippet,
+                tabTrigger: s.trigger,
+            });
+          });
+          snippetManager.register(m.snippets || [], m.scope);
+        });
       editor.focus();
       this.props.listenForResize(() => editor.resize());
     };
