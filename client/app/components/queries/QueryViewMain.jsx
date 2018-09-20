@@ -128,9 +128,14 @@ class QueryViewMain extends React.Component {
     this.props.updateQuery({ options: { ...this.props.query.value.options, parameters } })
 
   render() {
-    const visualization = (this.state.visualizationId === null ?
-      this.props.query.value.visualizations[0] :
-      find(this.props.query.value.visualizations, { id: this.state.visualizationId }));
+    let visualization;
+    if (!this.props.query.value.visualization) {
+      visualization = null;
+    } else if (this.state.visualizationId === null) {
+      visualization = this.props.query.value.visualizations[0];
+    } else {
+      visualization = find(this.props.query.value.visualizations, { id: this.state.visualizationId });
+    }
     return (
       <main className="query-fullscreen">
         <QueryViewNav

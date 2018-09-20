@@ -209,10 +209,10 @@ export default class QueryViewHeader extends React.Component {
                 <OverlayTrigger trigger="mouseenter" overlay={archivedPopover}>
                   <span className="label label-warning">Archived</span>
                 </OverlayTrigger> : null}
-              {this.props.query.tags.map(t => <span key={t} className="label label-tag">{t}</span>)}
+              {this.state.tags.map(t => <span key={t} className="label label-tag">{t}</span>)}
               {this.props.canEdit ?
                 <a onClick={this.editTags} className="label label-tag">
-                  {this.props.query.tags.length ?
+                  {this.state.tags.length ?
                     <i className="zmdi zmdi-edit" /> :
                     <React.Fragment><i className="zmdi zmdi-plus" />Add tag</React.Fragment>}
                 </a> : null}

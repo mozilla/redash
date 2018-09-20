@@ -26,7 +26,9 @@ export default class QueryExecutionStatus extends React.Component {
   }
 
   componentDidUpdate() {
-    if (this.props.executeQueryResponse.fulfilled && this.props.executeQueryResponse.value.query_result) {
+    if (!this.props.executeQueryResponse ||
+        (this.props.executeQueryResponse.fulfilled &&
+         this.props.executeQueryResponse.value.query_result)) {
       // query result loaded, no timer
       if (this.currentTimer) {
         clearInterval(this.currentTimer);
@@ -69,10 +71,15 @@ export default class QueryExecutionStatus extends React.Component {
     this.props.Events.record('cancel_execute', 'query', this.props.queryId);
   }
 
-  status = () => statuses[this.props.executeQueryResponse.fulfilled ? this.props.executeQueryResponse.value.job.status : 1]
+  status = () => statuses[this.props.executeQueryResponse.fulfilled ?
+    this.props.executeQueryResponse.value.job.status : 1]
 
   render() {
-    if (this.props.executeQueryResponse.fulfilled && !this.props.executeQueryResponse.value.job) return null;
+    if (!this.props.executeQueryResponse ||
+        (this.props.executeQueryResponse.fulfilled &&
+         !this.props.executeQueryResponse.value.job)) {
+      return null;
+    }
     const status = this.status();
     let display;
     let error;
