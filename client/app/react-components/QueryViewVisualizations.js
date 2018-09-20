@@ -67,12 +67,10 @@ export default class QueryViewVisualizations extends React.Component {
             </div> : ''}
           <QueryExecutionStatus
             queryId={this.props.query.id}
-            queryResult={this.props.queryResult}
             executeQueryResponse={this.props.executeQueryResponse}
             Event={this.props.Event}
           />
           {/* tabs and data */}
-          {/* XXX check job */}
           {this.props.data ?
             <div className="flex-fill p-relative">
               <div
