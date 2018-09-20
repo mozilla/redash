@@ -2,11 +2,81 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import { ToastMessageAnimated } from 'react-toastr';
+import { find, includes, map, some, uniq } from 'lodash';
+import moment from 'moment';
 
 import visualizationRegistry from '@/visualizations/registry';
 import QueryViewHeader from './QueryViewHeader';
 import QueryViewMain from './QueryViewMain';
 import AlertUnsavedChanges from './AlertUnsavedChanges';
+
+const filterTypes = ['filter', 'multi-filter', 'multiFilter'];
+
+function getColumnNameWithoutType(column) {
+  let typeSplit;
+  if (column.indexOf('::') !== -1) {
+    typeSplit = '::';
+  } else if (column.indexOf('__') !== -1) {
+    typeSplit = '__';
+  } else {
+    return column;
+  }
+
+  const parts = column.split(typeSplit);
+  if (parts[0] === '' && parts.length === 2) {
+    return parts[1];
+  }
+
+  if (!includes(filterTypes, parts[1])) {
+    return column;
+  }
+
+  return parts[0];
+}
+
+function getColumnFriendlyName(column) {
+  return getColumnNameWithoutType(column).replace(/(?:^|\s)\S/g, a =>
+    a.toUpperCase());
+}
+
+
+function getFilters(queryResult) {
+  const filters = [];
+  queryResult.data.columns.forEach((col) => {
+    const name = col.name;
+    const type = name.split('::')[1] || name.split('__')[1];
+    if (includes(filterTypes, type)) {
+      // filter found
+      const filter = {
+        name,
+        friendlyName: getColumnFriendlyName(name),
+        column: col,
+        values: uniq(map(queryResult.data.rows, name), v => (moment.isMoment(v) ? v.unix() : v)),
+        multiple: (type === 'multiFilter') || (type === 'multi-filter'),
+      };
+      filter.current = [filter.values[0]];
+      filters.push(filter);
+    }
+  });
+  return filters;
+}
+
+function filterData(filters, queryResult) {
+  return {
+    ...queryResult.data,
+    rows: queryResult.data.rows.filter(row =>
+      filters.reduce((memo, filter) => (
+        memo && some(filter.current, (v) => {
+          const value = row[filter.name];
+          if (moment.isMoment(value)) {
+            return value.isSame(v);
+          }
+          // We compare with either the value or the String representation of the value,
+          // because Select2 casts true/false to "true"/"false".
+          return (v === value || String(value) === v);
+        })), true)),
+  };
+}
 
 class QueryViewTop extends React.Component {
   static propTypes = {
@@ -30,6 +100,9 @@ class QueryViewTop extends React.Component {
     this.toastRef = React.createRef();
     this.state = {
       query: null,
+      filters: [],
+      filteredData: { rows: [], columns: [] },
+      queryResult: PromiseState.create({}),
     };
   }
 
@@ -58,6 +131,15 @@ class QueryViewTop extends React.Component {
         }];
       }
     }
+    if (newProps.queryResult &&
+        newProps.queryResult.fulfilled &&
+        newProps.queryResult.value.query_result &&
+        oldState.queryResult !== newProps.queryResult.value.query_result) {
+      const data = newProps.queryResult.value.query_result;
+      state.filters = getFilters(data);
+      state.filteredData = filterData(state.filters, data);
+      state.queryResult = newProps.queryResult.value.query_result;
+    }
     return state;
   }
 
@@ -65,6 +147,7 @@ class QueryViewTop extends React.Component {
   // XXX tied to angular routing
   onChangeLocation = cb => this.props.$rootScope.$on('$locationChangeStart', cb);
 
+  setFilters = filters => this.setState({ filters, filteredData: filterData(filters, this.props.queryResult) })
 
   getDataSource = () => {
     // Try to get the query's data source id
@@ -76,7 +159,7 @@ class QueryViewTop extends React.Component {
       dataSourceId = parseInt(localStorage.lastSelectedDataSourceId, 10);
     }
 
-    const dataSource = find(this.props.dataSources, ds => ds.id === dataSourceId);
+    const dataSource = find(this.props.dataSources.value, ds => ds.id === dataSourceId);
     // If we had an invalid value in localStorage (e.g. nothing, deleted source),
     // then use the first data source
 
@@ -115,11 +198,16 @@ class QueryViewTop extends React.Component {
   })
 
   archiveQuery = () => this.props.archiveQuery(this.props.query.value)
+  executeQuery = () => this.props.executeQuery({
+    query: this.state.query.query,
+    query_id: this.state.query.id,
+    data_source_id: this.getDataSource().id,
+  })
 
-  isDirty = () => !this.state.query || this.state.query.query !== this.props.query.value.query
+  isDirty = () => this.state.query.query !== this.props.query.value.query
 
   render() {
-    if (!(this.state.query && this.props.dataSources && this.props.dataSources.fulfilled)) {
+    if (!(this.props.query.fulfilled && this.props.dataSources && this.props.dataSources.fulfilled)) {
       return null;
     }
     const query = this.state.query;
@@ -157,16 +245,18 @@ class QueryViewTop extends React.Component {
           currentUser={this.props.currentUser}
           basePath={this.props.basePath}
           baseQuery={query}
-          queryResult={this.props.queryResult}
+          queryResult={this.state.queryResult}
+          executeQueryResponse={this.props.queryResult}
           updateAndSaveQuery={this.updateAndSaveQuery}
           isDirty={this.isDirty()}
           dataSource={dataSource}
           dataSources={dataSources}
           setDataSource={this.setDataSource}
           sourceMode={this.props.sourceMode}
-          executeQuery={this.props.executeQuery}
-          executeQueryResponse={this.props.executeQueryResponse}
+          executeQuery={this.executeQuery}
           updateQuery={this.updateQuery}
+          filters={this.state.filters}
+          filteredData={this.state.filteredData}
           KeyboardShortcuts={this.props.KeyboardShortcuts}
         />
       </div>
@@ -210,13 +300,13 @@ function fetchQuery(props) {
         },
       }),
       executeQuery: query => ({
-        executeQueryResponse: {
-          url: `${props.clientConfig.basePath}api/query_results/`,
+        queryResult: {
+          force: true,
+          url: `${props.clientConfig.basePath}api/query_results`,
           method: 'POST',
-          body: query,
+          body: JSON.stringify(query),
         },
       }),
-      executeQueryResponse: { value: {} },
       checkJobStatus: jobId => ({
         job: {
           url: `${props.clientConfig.basePath}api/jobs/${jobId}`,

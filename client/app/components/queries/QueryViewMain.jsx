@@ -2,8 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
-import { difference, find, findIndex, includes, map, some, union, uniq } from 'lodash';
-import moment from 'moment';
+import { difference, find, findIndex, map, union, uniq } from 'lodash';
 
 import FlexResizable from './FlexResizable';
 import QueryViewNav from './QueryViewNav';
@@ -31,76 +30,9 @@ function parseQuery(query) {
   return uniq(collectParams(Mustache.parse(query)));
 }
 
-const filterTypes = ['filter', 'multi-filter', 'multiFilter'];
-
-function getColumnNameWithoutType(column) {
-  let typeSplit;
-  if (column.indexOf('::') !== -1) {
-    typeSplit = '::';
-  } else if (column.indexOf('__') !== -1) {
-    typeSplit = '__';
-  } else {
-    return column;
-  }
-
-  const parts = column.split(typeSplit);
-  if (parts[0] === '' && parts.length === 2) {
-    return parts[1];
-  }
-
-  if (!includes(filterTypes, parts[1])) {
-    return column;
-  }
-
-  return parts[0];
-}
-
-export function getColumnCleanName(column) {
-  return getColumnNameWithoutType(column);
-}
-
-function getColumnFriendlyName(column) {
-  return getColumnNameWithoutType(column).replace(/(?:^|\s)\S/g, a =>
-    a.toUpperCase());
-}
-
-function getFilters(queryResult) {
-  const filters = [];
-  queryResult.data.columns.forEach((col) => {
-    const name = col.name;
-    const type = name.split('::')[1] || name.split('__')[1];
-    if (includes(filterTypes, type)) {
-      // filter found
-      const filter = {
-        name,
-        friendlyName: getColumnFriendlyName(name),
-        column: col,
-        values: uniq(map(queryResult.data.rows, name), v => (moment.isMoment(v) ? v.unix() : v)),
-        multiple: (type === 'multiFilter') || (type === 'multi-filter'),
-      };
-      filter.current = [filter.values[0]];
-      filters.push(filter);
-    }
-  });
-  return filters;
-}
-
-function filterData(filters, queryResult) {
-  return {
-    ...queryResult.data,
-    rows: queryResult.data.rows.filter(row =>
-      filters.reduce((memo, filter) => (
-        memo && some(filter.current, (v) => {
-          const value = row[filter.name];
-          if (moment.isMoment(value)) {
-            return value.isSame(v);
-          }
-          // We compare with either the value or the String representation of the value,
-          // because Select2 casts true/false to "true"/"false".
-          return (v === value || String(value) === v);
-        })), true)),
-  };
-}
+// export function getColumnCleanName(column) {
+//   return getColumnNameWithoutType(column);
+// }
 
 class QueryViewMain extends React.Component {
   static propTypes = {
@@ -126,32 +58,13 @@ class QueryViewMain extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      queryResult: null, // eslint-disable-line react/no-unused-state
-      queryExecuting: false,
-      filters: [],
-      filteredData: { rows: [], columns: [] },
       visualizationId: null,
     };
     this.queryEditor = React.createRef();
     this.listenForResize = (f) => { this.resizeEditor = f; };
   }
 
-  static getDerivedStateFromProps(newProps, oldState) {
-    if (newProps.queryResult &&
-        newProps.queryResult.fulfilled &&
-        oldState.queryResult !== newProps.queryResult.value.query_result) {
-      const data = newProps.queryResult.value.query_result;
-      const filters = getFilters(data);
-      return {
-        filters,
-        filteredData: filterData(filters, data),
-      };
-    }
-    return null;
-  }
   setVisualization = (e, visualizationId) => this.setState({ visualizationId })
-
-  setFilters = filters => this.setState({ filters, filteredData: filterData(filters, this.state.queryResult) })
 
   updateVisualization = (v) => {
     const visualizations = [...this.props.query.value.visualizations];
@@ -217,7 +130,7 @@ class QueryViewMain extends React.Component {
   render() {
     const visualization = (this.state.visualizationId === null ?
       this.props.query.value.visualizations[0] :
-      find(this.props.query.value.visualizations, { id: this.state.visualizationId }))
+      find(this.props.query.value.visualizations, { id: this.state.visualizationId }));
     return (
       <main className="query-fullscreen">
         <QueryViewNav
@@ -292,14 +205,14 @@ class QueryViewMain extends React.Component {
                 query={this.props.query.value}
                 updateQuery={this.props.updateQuery}
                 searchQueries={this.props.searchQueries}
-                data={this.state.filteredData}
+                data={this.props.filteredData}
                 queryResult={this.props.queryResult}
                 sourceMode={this.props.sourceMode}
                 canEdit={this.props.canEdit}
                 setFilters={this.setFilters}
-                filters={this.state.filters}
+                filters={this.props.filters}
                 executeQueryResponse={this.props.executeQueryResponse}
-                queryExecuting={this.state.queryExecuting}
+                queryExecuting={this.props.queryExecuting}
                 visualization={visualization}
                 setVisualization={this.setVisualization}
               />
@@ -310,14 +223,13 @@ class QueryViewMain extends React.Component {
               query={this.props.query.value}
               queryResult={this.props.queryResult}
               canEdit={this.props.canEdit}
-              filteredData={this.state.filteredData}
-              selectedTab={this.state.selectedTab}
-              queryExecuting={this.state.queryExecuting}
+              filteredData={this.props.filteredData}
+              queryExecuting={this.props.queryExecuting}
               canExecuteQuery={this.canExecuteQuery()}
               visualization={visualization}
               updateVisualization={this.updateVisualization}
               setFilters={this.setFilters}
-              filters={this.state.filters}
+              filters={this.props.filters}
               clientConfig={this.props.clientConfig}
             />
           </div>
@@ -336,7 +248,7 @@ function fetchData(props) {
       query: { value: props.baseQuery },
       // dataSourceVersion: {
       //  url: versionURL,
-      //},
+      // },
       schema: {
         url: schemaURL,
       },

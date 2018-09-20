@@ -14,14 +14,9 @@ const statuses = {
 export default class QueryExecutionStatus extends React.Component {
   static propTypes = {
     queryId: PropTypes.number.isRequired,
-    queryResult: PropTypes.instanceOf(PromiseState).isRequired,
-    executeQueryResponse: PropTypes.instanceOf(PromiseState),
+    executeQueryResponse: PropTypes.instanceOf(PromiseState).isRequired,
   }
 
-
-  static defaultProps = {
-    executeQueryResponse: {},
-  }
   constructor(props) {
     super(props);
     this.state = {
@@ -30,11 +25,14 @@ export default class QueryExecutionStatus extends React.Component {
     };
   }
 
-  componentDidMount() {
-    this.startTimer();
-  }
-
   componentDidUpdate() {
+    if (this.props.executeQueryResponse.fulfilled && this.props.executeQueryResponse.value.query_result) {
+      // query result loaded, no timer
+      if (this.currentTimer) {
+        clearInterval(this.currentTimer);
+      }
+      return;
+    }
     if (this.status() === 'processing' || this.status() === 'waiting') {
       this.startTimer();
     }
@@ -49,10 +47,13 @@ export default class QueryExecutionStatus extends React.Component {
   startTimer = () => {
     const self = this;
     this.currentTimer = setInterval(() => {
-      const timestamp = this.props.queryResult.fulfilled ? this.props.queryResult.value.query_result.retrieved_at : moment();
+      const timestamp = (this.props.executeQueryResponse.fulfilled && this.props.executeQueryResponse.value.query_result) ?
+        this.props.executeQueryResponse.value.query_result.retrieved_at :
+        moment();
+
       self.setState({
         currentTime: moment(moment() - moment(timestamp)).utc().format('HH:mm:ss'),
-        error: self.props.executeQueryResponse.value.error || undefined,
+        error: undefined,
       });
       if (self.currentTimer && self.status() !== 'processing' && self.status() !== 'waiting') {
         clearInterval(self.currentTimer);
@@ -68,10 +69,10 @@ export default class QueryExecutionStatus extends React.Component {
     this.props.Events.record('cancel_execute', 'query', this.props.queryId);
   }
 
-  status = () => statuses[this.props.executeQueryResponse.value.status]
+  status = () => statuses[this.props.executeQueryResponse.fulfilled ? this.props.executeQueryResponse.value.job.status : 1]
 
   render() {
-    if (!this.props.executeQueryResponse.fulfilled || !this.props.executeQueryResponse.value) return null;
+    if (this.props.executeQueryResponse.fulfilled && !this.props.executeQueryResponse.value.job) return null;
     const status = this.status();
     let display;
     let error;
@@ -89,7 +90,7 @@ export default class QueryExecutionStatus extends React.Component {
           </button>
         </div>
       );
-    } else if (this.props.status === 'waiting') {
+    } else if (status === 'waiting') {
       display = (
         <div className="alert alert-info m-t-15">
           Query in queue&hellip;
@@ -103,7 +104,7 @@ export default class QueryExecutionStatus extends React.Component {
           </button>
         </div>
       );
-    } else if (this.props.status === 'loading-result') {
+    } else if (status === 'loading-result') {
       display = (
         <div className="alert alert-info m-t-15">
           Loading results&hellip;
