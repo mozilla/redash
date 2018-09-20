@@ -15,6 +15,7 @@ export default class VisualizationRenderer extends React.Component {
   }
 
   render() {
+    if (!this.props.data.columns.length) return null;
     const Vis = visualizationRegistry[this.props.visualization.type].renderer;
     return (
       <React.Fragment>

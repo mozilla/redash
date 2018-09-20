@@ -93,9 +93,9 @@ export default class QueryViewVisualizations extends React.Component {
                 <ul className="tab-nav">
                   {!this.props.query.visualizations.length ?
                     <RdTab
-                      tabId="table"
+                      tabId={0}
                       name="Table"
-                      selectedTab={this.props.visualization}
+                      selectedTab={this.props.visualization || { id: 0 }}
                       // basePath={this.props.query.getUrl(this.props.sourceMode)}
                       onClick={this.props.setVisualization}
                     /> : map(sortBy(this.props.query.visualizations, 'id'), (vis, i) => (

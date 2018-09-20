@@ -107,6 +107,24 @@ class QueryViewTop extends React.Component {
   }
 
   static getDerivedStateFromProps(newProps, oldState) {
+    if (!newProps.query) {
+      if (!oldState.query) {
+        // creating new query
+        return {
+          query: {
+            query: '',
+            name: 'New Query',
+            schedule: null,
+            user: newProps.currentUser,
+            options: {
+              parameters: [],
+            },
+            visualizations: [],
+          },
+        };
+      }
+      return null;
+    }
     const state = {};
     if (newProps.query.pending) {
       state.toast = null;
@@ -119,7 +137,7 @@ class QueryViewTop extends React.Component {
     }
     // create shallow copy of query contents once loaded
     const updatedQuery = (newProps.query.fulfilled &&
-                          (!oldState.query || newProps.query.value.version > oldState.query.version));
+                          (newProps.query.value.version > oldState.query.version));
     if (newProps.query.meta.archive || updatedQuery) {
       state.query = { ...newProps.query.value };
       if (!state.query.visualizations || state.query.visualizations.length === 0) {
@@ -151,7 +169,7 @@ class QueryViewTop extends React.Component {
 
   getDataSource = () => {
     // Try to get the query's data source id
-    let dataSourceId = this.props.query.data_source_id;
+    let dataSourceId = this.props.query && this.props.query.data_source_id;
 
     // If there is no source yet, then parse what we have in localStorage
     //   e.g. `null` -> `NaN`, malformed data -> `NaN`, "1" -> 1
@@ -204,10 +222,12 @@ class QueryViewTop extends React.Component {
     data_source_id: this.getDataSource().id,
   })
 
-  isDirty = () => this.state.query.query !== this.props.query.value.query
+  isDirty = () => (this.props.query ?
+    this.state.query.query !== this.props.query.value.query :
+    true)
 
   render() {
-    if (!(this.props.query.fulfilled && this.props.dataSources && this.props.dataSources.fulfilled)) {
+    if (!(this.props.dataSources && this.props.dataSources.fulfilled)) {
       return null;
     }
     const query = this.state.query;
@@ -316,7 +336,14 @@ function fetchQuery(props) {
       getTags: () => ({ tags: { url: `${props.clientConfig.basePath}api/queries/tags` } }),
     };
   }
-  return {};
+  return {
+    dataSources: {
+      url: `${props.clientConfig.basePath}api/data_sources`,
+      then: dataSources => ({
+        value: dataSources.filter(dataSource => !dataSource.viewOnly),
+      }),
+    },
+  }
 }
 
 export default connect(fetchQuery)(QueryViewTop);
