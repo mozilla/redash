@@ -209,7 +209,7 @@ export default class QueryViewHeader extends React.Component {
                   <span className="label label-warning">Archived</span>
                 </OverlayTrigger> : null}
               {this.state.tags.map(t => <span key={t} className="label label-tag">{t}</span>)}
-              {this.props.canEdit ?
+              {this.props.canEdit && this.props.getTags ?
                 <a onClick={this.editTags} className="label label-tag">
                   {this.state.tags.length ?
                     <i className="zmdi zmdi-edit" /> :

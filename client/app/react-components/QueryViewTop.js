@@ -125,6 +125,7 @@ class QueryViewTop extends React.Component {
       }
       return null;
     }
+
     const state = {};
     if (newProps.query.pending) {
       state.toast = null;
@@ -136,8 +137,14 @@ class QueryViewTop extends React.Component {
       state.toast = 'archiveError';
     }
     // create shallow copy of query contents once loaded
-    const updatedQuery = (newProps.query.fulfilled &&
-                          (newProps.query.value.version > oldState.query.version));
+    const updatedQuery = (newProps.query.fulfilled && (
+      !oldState.query ||
+      (newProps.query.value.version > (oldState.query.version || 0))));
+    // navigate to proper url if new query created
+    if (updatedQuery && oldState.query && !oldState.query.id) {
+      window.history.pushState({}, '', `/queries/${newProps.query.value.id}/source`);
+    }
+
     if (newProps.query.meta.archive || updatedQuery) {
       state.query = { ...newProps.query.value };
       if (!state.query.visualizations || state.query.visualizations.length === 0) {
@@ -196,10 +203,13 @@ class QueryViewTop extends React.Component {
   updateAndSaveQuery = (changes) => {
     const query = Object.assign({}, this.state.query, changes);
     this.setState({ query });
-    this.props.saveQuery(query);
+    if (query.id) {
+      this.props.saveQuery(query);
+    }
   }
 
   updateQuery = changes => this.setState({ query: Object.assign({}, this.state.query, changes) })
+  saveQuery = () => this.props.saveQuery(Object.assign({ data_source_id: this.getDataSource().id }, this.state.query))
 
   duplicateQuery = () => window.fetch(
     `${this.props.clientConfig.basePath}api/queries/${this.props.queryId}/fork`,
@@ -222,7 +232,7 @@ class QueryViewTop extends React.Component {
     data_source_id: this.getDataSource().id,
   })
 
-  isDirty = () => (this.props.query ?
+  isDirty = () => (this.props.query && this.props.query.fulfilled ?
     this.state.query.query !== this.props.query.value.query :
     true)
 
@@ -267,6 +277,7 @@ class QueryViewTop extends React.Component {
           baseQuery={query}
           queryResult={this.state.queryResult}
           executeQueryResponse={this.props.queryResult}
+          saveQuery={this.saveQuery}
           updateAndSaveQuery={this.updateAndSaveQuery}
           isDirty={this.isDirty()}
           dataSource={dataSource}
@@ -285,14 +296,15 @@ class QueryViewTop extends React.Component {
 }
 
 function fetchQuery(props) {
+  let requests;
   if (props.queryId) {
-    return {
+    requests = {
       query: {
         url: `${props.clientConfig.basePath}api/queries/${props.queryId}`,
         andThen: query => ({
           queryResult: query.latest_query_data_id ? {
             url: `${props.clientConfig.basePath}api/query_results/${query.latest_query_data_id}`,
-          } : undefined,
+          } : { value: PromiseState.create({}) },
 
           dataSources: {
             url: `${props.clientConfig.basePath}api/data_sources`,
@@ -335,15 +347,26 @@ function fetchQuery(props) {
       job: { value: {} },
       getTags: () => ({ tags: { url: `${props.clientConfig.basePath}api/queries/tags` } }),
     };
-  }
-  return {
-    dataSources: {
-      url: `${props.clientConfig.basePath}api/data_sources`,
-      then: dataSources => ({
-        value: dataSources.filter(dataSource => !dataSource.viewOnly),
+  } else {
+    requests = {
+      dataSources: {
+        url: `${props.clientConfig.basePath}api/data_sources`,
+        then: dataSources => ({
+          value: dataSources.filter(dataSource => !dataSource.viewOnly),
+        }),
+      },
+      saveQuery: newQuery => ({
+        query: {
+          refreshing: true,
+          force: true,
+          url: `${props.clientConfig.basePath}api/queries`,
+          method: 'POST',
+          body: JSON.stringify(newQuery),
+        },
       }),
-    },
+    };
   }
+  return requests;
 }
 
 export default connect(fetchQuery)(QueryViewTop);
