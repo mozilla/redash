@@ -9,7 +9,7 @@ import Parameters from './Parameters';
 
 function RdTab(props) {
   return (
-    <li className={'rd-tab' + (props.tabId === props.selectedTab.id ? ' active' : '')}>
+    <li className={'rd-tab' + (props.tabId === (props.selectedTab ? props.selectedTab.id : 0) ? ' active' : '')}>
       <a onClick={e => props.onClick(e, props.tabId)} href={'#' /* XXX see Query.getUrl() */}>{props.name}{props.children}</a>
     </li>
   );

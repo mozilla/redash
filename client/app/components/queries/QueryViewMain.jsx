@@ -38,6 +38,7 @@ class QueryViewMain extends React.Component {
   static propTypes = {
     currentUser: PropTypes.object.isRequired,
     query: PropTypes.instanceOf(PromiseState).isRequired,
+    saveQuery: PropTypes.func.isRequired,
     updateAndSaveQuery: PropTypes.func.isRequired,
     updateQuery: PropTypes.func.isRequired,
     isDirty: PropTypes.bool.isRequired,
@@ -91,8 +92,6 @@ class QueryViewMain extends React.Component {
   }
 
   editorFocus = () => this.queryEditor.current.editor.focus()
-
-  saveQuery = () => this.props.updateAndSaveQuery({})
 
   updateQueryText = (newText) => {
     let paramNames;
@@ -185,7 +184,7 @@ class QueryViewMain extends React.Component {
                     canExecuteQuery={this.canExecuteQuery()}
                     canEdit={this.props.canEdit}
                     listenForResize={this.listenForResize}
-                    saveQuery={this.saveQuery}
+                    saveQuery={this.props.saveQuery}
                     updateQuery={this.updateQueryText}
                     dataSource={this.props.dataSource}
                     dataSources={this.props.dataSources}
