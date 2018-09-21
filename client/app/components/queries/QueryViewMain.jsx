@@ -128,7 +128,7 @@ class QueryViewMain extends React.Component {
 
   render() {
     let visualization;
-    if (!this.props.query.value.visualization) {
+    if (!this.props.query.value.visualizations) {
       visualization = null;
     } else if (this.state.visualizationId === null) {
       visualization = this.props.query.value.visualizations[0];
