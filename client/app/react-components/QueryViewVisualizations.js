@@ -120,8 +120,8 @@ export default class QueryViewVisualizations extends React.Component {
                         </span>
                       </RdTab>
                     ))}
-                  <li className="rd-tab">{this.props.sourceMode && this.props.canEdit ?
-                    <a onClick={this.openVisualizationEditor}> + New Visualization</a> : ''}
+                  <li className="rd-tab tab-new-vis">{this.props.sourceMode && this.props.canEdit ?
+                    <a className="btn btn-default" onClick={this.props.openVisualizationEditor}> + New Visualization</a> : ''}
                   </li>
                 </ul>
                 <div className="query__vis m-t-15 scrollbox">

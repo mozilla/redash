@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { connect, PromiseState } from 'react-refetch';
 import Mustache from 'mustache';
 import { difference, find, findIndex, map, union, uniq } from 'lodash';
+import { Modal } from 'react-bootstrap';
 
 import FlexResizable from './FlexResizable';
 import QueryViewNav from './QueryViewNav';
@@ -10,7 +11,8 @@ import QueryViewVisualizations from './QueryViewVisualizations';
 import QueryViewFooter from './QueryViewFooter';
 import QueryEditor from './QueryEditor';
 import QueryMetadata from './QueryMetadata';
-
+import VisualizationOptionsEditor from './VisualizationOptionsEditor';
+import visualizationRegistry from '@/visualizations/registry';
 
 function collectParams(parts) {
   let parameters = [];
@@ -60,6 +62,8 @@ class QueryViewMain extends React.Component {
     super(props);
     this.state = {
       visualizationId: null,
+      editVisualization: false,
+      visualization: null,
     };
     this.queryEditor = React.createRef();
     this.listenForResize = (f) => { this.resizeEditor = f; };
@@ -125,6 +129,20 @@ class QueryViewMain extends React.Component {
 
   updateParameters = parameters =>
     this.props.updateQuery({ options: { ...this.props.query.value.options, parameters } })
+  openVisualizationEditor = () => this.setState({ editVisualization: true })
+  openNewVisualizationEditor = () => this.setState({
+    visualization: {
+      type: 'CHART',
+      name: visualizationRegistry.CHART.name,
+      description: '',
+      options: visualizationRegistry.CHART.defaultOptions,
+    },
+    editVisualization: true,
+  })
+  hideVisualizationEditor = () => this.setState({ editVisualization: false })
+  editVisualization = v => this.setState({ visualization: v })
+  saveVisualization = () => { this.updateVisualization(this.state.visualization); this.hideVisualizationEditor(); }
+
 
   render() {
     let visualization;
@@ -137,6 +155,28 @@ class QueryViewMain extends React.Component {
     }
     return (
       <main className="query-fullscreen">
+        <Modal show={this.state.editVisualization} onHide={this.hideVisualizationEditor} className="modal-xl">
+          <Modal.Header closeButton>
+            <Modal.Title>Visualization Editor</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="row">
+              <VisualizationOptionsEditor
+                queryResult={this.props.queryResult}
+                visualization={this.state.visualization || visualization}
+                updateVisualization={this.editVisualization}
+                filteredData={this.props.filteredData}
+                clientConfig={this.props.clientConfig}
+                filters={this.props.filters}
+                setFilters={this.props.setFilters}
+              />
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <button className="btn btn-default" onClick={this.hideVisualizationEditor}>Cancel</button>
+            <button className="btn btn-primary" onClick={this.saveVisualization}>Save</button>
+          </Modal.Footer>
+        </Modal>
         <QueryViewNav
           canEdit={this.props.canEdit}
           currentUser={this.props.currentUser}
@@ -219,6 +259,7 @@ class QueryViewMain extends React.Component {
                 queryExecuting={this.props.queryExecuting}
                 visualization={visualization}
                 setVisualization={this.setVisualization}
+                openVisualizationEditor={this.openNewVisualizationEditor}
               />
             </div>
           </div>
@@ -232,6 +273,7 @@ class QueryViewMain extends React.Component {
               canExecuteQuery={this.canExecuteQuery()}
               visualization={visualization}
               updateVisualization={this.updateVisualization}
+              openVisualizationEditor={this.openVisualizationEditor}
               setFilters={this.setFilters}
               filters={this.props.filters}
               clientConfig={this.props.clientConfig}

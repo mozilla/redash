@@ -18,7 +18,17 @@ export default class VisualizationOptionsEditor extends React.Component {
 
   }
 
-  updateType = t => this.props.updateVisualization({ ...this.props.visualization, type: t.value })
+  updateType = t => this.props.updateVisualization({
+    ...this.props.visualization,
+    type: t.value,
+    name: this.props.visualization.name === visualizationRegistry[this.props.visualization.type].name ?
+      visualizationRegistry[t.value].name :
+      this.props.visualization.name,
+    options: t.value !== this.props.visualization.type ?
+      visualizationRegistry[t.value].defaultOptions :
+      this.props.visualization.options,
+  })
+
   updateName = e => this.props.updateVisualization({ ...this.props.visualization, name: e.target.value })
 
   render() {
@@ -31,7 +41,7 @@ export default class VisualizationOptionsEditor extends React.Component {
             <label className="control-label">Visualization Type</label>
             <Select
               value={this.props.visualization.type}
-              disabled={!(this.props.visualization && this.props.visualization.id)}
+              disabled={this.props.visualization && this.props.visualization.id}
               options={map(visualizationRegistry, (v, t) => ({ label: v.name, value: t, vis: v }))}
               onChange={this.updateType}
               className="form-control"

@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import Select from 'react-select';
 import 'react-select/dist/react-select.css';
 
-import { capitalize, compact, each, filter, findKey, includes, invert, map, some, sortBy, toPairs } from 'lodash';
+import { capitalize, compact, difference, each, filter, findKey, includes, invert, keys, map, some, sortBy, toPairs } from 'lodash';
 import ChartTypePicker from './ChartTypePicker';
 import ChartSeriesEditor from './ChartSeriesEditor';
 import ChartColorEditor from './ChartColorEditor';
@@ -91,6 +91,15 @@ export default class ChartEditor extends React.Component {
       this.props.visualization.options,
       newVal,
     );
+    const existing = keys(newOptions.seriesOptions);
+    each(difference(keys(newOptions.columnMapping), existing), (name) => {
+      newOptions.seriesOptions[name] = {
+        type: newOptions.globalSeriesType,
+        yAxis: 0,
+      };
+    });
+    // XXX The old code does something complicated with columnMapping and QueryResult.getChartData that I don't understand.
+    newOptions.seriesList = compact(map(newOptions.columnMapping, (v, k) => v === 'y' && k));
     return this.props.updateVisualization({
       ...this.props.visualization,
       options: newOptions,
@@ -149,16 +158,16 @@ export default class ChartEditor extends React.Component {
   })
 
   updateXAxisLabelLength = xAxisLabelLength => this.updateOptions({ xAxisLabelLength })
-  updateXAxis = x => this.updateColumn({ x })
+  updateXAxis = ({ value: x }) => this.updateColumn({ x })
   updateYAxis = (ys) => {
     const newColMap = { ...this.props.visualization.options.columnMapping };
-    each(ys, (col) => { newColMap[col] = 'y'; });
+    each(ys, ({ value: col }) => { newColMap[col] = 'y'; });
     this.updateOptions({ columnMapping: newColMap });
   }
-  updateGroupby = groupby => this.updateColumn({ groupby })
-  updateSizeColumn = size => this.updateColumn({ size })
-  updateErrorColumn = yError => this.updateColumn({ yError })
-  updateStacking = stacking => this.updateOptions({ series: { ...this.props.visualization.options.series, stacking } })
+  updateGroupby = ({ value: groupby }) => this.updateColumn({ groupby })
+  updateSizeColumn = ({ value: size }) => this.updateColumn({ size })
+  updateErrorColumn = ({ value: yError }) => this.updateColumn({ yError })
+  updateStacking = ({ value: stacking }) => this.updateOptions({ series: { ...this.props.visualization.options.series, stacking } })
   updateSeriesList = seriesList => this.setState({ seriesList })
   updateSeriesOptions = seriesOptions => this.updateOptions({ seriesOptions })
   updateValuesOptions = valuesOptions => this.updateOptions({ valuesOptions })
@@ -321,7 +330,7 @@ export default class ChartEditor extends React.Component {
                 placeholder="Choose stacking..."
                 disabled={!includes(['line', 'area', 'column'], opts.globalSeriesType)}
                 options={[{ value: 'disabled', label: 'Disabled' }, { value: 'stack', label: 'Stack' }]}
-                value={opts.series.stacking}
+                value={opts.series ? opts.series.stacking : null}
                 onChange={this.updateStacking}
               />
             </div> : '' }
@@ -378,7 +387,7 @@ export default class ChartEditor extends React.Component {
             <label className="control-label">Scale</label>
             <Select
               placeholder="Choose scale..."
-              value={opts.xAxis.type}
+              value={opts.xAxis && opts.xAxis.type}
               options={map(
                 ['datetime', 'linear', 'logarithmic', 'category'],
                 value => ({ label: capitalize(value), value }),
@@ -389,7 +398,7 @@ export default class ChartEditor extends React.Component {
 
           <div className="form-group">
             <label className="control-label">Name</label>
-            <input value={opts.xAxis.title && opts.xAxis.title.text} type="text" className="form-control" onChange={this.updateXAxisName} />
+            <input value={opts.xAxis && opts.xAxis.title && opts.xAxis.title.text} type="text" className="form-control" onChange={this.updateXAxisName} />
           </div>
 
           <div className="checkbox">
@@ -430,7 +439,7 @@ export default class ChartEditor extends React.Component {
       series: (
         <ChartSeriesEditor
           seriesOptions={opts.seriesOptions}
-          seriesList={this.state.seriesList}
+          seriesList={opts.seriesList}
           updateSeriesList={this.updateSeriesList}
           updateSeriesOptions={this.updateSeriesOptions}
           clientConfig={this.props.clientConfig}
