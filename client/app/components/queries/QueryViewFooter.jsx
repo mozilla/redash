@@ -5,13 +5,12 @@ import { ButtonGroup, DropdownButton, MenuItem, Modal } from 'react-bootstrap';
 import moment from 'moment';
 
 import { durationHumanize, prettySize } from '@/filters';
-import VisualizationOptionsEditor from './VisualizationOptionsEditor';
 
 export default class QueryViewFooter extends React.Component {
   static propTypes = {
     query: PropTypes.object.isRequired,
     canEdit: PropTypes.bool.isRequired,
-    queryResult: PropTypes.instanceOf(PromiseState).isRequired,
+    queryResult: PropTypes.object.isRequired,
     filteredData: PropTypes.object.isRequired,
     queryExecuting: PropTypes.bool.isRequired,
     canExecuteQuery: PropTypes.bool.isRequired,
@@ -25,50 +24,22 @@ export default class QueryViewFooter extends React.Component {
     super(props);
     this.state = {
       showEmbedDialog: false,
-      editVisualization: false,
-      visualization: null,
     };
   }
-  openVisualizationEditor = () => this.setState({ visualization: this.props.visualization, editVisualization: true })
-  hideVisualizationEditor = () => this.setState({ editVisualization: false })
-  updateVisualization = v => this.setState({ visualization: v })
-  saveVisualization = () => { this.props.updateVisualization(this.state.visualization); this.hideVisualizationEditor() }
 
   showEmbedDialog = () => this.setState({ showEmbedDialog: true });
   hideEmbedDialog = () => this.setState({ showEmbedDialog: false });
 
-  downloadUrl = filetype => `api/queries/${this.props.query.id}/results/${this.props.queryResult.value.query_result.id}.${filetype}`
+  downloadUrl = filetype => `api/queries/${this.props.query.id}/results/${this.props.queryResult.id}.${filetype}`
 
-  downloadFilename = filetype => `${this.props.query.name.replace(' ', '_')}${moment(this.props.queryResult.value.query_result.retrieved_at).format('_YYYY_MM_DD')}.${filetype}`
+  downloadFilename = filetype => `${this.props.query.name.replace(' ', '_')}${moment(this.props.queryResult.retrieved_at).format('_YYYY_MM_DD')}.${filetype}`
 
   render() {
-    if (!this.props.queryResult.fulfilled) return null;
-    const queryResult = this.props.queryResult.value;
-    const embedUrl = `${this.props.clientConfig.basePath}embed/query/${this.props.query.id}/visualization/${this.props.visualization.id}?api_key=${this.props.query.api_key}`;
+    if (!this.props.queryResult) return null;
+    const queryResult = this.props.queryResult;
+    const embedUrl = `${this.props.clientConfig.basePath}embed/query/${this.props.query && this.props.query.id}/visualization/${this.props.visualization && this.props.visualization.id}?api_key=${this.props.query.api_key}`;
     return (
       <div className="bottom-controller">
-        <Modal show={this.state.editVisualization} onHide={this.hideVisualizationEditor} className="modal-xl">
-          <Modal.Header closeButton>
-            <Modal.Title>Visualization Editor</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="row">
-              <VisualizationOptionsEditor
-                queryResult={this.props.queryResult.value.query_result}
-                visualization={this.state.visualization}
-                updateVisualization={this.updateVisualization}
-                filteredData={this.props.filteredData}
-                clientConfig={this.props.clientConfig}
-                filters={this.props.filters}
-                setFilters={this.props.setFilters}
-              />
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <button className="btn btn-default" onClick={this.hideVisualizationEditor}>Cancel</button>
-            <button className="btn btn-primary" onClick={this.saveVisualization}>Save</button>
-          </Modal.Footer>
-        </Modal>
 
         <Modal show={this.state.showEmbedDialog} onHide={this.hideEmbedDialog}>
           <Modal.Header closeButton>
@@ -85,7 +56,7 @@ export default class QueryViewFooter extends React.Component {
         {this.props.query.id && this.props.canEdit ?
           <button
             className="m-r-5 btn btn-default btn-edit-visualisation"
-            onClick={this.openVisualizationEditor}
+            onClick={this.props.openVisualizationEditor}
           >Edit Visualization
           </button> : ''}
         {this.props.query.id ? <button className="m-r-5 btn btn-default" onClick={this.showEmbedDialog}><i className="zmdi zmdi-code" /> Embed</button> : ''}
@@ -119,15 +90,15 @@ export default class QueryViewFooter extends React.Component {
               {this.props.queryExecuting ?
                 <strong>{durationHumanize(this.props.queryResult.runtime)}</strong> :
                 <span>Running&hellip;</span>}
-              <span className="hidden-xs">runtime</span>
+              <span className="hidden-xs">{durationHumanize(this.props.queryResult.runtime)}</span>
             </span>
-            {queryResult.data.metadata.data_scanned ?
+            {/* queryResult.data.metadata.data_scanned ?
               <span className="query-metadata__property">
                 Data Scanned
                 <strong>
                   {prettySize(queryResult.data.metadata.data_scanned)}
                 </strong>
-              </span> : ''}
+              </span> : '' */}
           </span> : ''}
 
         <div>
