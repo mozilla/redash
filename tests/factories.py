@@ -73,7 +73,7 @@ query_factory = ModelFactory(redash.models.Query,
                              user=user_factory.create,
                              is_archived=False,
                              is_draft=False,
-                             schedule=None,
+                             schedule={},
                              data_source=data_source_factory.create,
                              org_id=1)
 
@@ -84,7 +84,7 @@ query_with_params_factory = ModelFactory(redash.models.Query,
                              user=user_factory.create,
                              is_archived=False,
                              is_draft=False,
-                             schedule=None,
+                             schedule={},
                              data_source=data_source_factory.create,
                              org_id=1)
 

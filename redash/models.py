@@ -2,6 +2,7 @@ import six
 import cStringIO
 import csv
 import datetime
+import calendar
 import functools
 import hashlib
 import itertools
@@ -833,12 +834,14 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         return s.getvalue()
 
 
-def should_schedule_next(previous_iteration, now, schedule, failures):
-    if schedule.isdigit():
-        ttl = int(schedule)
+def should_schedule_next(previous_iteration, now, interval, time=None, day_of_week=None, failures=0):
+    # if time exists then interval > 23 hours (82800s)
+    # if day_of_week exists then interval > 6 days (518400s)
+    if (time is None):
+        ttl = int(interval)
         next_iteration = previous_iteration + datetime.timedelta(seconds=ttl)
     else:
-        hour, minute = schedule.split(':')
+        hour, minute = time.split(':')
         hour, minute = int(hour), int(minute)
 
         # The following logic is needed for cases like the following:
@@ -846,10 +849,18 @@ def should_schedule_next(previous_iteration, now, schedule, failures):
         # - The scheduler wakes up at 00:01.
         # - Using naive implementation of comparing timestamps, it will skip the execution.
         normalized_previous_iteration = previous_iteration.replace(hour=hour, minute=minute)
+
         if normalized_previous_iteration > previous_iteration:
             previous_iteration = normalized_previous_iteration - datetime.timedelta(days=1)
 
-        next_iteration = (previous_iteration + datetime.timedelta(days=1)).replace(hour=hour, minute=minute)
+        days_delay = int(interval) / 60 / 60 / 24
+
+        days_to_add = 0
+        if (day_of_week is not None):
+            days_to_add = list(calendar.day_name).index(day_of_week) - normalized_previous_iteration.weekday()
+
+        next_iteration = (previous_iteration + datetime.timedelta(days=days_delay) +
+                          datetime.timedelta(days=days_to_add)).replace(hour=hour, minute=minute)
     if failures:
         next_iteration += datetime.timedelta(minutes=2**failures)
     return now > next_iteration
@@ -876,7 +887,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                                        foreign_keys=[last_modified_by_id])
     is_archived = Column(db.Boolean, default=False, index=True)
     is_draft = Column(db.Boolean, default=True, index=True)
-    schedule = Column(db.String(10), nullable=True)
+    schedule = Column(MutableDict.as_mutable(PseudoJSON), nullable=True)
     schedule_failures = Column(db.Integer, default=0)
     visualizations = db.relationship("Visualization", cascade="all, delete-orphan")
     options = Column(MutableDict.as_mutable(PseudoJSON), default={})
@@ -898,7 +909,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     def archive(self, user=None):
         db.session.add(self)
         self.is_archived = True
-        self.schedule = None
+        self.schedule = {}
 
         for vis in self.visualizations:
             for w in vis.widgets:
@@ -998,7 +1009,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     def outdated_queries(cls):
         queries = (db.session.query(Query)
                    .options(joinedload(Query.latest_query_data).load_only('retrieved_at'))
-                   .filter(Query.schedule != None)
+                   .filter(Query.schedule != {})
                    .order_by(Query.id))
 
         now = utils.utcnow()
@@ -1006,6 +1017,11 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         scheduled_queries_executions.refresh()
 
         for query in queries:
+            if (query.schedule['interval'] == None or (
+                    query.schedule['until'] != None and (
+                    query.schedule['until'] <= now))):
+                continue
+
             if query.latest_query_data:
                 retrieved_at = query.latest_query_data.retrieved_at
             else:
@@ -1013,7 +1029,8 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
 
             retrieved_at = scheduled_queries_executions.get(query.id) or retrieved_at
 
-            if should_schedule_next(retrieved_at, now, query.schedule, query.schedule_failures):
+            if should_schedule_next(retrieved_at, now, query.schedule['interval'], query.schedule['time'],
+                                    query.schedule['day_of_week'], query.schedule_failures):
                 key = "{}:{}".format(query.query_hash, query.data_source_id)
                 outdated_queries[key] = query
 
