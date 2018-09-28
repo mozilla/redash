@@ -287,6 +287,7 @@ class QueryViewTop extends React.Component {
           executeQuery={this.executeQuery}
           updateQuery={this.updateQuery}
           filters={this.state.filters}
+          setFilters={this.setFilters}
           filteredData={this.state.filteredData}
           KeyboardShortcuts={this.props.KeyboardShortcuts}
         />

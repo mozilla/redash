@@ -20,9 +20,10 @@ RdTab.propTypes = {
   selectedTab: PropTypes.object.isRequired,
   // basePath: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
-  children: PropTypes.arrayOf(React.Component).isRequired,
+  children: PropTypes.arrayOf(React.Component),
   onClick: PropTypes.func.isRequired,
 };
+RdTab.defaultProps = { children: null };
 
 export default class QueryViewVisualizations extends React.Component {
   static propTypes = {

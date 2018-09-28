@@ -211,7 +211,6 @@ class QueryViewMain extends React.Component {
                     style={{ width: '100%', height: '100%' }}
                     queryText={this.props.query.value.query}
                     formatQuery={this.props.formatQuery}
-                    autocompleteQuery={this.autocompleteQuery}
                     schema={this.props.schema}
                     isDirty={this.props.isDirty}
                     isQueryOwner={this.props.isQueryOwner}
@@ -249,7 +248,7 @@ class QueryViewMain extends React.Component {
                 queryResult={this.props.queryResult}
                 sourceMode={this.props.sourceMode}
                 canEdit={this.props.canEdit}
-                setFilters={this.setFilters}
+                setFilters={this.props.setFilters}
                 filters={this.props.filters}
                 executeQueryResponse={this.props.executeQueryResponse}
                 queryExecuting={this.props.queryExecuting}
@@ -270,7 +269,7 @@ class QueryViewMain extends React.Component {
               visualization={visualization}
               updateVisualization={this.updateVisualization}
               openVisualizationEditor={this.openVisualizationEditor}
-              setFilters={this.setFilters}
+              setFilters={this.props.setFilters}
               filters={this.props.filters}
               clientConfig={this.props.clientConfig}
             />
