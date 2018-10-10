@@ -904,7 +904,6 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     is_draft = Column(db.Boolean, default=True, index=True)
     schedule = Column(db.String(10), nullable=True)
     schedule_failures = Column(db.Integer, default=0)
-    schedule_until = Column(db.DateTime(True), nullable=True)
     schedule_resultset_size = Column(db.Integer, nullable=True)
     visualizations = db.relationship("Visualization", cascade="all, delete-orphan")
     options = Column(MutableDict.as_mutable(PseudoJSON), default={})

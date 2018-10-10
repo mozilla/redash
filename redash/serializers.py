@@ -103,7 +103,6 @@ def serialize_query(query, with_stats=False, with_visualizations=False, with_use
         'query': query.query_text,
         'query_hash': query.query_hash,
         'schedule': query.schedule,
-        'schedule_until': query.schedule_until,
         'schedule_resultset_size': query.schedule_resultset_size,
         'api_key': query.api_key,
         'is_archived': query.is_archived,
