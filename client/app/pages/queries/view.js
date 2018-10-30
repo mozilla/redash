@@ -367,7 +367,7 @@ function QueryViewCtrl(
     return visualizationUpdaters[i];
   };
 
-  $scope.empty = [];
+  $scope.visData = { rows: [], columns: [] };
 
   $scope.$watch('query.name', () => {
     Title.set($scope.query.name);
@@ -379,6 +379,7 @@ function QueryViewCtrl(
     }
 
     $scope.filters = $scope.queryResult.getFilters();
+    $scope.visData = { rows: $scope.queryResult.getData(), columns: $scope.queryResult.getColumns() };
   });
 
   $scope.$watch('queryResult && queryResult.getStatus()', (status) => {
