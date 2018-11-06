@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import { react2angular } from 'react2angular';
 
+import { ClientConfig } from '@/components/proptypes';
+
 export function Footer({ clientConfig, currentUser }) {
   const version = clientConfig.version;
   const newVersionAvailable = clientConfig.newVersionAvailable && currentUser.isAdmin;
@@ -30,10 +32,7 @@ export function Footer({ clientConfig, currentUser }) {
 }
 
 Footer.propTypes = {
-  clientConfig: PropTypes.shape({
-    version: PropTypes.string,
-    newVersionAvailable: PropTypes.bool,
-  }).isRequired,
+  clientConfig: ClientConfig.isRequired,
   currentUser: PropTypes.shape({
     isAdmin: PropTypes.bool,
   }).isRequired,
