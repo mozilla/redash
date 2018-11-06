@@ -138,6 +138,7 @@ function QueryViewCtrl(
 
   if ($scope.query.hasResult() || $scope.query.paramsRequired()) {
     getQueryResult();
+    $scope.queryResult.prepareFilters();
   }
   $scope.queryExecuting = false;
 
@@ -349,7 +350,7 @@ function QueryViewCtrl(
     });
   };
 
-  $scope.setFilters = (f) => { $scope.query.filters = f; };
+  $scope.setFilters = filters => $scope.$apply(() => { $scope.queryResult.filters = filters; });
   // gotta cache these functions to pacify angular
   const visualizationUpdaters = [];
   $scope.visualizationUpdater = (i) => {
