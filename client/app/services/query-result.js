@@ -237,7 +237,7 @@ function QueryResultService($resource, $timeout, $q, QueryResultError) {
         if (filters) {
           filters.forEach((filter) => {
             if (filter.multiple && includes(filter.current, ALL_VALUES)) {
-              filter.current = filter.values.slice(2);
+              filter.current = filter.values;
             }
 
             if (filter.multiple && includes(filter.current, NONE_VALUES)) {
@@ -420,13 +420,6 @@ function QueryResultService($resource, $timeout, $q, QueryResultError) {
             }
           }
         });
-      });
-
-      filters.forEach((filter) => {
-        if (filter.multiple) {
-          filter.values.unshift(ALL_VALUES);
-          filter.values.unshift(NONE_VALUES);
-        }
       });
 
       filters.forEach((filter) => {
