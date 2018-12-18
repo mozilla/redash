@@ -39,7 +39,7 @@ pycrypto==2.6.1
 funcy==1.7.1
 raven==6.0.0
 semver==2.2.1
-xlsxwriter==0.9.3
+xlsxwriter==1.1.2
 pystache==0.5.4
 parsedatetime==2.1
 PyJWT==1.6.4
