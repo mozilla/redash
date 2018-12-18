@@ -14,7 +14,7 @@ Flask-SQLAlchemy==2.1
 Flask-Migrate==2.0.1
 flask-mail==0.9.1
 flask-sslify==0.1.5
-Flask-Limiter==0.9.3
+Flask-Limiter==1.0.1
 passlib==1.6.2
 aniso8601==1.1.0
 blinker==1.3
