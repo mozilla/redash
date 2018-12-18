@@ -18,7 +18,7 @@ thrift_sasl>=0.1.0
 cassandra-driver==3.11.0
 memsql==2.16.0
 atsd_client==2.0.12
-simple_salesforce==0.72.2
+simple_salesforce==0.74.2
 PyAthena>=1.2.0
 pymapd>=0.2.1
 qds-sdk>=1.9.6
