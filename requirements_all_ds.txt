@@ -1,4 +1,4 @@
-google-api-python-client==1.5.1
+google-api-python-client==1.7.6
 gspread==0.6.2
 impyla==0.10.0
 influxdb==2.7.1
