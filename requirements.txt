@@ -15,7 +15,7 @@ Flask-Migrate==2.0.1
 flask-mail==0.9.1
 flask-sslify==0.1.5
 Flask-Limiter==0.9.3
-passlib==1.6.2
+passlib==1.7.1
 aniso8601==1.1.0
 blinker==1.3
 psycopg2==2.7.3.2
