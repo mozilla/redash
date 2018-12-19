@@ -451,7 +451,7 @@ function QueryResource(
       this.latest_query_data_id = null;
     }
 
-    if (this.schedule_resultset_size) {
+    if (this.schedule_resultset_size > 1) {
       if (!this.queryResult) {
         this.queryResult = QueryResult.getResultSet(this.id);
       }
