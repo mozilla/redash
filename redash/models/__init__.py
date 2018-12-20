@@ -154,6 +154,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
     name = Column(db.String(255))
     type = Column(db.String(255))
     options = Column('encrypted_options', ConfigurationContainer.as_mutable(EncryptedConfiguration(db.Text, settings.SECRET_KEY, FernetEngine)))
+    description = Column(db.String(4096), nullable=True)
     queue_name = Column(db.String(255), default="queries")
     scheduled_queue_name = Column(db.String(255), default="scheduled_queries")
     created_at = Column(db.DateTime(True), default=db.func.now())
@@ -171,6 +172,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             'id': self.id,
             'name': self.name,
             'type': self.type,
+            'description': self.description,
             'syntax': self.query_runner.syntax,
             'paused': self.paused,
             'pause_reason': self.pause_reason
