@@ -75,6 +75,13 @@ function getFields(type = {}, target = { options: {} }) {
       placeholder: `My ${type.name}`,
       autoFocus: isNewTarget,
     },
+    {
+      name: 'description',
+      title: 'Description',
+      type: 'text',
+      required: false,
+      initialValue: target.description,
+    },
     ...orderedInputs(configurationSchema.properties, configurationSchema.order, target.options),
   ];
 
@@ -83,6 +90,7 @@ function getFields(type = {}, target = { options: {} }) {
 
 function updateTargetWithValues(target, values) {
   target.name = values.name;
+  target.description = values.description;
   Object.keys(values).forEach((key) => {
     if (key !== 'name') {
       target.options[key] = values[key];
