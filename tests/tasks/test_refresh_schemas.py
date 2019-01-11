@@ -76,11 +76,12 @@ class TestRefreshSchemas(BaseTestCase):
             'exists': True,
             'name': 'table',
             'visible': True,
-            'sample_query': None,
+            'column_metadata': False,
             'description': None,
             'column_metadata': True,
             'data_source_id': 1,
             'sample_updated_at': None,
+            'sample_queries': []
         }
 
         refresh_schema(self.factory.data_source.id)

@@ -7,13 +7,12 @@ import time
 import pytz
 
 import xlsxwriter
-from operator import itemgetter
 from six import python_2_unicode_compatible, text_type
 from sqlalchemy import distinct, or_, and_, UniqueConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import backref, contains_eager, joinedload, subqueryload, load_only
+from sqlalchemy.orm import backref, contains_eager, joinedload, subqueryload, load_only, relationship
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy import func
 from sqlalchemy_utils import generic_relationship
@@ -77,8 +76,12 @@ class TableMetadata(TimestampMixin, db.Model):
     name = Column(db.String(255))
     description = Column(db.String(4096), nullable=True)
     column_metadata = Column(db.Boolean, default=False)
-    sample_query = Column("sample_query", db.Text, nullable=True)
     sample_updated_at = Column(db.DateTime(True), nullable=True)
+    sample_queries = relationship(
+        'Query',
+        secondary='tablemetadata_queries_link',
+        back_populates='relevant_tables'
+    )
 
     __tablename__ = 'table_metadata'
 
@@ -95,8 +98,8 @@ class TableMetadata(TimestampMixin, db.Model):
             'name': self.name,
             'description': self.description,
             'column_metadata': self.column_metadata,
-            'sample_query': self.sample_query,
             'sample_updated_at': self.sample_updated_at,
+            'sample_queries': self.sample_queries,
         }
 
 
@@ -128,6 +131,17 @@ class ColumnMetadata(TimestampMixin, db.Model):
             'exists': self.exists,
             'description': self.description,
         }
+
+
+@python_2_unicode_compatible
+class TableMetadataQueriesLink(db.Model):
+    table_id = Column(db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"), primary_key=True)
+    query_id = Column(db.Integer, db.ForeignKey("queries.id", ondelete="CASCADE"), primary_key=True)
+
+    __tablename__ = 'tablemetadata_queries_link'
+
+    def __str__(self):
+        return text_type(self.id)
 
 
 @python_2_unicode_compatible
@@ -204,16 +218,33 @@ class DataSource(BelongsToOrgMixin, db.Model):
         return cls.query.filter(cls.id == _id).one()
 
     @classmethod
-    def save_schema(self, schema_info):
+    def save_schema(cls, schema_info):
+        # There was a change in column data.
         if 'columnId' in schema_info:
             ColumnMetadata.query.filter(
-                ColumnMetadata.id == schema_info['columnId'],
                 ColumnMetadata.table_id == schema_info['tableId'],
+                ColumnMetadata.id == schema_info['columnId']
             ).update(schema_info['schema'])
-        else:
-            TableMetadata.query.filter(
+            db.session.commit()
+            return
+
+        if 'sample_queries' in schema_info['schema']:
+            sample_queries = schema_info['schema']['sample_queries']
+            del schema_info['schema']['sample_queries']
+
+            table_metadata_object = TableMetadata.query.filter(
                 TableMetadata.id == schema_info['tableId']
-            ).update(schema_info['schema'])
+            ).first()
+            table_metadata_object.sample_queries = []
+
+            for sample_query in sample_queries.values():
+                query_object = Query.query.filter(Query.id == sample_query['id']).first()
+                table_metadata_object.sample_queries.append(query_object)
+            db.session.commit()
+
+        TableMetadata.query.filter(
+            TableMetadata.id == schema_info['tableId']
+        ).update(schema_info['schema'])
 
         db.session.commit()
 
@@ -223,47 +254,6 @@ class DataSource(BelongsToOrgMixin, db.Model):
         res = db.session.delete(self)
         db.session.commit()
         return res
-
-    def get_schema(self):
-        schema = []
-        columns_by_table_id = {}
-
-        tables = TableMetadata.query.filter(
-            TableMetadata.data_source_id == self.id,
-            TableMetadata.exists.is_(True),
-        ).all()
-        table_ids = [table.id for table in tables]
-
-        columns = ColumnMetadata.query.filter(
-            ColumnMetadata.exists.is_(True),
-            ColumnMetadata.table_id.in_(table_ids),
-        ).all()
-
-        for column in columns:
-            columns_by_table_id.setdefault(column.table_id, []).append({
-                'key': column.id,
-                'name': column.name,
-                'type': column.type,
-                'exists': column.exists,
-                'example': column.example,
-                'description': column.description,
-            })
-
-        for table in tables:
-            table_info = {
-                'id': table.id,
-                'name': table.name,
-                'exists': table.exists,
-                'visible': table.visible,
-                'hasColumnMetadata': table.column_metadata,
-                'description': table.description,
-                'columns': []}
-
-            table_info['columns'] = sorted(
-                columns_by_table_id.get(table.id, []), key=itemgetter('name'))
-            schema.append(table_info)
-
-        return sorted(schema, key=itemgetter('name'))
 
     def _pause_key(self):
         return 'ds:{}:pause'.format(self.id)
@@ -537,6 +527,11 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                                                  'query': 'D'}),
                            nullable=True)
     tags = Column('tags', MutableList.as_mutable(postgresql.ARRAY(db.Unicode)), nullable=True)
+    relevant_tables = relationship(
+        TableMetadata,
+        secondary='tablemetadata_queries_link',
+        back_populates='sample_queries'
+    )
 
     query_class = SearchBaseQuery
     __tablename__ = 'queries'

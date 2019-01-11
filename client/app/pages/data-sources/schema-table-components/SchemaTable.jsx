@@ -16,6 +16,7 @@ function fetchTableData(schema) {
     description: tableData.description || '',
     visible: tableData.visible,
     columns: tableData.columns,
+    sample_queries: tableData.sample_queries || {},
   }));
 }
 
@@ -42,19 +43,32 @@ class SchemaTable extends React.Component {
     this.columns = [{
       title: 'Table Name',
       dataIndex: 'name',
-      width: '20%',
+      width: '18%',
       key: 'name',
     }, {
       title: 'Table Description',
       dataIndex: 'description',
-      width: '52%',
+      width: '36%',
       key: 'description',
       editable: true,
       render: this.truncateDescriptionText,
     }, {
+      title: 'Sample Queries',
+      dataIndex: 'sample_queries',
+      width: '24%',
+      key: 'sample_queries',
+      editable: true,
+      render: text => (
+        <ul style={{ margin: 0, paddingLeft: '15px' }}>
+          {Object.values(text).map(query => (
+            <li key={query.id}><a target="_blank" rel="noopener noreferrer" href={`queries/${query.id}/source`}>{query.name}</a></li>
+          ))}
+        </ul>
+      ),
+    }, {
       title: 'Visibility',
       dataIndex: 'visible',
-      width: '13%',
+      width: '10%',
       key: 'visible',
       editable: true,
       render: (text, record) => (
@@ -67,7 +81,7 @@ class SchemaTable extends React.Component {
       ),
     }, {
       title: '',
-      width: '15%',
+      width: '12%',
       dataIndex: 'edit',
       key: 'edit',
       // Purposely calling fieldEditor() instead of setting render() to it
@@ -234,6 +248,8 @@ class SchemaTable extends React.Component {
     const columns = this.columns.map(col => ({
       ...col,
       onCell: record => ({
+        // eslint-disable-next-line react/prop-types
+        query: this.props.Query || function query() {},
         record,
         input_type: col.dataIndex,
         dataIndex: col.dataIndex,
@@ -258,7 +274,7 @@ class SchemaTable extends React.Component {
 }
 
 export default function init(ngModule) {
-  ngModule.component('schemaTable', react2angular(SchemaTable, null, []));
+  ngModule.component('schemaTable', react2angular(SchemaTable, null, ['Query']));
 }
 
 init.init = true;
