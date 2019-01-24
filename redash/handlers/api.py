@@ -62,6 +62,7 @@ from redash.handlers.queries import (
 )
 from redash.handlers.query_results import (
     JobResource,
+    JobStatusResource,
     QueryResultDropdownResource,
     QueryDropdownsResource,
     QueryResultListResource,
@@ -268,6 +269,11 @@ api.add_org_resource(
     "/api/jobs/<job_id>",
     "/api/queries/<query_id>/jobs/<job_id>",
     endpoint="job",
+)
+api.add_org_resource(
+    JobStatusResource,
+    "/api/jobs/<job_id>/data_source/<data_source_id>/status",
+    endpoint="job_queue_status",
 )
 
 api.add_org_resource(UserListResource, "/api/users", endpoint="users")

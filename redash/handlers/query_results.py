@@ -4,7 +4,7 @@ import time
 from flask import make_response, request
 from flask_login import current_user
 from flask_restful import abort
-from redash import models, settings
+from redash import models, redis_connection, settings
 from redash.handlers.base import BaseResource, get_object_or_404, record_event
 from redash.permissions import (
     has_access,
@@ -33,6 +33,7 @@ from redash.serializers import (
     serialize_query_result_to_csv,
     serialize_query_result_to_xlsx,
 )
+from redash.monitor import get_waiting_in_queue
 
 
 def error_response(message, http_status=400):
@@ -422,3 +423,18 @@ class JobResource(BaseResource):
         """
         job = QueryTask(job_id=job_id)
         job.cancel()
+
+
+class JobStatusResource(BaseResource):
+    def get(self, job_id, data_source_id):
+        """
+        Get the number of tasks for the task queue of the data source with the
+        given id.
+        """
+        data_source = models.DataSource.get_by_id_and_org(
+            data_source_id, self.current_org
+        )
+        tasks = redis_connection.llen(data_source.queue_name) + len(
+            get_waiting_in_queue(data_source.queue_name)
+        )
+        return {"queue_name": data_source.queue_name, "num_tasks": tasks}
