@@ -14,6 +14,8 @@ from redash.utils import (collect_parameters_from_request, gen_query_hash, json_
 from redash.models.parameterized_query import (ParameterizedQuery, InvalidParameterError,
                                                QueryDetachedFromDataSourceError, dropdown_values)
 from redash.serializers import serialize_query_result, serialize_query_result_to_csv, serialize_query_result_to_xlsx
+from redash.monitor import parse_tasks, get_waiting_in_queue
+from redash.worker import celery
 
 
 def error_response(message, http_status=400):
@@ -326,3 +328,17 @@ class JobResource(BaseResource):
         """
         job = QueryTask(job_id=job_id)
         job.cancel()
+
+
+class JobStatusResource(BaseResource):
+    def get(self, job_id, data_source_id):
+        job = QueryTask(job_id=job_id)
+        job._async_result._get_task_meta()
+        data_source = models.DataSource.get_by_id_and_org(data_source_id, self.current_org)
+        reserved_tasks = [
+            task
+            for task in parse_tasks(celery.control.inspect().reserved(), 'reserved')
+            if task['queue'] == data_source.queue_name
+        ]
+        tasks = reserved_tasks + get_waiting_in_queue(data_source.queue_name)
+        return {'queue_name': data_source.queue_name, 'num_tasks': len(tasks)}
