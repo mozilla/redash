@@ -806,9 +806,9 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         for q in queries:
             q.latest_query_data = query_result
             q.skip_updated_at = True
-            db.session.add(q)
             if q.schedule_resultset_size > 0:
                 q.query_results.append(query_result)
+            db.session.add(q)
         query_ids = [q.id for q in queries]
         logging.info("Updated %s queries with result (%s).", len(query_ids), query_hash)
 
