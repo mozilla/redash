@@ -195,7 +195,7 @@ class QueryTask(object):
             'status': status,
             'error': error,
             'query_result_id': query_result_id,
-            'queueLength': queriesAhead,
+            'queue_length': queriesAhead,
         }
 
     @property
