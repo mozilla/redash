@@ -6,7 +6,8 @@ from flask_login import current_user
 from flask_restful import abort
 from redash import models, settings
 from redash.tasks import QueryTask
-from redash.permissions import require_permission, not_view_only, has_access, require_access, view_only
+from redash.permissions import (require_permission, not_view_only, has_access, require_access,
+                                require_permission_or_owner, view_only)
 from redash.handlers.base import BaseResource, get_object_or_404
 from redash.utils import (collect_query_parameters,
                           collect_parameters_from_request,
@@ -212,7 +213,7 @@ class QueryResultResource(BaseResource):
 
         parameter_values = collect_parameters_from_request(request.args)
         max_age = int(request.args.get('maxAge', 0))
-
+        query = None
         query_result = None
 
         if query_result_id:
@@ -232,6 +233,27 @@ class QueryResultResource(BaseResource):
                     abort(404, message='No cached result found for this query.')
 
         if query_result:
+            if models.db.session.query(models.Query, models.DataSource).filter(
+                    models.Query.query_hash == query_result.query_hash,
+                    models.DataSource.type == 'result').first():
+                # Hang on tight, this will be interesting.
+                from redash import extract_table_names
+                for table_name in extract_table_names.extract_tables(query_result.query_text):
+                    # Look for query IDs being accessed.
+                    if table_name.startswith("query_"):
+                        try:
+                            qid = int(table_name.split('_', 1)[1])
+                        except ValueError:
+                            # If it's not "query_NNN" it can't affect our permissions check here.
+                            continue
+                        upstream_q = models.db.session.query(models.Query).filter(models.Query.id == qid).first()
+                        if upstream_q is None:
+                            continue
+                        # If the user making this request doesn't have permission to
+                        # view the query results being accessed in this query, deny
+                        # access.
+                        require_access(upstream_q.data_source.groups, self.current_user, view_only)
+
             require_access(query_result.data_source.groups, self.current_user, view_only)
 
             if isinstance(self.current_user, models.ApiUser):
