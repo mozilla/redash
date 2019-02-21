@@ -40,6 +40,9 @@ function buildKeywordsFromSchema(schema) {
   schema.forEach((table) => {
     keywords[table.name] = 'Table';
     table.columns.forEach((c) => {
+      if (c.length > 0) {
+        c = c.split('(')[0];
+      }
       keywords[c] = 'Column';
       keywords[`${table.name}.${c}`] = 'Column';
     });
