@@ -140,7 +140,7 @@ class PostgreSQL(BaseSQLQueryRunner):
         AND a.attnum > 0
         AND NOT a.attisdropped
         JOIN pg_type t
-        ON c.reltype = t.oid
+        ON a.atttypid = t.oid
         WHERE c.relkind IN ('r', 'v', 'm', 'f', 'p')
         """
 
