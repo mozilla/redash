@@ -10,7 +10,7 @@ vertica-python==0.8.0
 td-client==0.8.0
 pymssql==2.1.3
 dql==0.5.24
-dynamo3==0.4.7
+dynamo3==0.4.10
 botocore==1.10.2
 sasl>=0.1.3
 thrift>=0.8.0
