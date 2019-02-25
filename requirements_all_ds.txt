@@ -25,7 +25,7 @@ qds-sdk>=1.9.6
 ibm-db>=2.0.9
 pydruid==0.4
 # certifi is needed to support MongoDB and SSL:
-certifi
+certifi==2018.11.29
 # We don't install snowflake connector by default, as it's causing conflicts with
 # other packages. To properly support it we probably need to switch from pyOpenSSL
 # to the other package snowflake is using (that's compatible with it).
