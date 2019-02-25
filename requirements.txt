@@ -8,7 +8,7 @@ pyOpenSSL==16.2.0
 httplib2==0.10.3
 Flask-Admin==1.5.2
 Flask-RESTful==0.3.5
-Flask-Login==0.4.0
+Flask-Login==0.4.1
 Flask-OAuthLib==0.9.5
 Flask-SQLAlchemy==2.1
 Flask-Migrate==2.0.1
