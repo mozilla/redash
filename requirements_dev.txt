@@ -1,6 +1,6 @@
 pytest==3.2.3
 pytest-cov==2.5.1
-coverage==4.0.3
+coverage==4.5.2
 mock==2.0.0
 
 # PyMongo and Athena dependencies are needed for some of the unit tests:
