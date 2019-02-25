@@ -29,7 +29,7 @@ SQLAlchemy==1.2.7
 SQLAlchemy-Searchable==0.10.6
 SQLAlchemy-Utils>=0.29.0
 sqlparse==0.2.4
-statsd==2.1.2
+statsd==3.3.0
 gunicorn==19.7.1
 celery==4.2.1
 jsonschema==2.4.0
