@@ -465,7 +465,7 @@ class QueryExecutor(object):
 
         _unlock(self.query_hash, self.data_source.id)
 
-        if error:
+        if error is not None:
             self.tracker.update(state='failed')
             result = QueryExecutionError(error)
             if self.scheduled_query is not None:
