@@ -139,6 +139,7 @@ def _get_ssl_config(configuration):
 
 class PostgreSQL(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
+    sample_query = "SELECT * FROM {table} LIMIT 1"
 
     @classmethod
     def configuration_schema(cls):
@@ -172,6 +173,7 @@ class PostgreSQL(BaseSQLQueryRunner):
                     "default": "_v",
                     "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
                 },
+                "samples": {"type": "boolean", "title": "Show Data Samples"},
             },
             "order": ["host", "port", "user", "password"],
             "required": ["dbname"],
@@ -217,7 +219,7 @@ class PostgreSQL(BaseSQLQueryRunner):
         SELECT s.nspname as table_schema,
                c.relname as table_name,
                a.attname as column_name,
-               null as data_type
+               a.atttypid::regtype::varchar as data_type
         FROM pg_class c
         JOIN pg_namespace s
         ON c.relnamespace = s.oid
@@ -226,6 +228,8 @@ class PostgreSQL(BaseSQLQueryRunner):
         ON a.attrelid = c.oid
         AND a.attnum > 0
         AND NOT a.attisdropped
+        JOIN pg_type t
+        ON a.atttypid = t.oid
         WHERE c.relkind IN ('m', 'f', 'p')
 
         UNION
@@ -298,6 +302,8 @@ class PostgreSQL(BaseSQLQueryRunner):
 
 
 class Redshift(PostgreSQL):
+    sample_query = "SELECT * FROM {table} LIMIT 1"
+
     @classmethod
     def type(cls):
         return "redshift"
@@ -347,6 +353,13 @@ class Redshift(PostgreSQL):
                     "title": "Query Group for Scheduled Queries",
                     "default": "default",
                 },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
+                "samples": {"type": "boolean", "title": "Show Data Samples"},
             },
             "order": [
                 "host",
@@ -389,12 +402,13 @@ class Redshift(PostgreSQL):
             SELECT DISTINCT table_name,
                             table_schema,
                             column_name,
+                            data_type,
                             ordinal_position AS pos
             FROM svv_columns
             WHERE table_schema NOT IN ('pg_internal','pg_catalog','information_schema')
             AND table_schema NOT LIKE 'pg_temp_%'
         )
-        SELECT table_name, table_schema, column_name
+        SELECT table_name, table_schema, column_name, data_type
         FROM tables
         WHERE
             HAS_SCHEMA_PRIVILEGE(table_schema, 'USAGE') AND

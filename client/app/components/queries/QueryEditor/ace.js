@@ -32,6 +32,7 @@ function buildTableColumnKeywords(table) {
   table.columns.forEach(column => {
     const columnName = get(column, "name");
     keywords.push({
+      caption: columnName,
       name: `${table.name}.${columnName}`,
       value: `${table.name}.${columnName}`,
       score: 100,

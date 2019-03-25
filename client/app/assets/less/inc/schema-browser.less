@@ -8,14 +8,14 @@ div.table-name {
   position: relative;
   height: 22px;
 
-  .copy-to-editor {
+  .copy-to-editor, .info {
     display: none;
   }
 
   &:hover {
     background: fade(@redash-gray, 10%);
 
-    .copy-to-editor {
+    .copy-to-editor, .info {
       display: flex;
     }
   }
@@ -45,7 +45,7 @@ div.table-name {
     background: transparent;
   }
 
-  .copy-to-editor {
+  .copy-to-editor, .info {
     color: fade(@redash-gray, 90%);
     cursor: pointer;
     position: absolute;
@@ -56,6 +56,10 @@ div.table-name {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .info {
+    right: 20px
   }
 
   .table-open {
@@ -73,14 +77,14 @@ div.table-name {
       text-transform: uppercase;
     }
 
-    .copy-to-editor {
+    .copy-to-editor, .info {
       display: none;
     }
 
     &:hover {
       background: fade(@redash-gray, 10%);
 
-      .copy-to-editor {
+      .copy-to-editor, .info {
         display: flex;
       }
     }
