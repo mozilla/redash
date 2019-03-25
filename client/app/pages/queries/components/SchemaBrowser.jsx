@@ -10,17 +10,18 @@ import Tooltip from "antd/lib/tooltip";
 import AutoSizer from "react-virtualized/dist/commonjs/AutoSizer";
 import List from "react-virtualized/dist/commonjs/List";
 import { clientConfig } from "@/services/auth";
+import SchemaData from "@/components/queries/SchemaData";
 
 const SchemaItemType = PropTypes.shape({
   name: PropTypes.string.isRequired,
   size: PropTypes.number,
-  columns: PropTypes.arrayOf(PropTypes.string).isRequired,
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
 });
 
 const schemaTableHeight = 22;
 const schemaColumnHeight = 18;
 
-function SchemaItem({ item, expanded, onToggle, onSelect, ...props }) {
+function SchemaItem({ item, expanded, onToggle, onSelect, onShowSchema, ...props }) {
   const handleSelect = useCallback(
     (event, ...args) => {
       event.preventDefault();
@@ -28,6 +29,15 @@ function SchemaItem({ item, expanded, onToggle, onSelect, ...props }) {
       onSelect(...args);
     },
     [onSelect]
+  );
+
+  const handleShowSchema = useCallback(
+    (event, ...args) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onShowSchema(...args);
+    },
+    [onShowSchema]
   );
 
   if (!item) {
@@ -39,9 +49,15 @@ function SchemaItem({ item, expanded, onToggle, onSelect, ...props }) {
       <div className="table-name" onClick={onToggle}>
         <i className="fa fa-table m-r-5" />
         <strong>
-          <span title="{{table.name}}">{item.name}</span>
+          <span title="{{item.name}}">{item.name}</span>
           {!isNil(item.size) && <span> ({item.size})</span>}
         </strong>
+        {item.column_metadata && <i
+            className="fa fa-question-circle info"
+            title="More Info"
+            aria-hidden="true"
+            onClick={e => handleShowSchema(e, item)}
+          />}
         <i
           className="fa fa-angle-double-right copy-to-editor"
           aria-hidden="true"
@@ -51,12 +67,12 @@ function SchemaItem({ item, expanded, onToggle, onSelect, ...props }) {
       {expanded && (
         <div>
           {map(item.columns, column => (
-            <div key={column} className="table-open">
-              {column}
+            <div key={column.id} className="table-open">
+              {column.name}
               <i
                 className="fa fa-angle-double-right copy-to-editor"
                 aria-hidden="true"
-                onClick={e => handleSelect(e, column)}
+                onClick={e => handleSelect(e, column.name)}
               />
             </div>
           ))}
@@ -80,6 +96,16 @@ SchemaItem.defaultProps = {
   onSelect: () => {},
 };
 
+
+function itemExists(item) {
+  if ("visible" in item) {
+    return item.visible;
+  } else {
+    return false;
+  }
+};
+
+
 function applyFilter(schema, filterString, isStringToggled, toggleString) {
   const filters = filter(filterString.toLowerCase().split(/\s+/), s => s.length > 0);
 
@@ -90,6 +116,9 @@ function applyFilter(schema, filterString, isStringToggled, toggleString) {
       item => !includes(item.name.toLowerCase(), toggleString)
     );
   }
+
+  // Filter out all columns set to invisible
+  schema = filter(schema, itemExists);
 
   // Empty string: return original schema
   if (filters.length === 0) {
@@ -104,7 +133,7 @@ function applyFilter(schema, filterString, isStringToggled, toggleString) {
       schema,
       item =>
         includes(item.name.toLowerCase(), nameFilter) ||
-        some(item.columns, column => includes(column.toLowerCase(), columnFilter))
+        some(item.columns, column => includes(column.name.toLowerCase(), columnFilter))
     );
   }
 
@@ -114,7 +143,7 @@ function applyFilter(schema, filterString, isStringToggled, toggleString) {
   return filter(
     map(schema, item => {
       if (includes(item.name.toLowerCase(), nameFilter)) {
-        item = { ...item, columns: filter(item.columns, column => includes(column.toLowerCase(), columnFilter)) };
+        item = { ...item, columns: filter(item.columns, column => includes(column.name.toLowerCase(), columnFilter)) };
         return item.columns.length > 0 ? item : null;
       }
     })
@@ -149,10 +178,15 @@ export default function SchemaBrowser({ schema, dataSourceId, onRefresh, onItemS
   const [handleToggleChange] = useDebouncedCallback(setIsStringToggled, 100);
   const [listRef, setListRef] = useState(null);
 
+  const [showSchemaInfo, setShowSchemaInfo] = useState(false);
+  const [tableName, setTableName] = useState("");
+  const [tableDescription, setTableDescription] = useState("");
+  const [tableMetadata, setTableMetadata] = useState([]);
+  const [sampleQueries, setSampleQueries] = useState([]);
+
   useEffect(() => {
     setExpandedFlags({});
   }, [schema]);
-
 
   useEffect(() => {
     if (listRef) {
@@ -170,6 +204,18 @@ export default function SchemaBrowser({ schema, dataSourceId, onRefresh, onItemS
       [tableName]: !expandedFlags[tableName],
     });
   }
+
+  function openSchemaInfo(table) {
+    setTableName(table.name);
+    setTableDescription(table.description);
+    setTableMetadata(table.columns);
+    setSampleQueries(Object.values(table.sample_queries));
+    setShowSchemaInfo(true);
+  }
+
+  function closeSchemaInfo() {
+    setShowSchemaInfo(false);
+  };
 
   return (
     <div className="schema-container" {...props}>
@@ -218,6 +264,7 @@ export default function SchemaBrowser({ schema, dataSourceId, onRefresh, onItemS
                     expanded={expandedFlags[item.name]}
                     onToggle={() => toggleTable(item.name)}
                     onSelect={onItemSelect}
+                    onShowSchema={openSchemaInfo}
                   />
                 );
               }}
@@ -225,6 +272,14 @@ export default function SchemaBrowser({ schema, dataSourceId, onRefresh, onItemS
           )}
         </AutoSizer>
       </div>
+      <SchemaData
+        show={showSchemaInfo}
+        tableName={tableName}
+        tableDescription={tableDescription}
+        tableMetadata={tableMetadata}
+        sampleQueries={sampleQueries}
+        onClose={closeSchemaInfo}
+      />
     </div>
   );
 }
