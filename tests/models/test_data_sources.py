@@ -1,51 +1,7 @@
-import mock
-from mock import patch
 from tests import BaseTestCase
 
 from redash.models import DataSource, Query, QueryResult
 from redash.utils.configuration import ConfigurationContainer
-
-
-class DataSourceTest(BaseTestCase):
-    def test_get_schema(self):
-        return_value = [{"name": "table", "columns": []}]
-
-        with mock.patch(
-            "redash.query_runner.pg.PostgreSQL.get_schema"
-        ) as patched_get_schema:
-            patched_get_schema.return_value = return_value
-
-            schema = self.factory.data_source.get_schema()
-
-            self.assertEqual(return_value, schema)
-
-    def test_get_schema_uses_cache(self):
-        return_value = [{"name": "table", "columns": []}]
-        with mock.patch(
-            "redash.query_runner.pg.PostgreSQL.get_schema"
-        ) as patched_get_schema:
-            patched_get_schema.return_value = return_value
-
-            self.factory.data_source.get_schema()
-            schema = self.factory.data_source.get_schema()
-
-            self.assertEqual(return_value, schema)
-            self.assertEqual(patched_get_schema.call_count, 1)
-
-    def test_get_schema_skips_cache_with_refresh_true(self):
-        return_value = [{"name": "table", "columns": []}]
-        with mock.patch(
-            "redash.query_runner.pg.PostgreSQL.get_schema"
-        ) as patched_get_schema:
-            patched_get_schema.return_value = return_value
-
-            self.factory.data_source.get_schema()
-            new_return_value = [{"name": "new_table", "columns": []}]
-            patched_get_schema.return_value = new_return_value
-            schema = self.factory.data_source.get_schema(refresh=True)
-
-            self.assertEqual(new_return_value, schema)
-            self.assertEqual(patched_get_schema.call_count, 2)
 
 
 class TestDataSourceCreate(BaseTestCase):
@@ -113,10 +69,3 @@ class TestDataSourceDelete(BaseTestCase):
         self.assertEqual(
             0, QueryResult.query.filter(QueryResult.data_source == data_source).count()
         )
-
-    @patch("redash.redis_connection.delete")
-    def test_deletes_schema(self, mock_redis):
-        data_source = self.factory.create_data_source()
-        data_source.delete()
-
-        mock_redis.assert_called_with(data_source._schema_key)
