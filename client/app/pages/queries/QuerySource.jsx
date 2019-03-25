@@ -213,6 +213,7 @@ function QuerySource(props) {
                       key={`ds-${ds.id}`}
                       value={ds.id}
                       data-name={ds.name}
+                      title={ds.description && ds.description}
                       data-test={`SelectDataSource${ds.id}`}>
                       <img src={`/static/images/db-logos/${ds.type}.png`} width="20" alt={ds.name} />
                       <span>{ds.name}</span>

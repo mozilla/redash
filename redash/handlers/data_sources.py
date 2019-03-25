@@ -5,7 +5,7 @@ from flask_restful import abort
 from funcy import project
 from sqlalchemy.exc import IntegrityError
 
-from redash import models
+from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, require_fields
 from redash.permissions import (
     require_access,
@@ -18,6 +18,7 @@ from redash.query_runner import (
     query_runners,
     NotSupported,
 )
+from redash.tasks.queries import refresh_schema
 from redash.utils import filter_none
 from redash.utils.configuration import ConfigurationContainer, ValidationError
 
@@ -25,7 +26,9 @@ from redash.utils.configuration import ConfigurationContainer, ValidationError
 class DataSourceTypeListResource(BaseResource):
     @require_admin
     def get(self):
-        return [q.to_dict() for q in sorted(query_runners.values(), key=lambda q: q.name())]
+        return [
+            q.to_dict() for q in sorted(query_runners.values(), key=lambda q: q.name())
+        ]
 
 
 class DataSourceResource(BaseResource):
@@ -58,7 +61,11 @@ class DataSourceResource(BaseResource):
 
         data_source.type = req["type"]
         data_source.name = req["name"]
+        data_source.description = req["description"] if "description" in req else ""
         models.db.session.add(data_source)
+
+        # Refresh the stored schemas when a data source is updated
+        refresh_schema.delay(data_source.id)
 
         try:
             models.db.session.commit()
@@ -114,7 +121,7 @@ class DataSourceListResource(BaseResource):
                 continue
 
             try:
-                d = ds.to_dict()
+                d = ds.to_dict(all=True)
                 d["view_only"] = all(
                     project(ds.groups, self.current_user.group_ids).values()
                 )
@@ -149,10 +156,18 @@ class DataSourceListResource(BaseResource):
 
         try:
             datasource = models.DataSource.create_with_group(
-                org=self.current_org, name=req["name"], type=req["type"], options=config
+                org=self.current_org,
+                name=req["name"],
+                type=req["type"],
+                description=req["description"] if "description" in req else "",
+                options=config,
             )
 
             models.db.session.commit()
+
+            # Refresh the stored schemas when a new data source is added to the list
+            refresh_schema.delay(datasource.id)
+
         except IntegrityError as e:
             models.db.session.rollback()
             if req["name"] in str(e):
@@ -177,6 +192,16 @@ class DataSourceListResource(BaseResource):
 
 
 class DataSourceSchemaResource(BaseResource):
+    @require_admin
+    def post(self, data_source_id):
+        data_source = get_object_or_404(
+            models.DataSource.get_by_id_and_org, data_source_id, self.current_org
+        )
+        new_schema_data = request.get_json(force=True)
+        models.DataSource.save_schema(new_schema_data)
+        # Force update the schema cache to have all changes available right away
+        data_source.schema_cache.populate(forced=True)
+
     def get(self, data_source_id):
         data_source = get_object_or_404(
             models.DataSource.get_by_id_and_org, data_source_id, self.current_org
@@ -272,8 +297,6 @@ class DataSourceToggleStringResource(BaseResource):
         )
         require_access(data_source.groups, self.current_user, view_only)
         try:
-            return {
-                "toggle_string": data_source.options.get("toggle_table_string", "")
-            }
+            return {"toggle_string": data_source.options.get("toggle_table_string", "")}
         except Exception:
             abort(400)
