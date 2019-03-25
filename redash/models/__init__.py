@@ -10,7 +10,14 @@ from sqlalchemy import distinct, or_, and_, UniqueConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import backref, contains_eager, joinedload, subqueryload, load_only
+from sqlalchemy.orm import (
+    backref,
+    contains_eager,
+    joinedload,
+    subqueryload,
+    load_only,
+    relationship,
+)
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy import func
 from sqlalchemy_utils import generic_relationship
@@ -80,6 +87,86 @@ class ScheduledQueriesExecutions(object):
 scheduled_queries_executions = ScheduledQueriesExecutions()
 
 
+@generic_repr("id", "name", "data_source_id", "org_id", "exists", "column_metadata")
+class TableMetadata(TimestampMixin, db.Model):
+    id = Column(db.Integer, primary_key=True)
+    org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
+    data_source_id = Column(
+        db.Integer, db.ForeignKey("data_sources.id", ondelete="CASCADE"), index=True
+    )
+    exists = Column(db.Boolean, default=True, index=True)
+    visible = Column(db.Boolean, default=True)
+    name = Column(db.String(255), index=True)
+    description = Column(db.String(4096), nullable=True)
+    column_metadata = Column(db.Boolean, default=False)
+    sample_updated_at = Column(db.DateTime(True), nullable=True, index=True)
+    sample_queries = relationship(
+        "Query", secondary="tablemetadata_queries_link", backref="relevant_tables"
+    )
+    existing_columns = db.relationship(
+        "ColumnMetadata",
+        backref="table",
+        order_by="ColumnMetadata.name",
+        primaryjoin="and_(TableMetadata.id == ColumnMetadata.table_id, ColumnMetadata.exists.is_(True))",
+    )
+
+    __tablename__ = "table_metadata"
+    __table_args__ = (
+        db.Index("ix_table_metadata_data_source_id_exists", "data_source_id", "exists"),
+        db.Index(
+            "ix_table_metadata_data_source_id_name_exists",
+            "data_source_id",
+            "exists",
+            "name",
+        ),
+    )
+
+    def __str__(self):
+        return text_type(self.name)
+
+
+@generic_repr("id", "name", "type", "table_id", "org_id", "exists")
+class ColumnMetadata(TimestampMixin, db.Model):
+    id = Column(db.Integer, primary_key=True)
+    org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
+    table_id = Column(
+        db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"), index=True
+    )
+    name = Column(db.String(255), index=True)
+    type = Column(db.String(255), nullable=True)
+    example = Column(db.String(4096), nullable=True)
+    exists = Column(db.Boolean, default=True, index=True)
+    description = Column(db.String(4096), nullable=True)
+
+    __tablename__ = "column_metadata"
+    __table_args__ = (
+        db.Index("ix_column_metadata_table_id_pkey", "table_id", "id"),
+        db.Index("ix_column_metadata_table_id_exists", "table_id", "exists"),
+        db.Index(
+            "ix_column_metadata_table_id_name_exists", "table_id", "exists", "name"
+        ),
+    )
+
+    def __str__(self):
+        return text_type(self.name)
+
+
+class TableMetadataQueriesLink(db.Model):
+    table_id = Column(
+        db.Integer,
+        db.ForeignKey("table_metadata.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    query_id = Column(
+        db.Integer, db.ForeignKey("queries.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    __tablename__ = "tablemetadata_queries_link"
+
+    def __str__(self):
+        return text_type(self.id)
+
+
 @generic_repr("id", "name", "type", "org_id", "created_at")
 class DataSource(BelongsToOrgMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
@@ -96,6 +183,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             )
         ),
     )
+    description = Column(db.String(4096), nullable=True)
     queue_name = Column(db.String(255), default="queries")
     scheduled_queue_name = Column(db.String(255), default="scheduled_queries")
     created_at = Column(db.DateTime(True), default=db.func.now())
@@ -117,6 +205,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             "id": self.id,
             "name": self.name,
             "type": self.type,
+            "description": self.description,
             "syntax": self.query_runner.syntax,
             "paused": self.paused,
             "pause_reason": self.pause_reason,
@@ -169,6 +258,35 @@ class DataSource(BelongsToOrgMixin, db.Model):
     def get_by_id(cls, _id):
         return cls.query.filter(cls.id == _id).one()
 
+    @classmethod
+    def save_schema(cls, schema_info):
+        # There was a change in column data.
+        if "columnId" in schema_info:
+            ColumnMetadata.query.filter(
+                ColumnMetadata.table_id == schema_info["tableId"],
+                ColumnMetadata.id == schema_info["columnId"],
+            ).update(schema_info["schema"])
+            db.session.commit()
+            return
+
+        sample_queries = schema_info["schema"].pop("sample_queries", None)
+        if sample_queries is not None:
+            table_metadata_object = TableMetadata.query.filter(
+                TableMetadata.id == schema_info["tableId"]
+            ).first()
+            table_metadata_object.sample_queries = []
+
+            query_ids = [sample_query["id"] for sample_query in sample_queries.values()]
+            query_objects = Query.query.filter(Query.id.in_(query_ids))
+            table_metadata_object.sample_queries.extend(query_objects)
+            db.session.add(table_metadata_object)
+            db.session.commit()
+
+        TableMetadata.query.filter(TableMetadata.id == schema_info["tableId"]).update(
+            schema_info["schema"]
+        )
+        db.session.commit()
+
     def delete(self):
         Query.query.filter(Query.data_source == self).update(
             dict(data_source_id=None, latest_query_data_id=None)
@@ -176,31 +294,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
         QueryResult.query.filter(QueryResult.data_source == self).delete()
         res = db.session.delete(self)
         db.session.commit()
-
-        redis_connection.delete(self._schema_key)
-
         return res
-
-    def get_schema(self, refresh=False):
-        cache = None
-        if not refresh:
-            cache = redis_connection.get(self._schema_key)
-
-        if cache is None:
-            query_runner = self.query_runner
-            schema = sorted(
-                query_runner.get_schema(get_stats=refresh), key=lambda t: t["name"]
-            )
-
-            redis_connection.set(self._schema_key, json_dumps(schema))
-        else:
-            schema = json_loads(cache)
-
-        return schema
-
-    @property
-    def _schema_key(self):
-        return "data_source:schema:{}".format(self.id)
 
     @property
     def _pause_key(self):

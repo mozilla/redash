@@ -99,6 +99,9 @@
           </ui-select-match>
           <ui-select-choices repeat="ds.id as ds in dataSources | filter:$select.search">
             <img ng-src="/static/images/db-logos/{{ds.type}}.png" width="20" height="20" class="m-r-5">{{ds.name}}
+            <span ng-if="ds.description" uib-popover="{{ds.description}}" popover-trigger="'mouseenter'" popover-placement='right' container='body' popover-append-to-body="true">
+              <i class="fa fa-question-circle info"></i>
+            </span>
           </ui-select-choices>
         </ui-select>
         <datasource-link datasource-id="query.data_source_id"></datasource-link>

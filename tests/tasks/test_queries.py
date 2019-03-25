@@ -3,11 +3,13 @@ from collections import namedtuple
 import uuid
 
 import mock
+import datetime
 
 from tests import BaseTestCase
-from redash import redis_connection, models
+from redash import redis_connection, models, utils
 from redash.utils import json_dumps
 from redash.query_runner.pg import PostgreSQL
+from redash.schema import cleanup_data_in_table
 from redash.tasks.queries.execution import (
     QueryExecutionError,
     enqueue_query,
@@ -199,3 +201,23 @@ class QueryExecutorTests(BaseTestCase):
             )
             q = models.Query.get_by_id(q.id)
             self.assertEqual(q.schedule_failures, 0)
+
+
+class TestPruneSchemaMetadata(BaseTestCase):
+    def test_cleanup_data_in_table(self):
+        data_source = self.factory.create_data_source()
+
+        # Create an existing table with a non-existing column
+        self.factory.create_table_metadata(
+            data_source_id=data_source.id,
+            org_id=data_source.org_id,
+            exists=False,
+            updated_at=(utils.utcnow() - datetime.timedelta(days=70)),
+        )
+        all_tables = models.TableMetadata.query.all()
+        self.assertEqual(len(all_tables), 1)
+
+        cleanup_data_in_table(models.TableMetadata)
+
+        all_tables = models.TableMetadata.query.all()
+        self.assertEqual(len(all_tables), 0)

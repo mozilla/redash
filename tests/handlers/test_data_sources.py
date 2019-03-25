@@ -4,6 +4,7 @@ from mock import patch
 
 from redash.models import DataSource
 from redash.query_runner.pg import PostgreSQL
+from redash.schema import SchemaCache
 
 
 class TestDataSourceGetSchema(BaseTestCase):
@@ -23,6 +24,48 @@ class TestDataSourceGetSchema(BaseTestCase):
             user=other_admin,
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_get_schema_returns_expected_values(self):
+        data_source = self.factory.create_data_source()
+        table_metadata = self.factory.create_table_metadata(
+            data_source_id=data_source.id
+        )
+        column_metadata = self.factory.create_column_metadata(
+            table_id=table_metadata.id, type="boolean", example=True
+        )
+        admin = self.factory.create_admin()
+        SchemaCache(data_source).populate()
+        response = self.make_request(
+            "get", "/api/data_sources/{}/schema".format(data_source.id), user=admin
+        )
+
+        return_value = [
+            {
+                "id": table_metadata.id,
+                "data_source_id": 1,
+                "org_id": 1,
+                "name": "table",
+                "column_metadata": False,
+                "exists": True,
+                "visible": True,
+                "description": None,
+                "sample_updated_at": None,
+                "sample_queries": {},
+                "columns": [
+                    {
+                        "id": 1,
+                        "org_id": 1,
+                        "table_id": 1,
+                        "name": "column",
+                        "type": "boolean",
+                        "description": None,
+                        "exists": True,
+                        "example": True,
+                    }
+                ],
+            }
+        ]
+        self.assertEqual(return_value, response.json["schema"])
 
 
 class TestDataSourceListGet(BaseTestCase):

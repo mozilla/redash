@@ -6,7 +6,7 @@ from funcy import project
 from six import text_type
 from sqlalchemy.exc import IntegrityError
 
-from redash import models
+from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, require_fields
 from redash.permissions import (
     require_access,
@@ -19,6 +19,8 @@ from redash.query_runner import (
     query_runners,
     NotSupported,
 )
+from redash.schema import SchemaCache
+from redash.tasks.queries import refresh_schema
 from redash.utils import filter_none
 from redash.utils.configuration import ConfigurationContainer, ValidationError
 
@@ -64,7 +66,11 @@ class DataSourceResource(BaseResource):
 
         data_source.type = req["type"]
         data_source.name = req["name"]
+        data_source.description = req["description"] if "description" in req else ""
         models.db.session.add(data_source)
+
+        # Refresh the stored schemas when a data source is updated
+        refresh_schema.delay(data_source.id)
 
         try:
             models.db.session.commit()
@@ -120,7 +126,7 @@ class DataSourceListResource(BaseResource):
                 continue
 
             try:
-                d = ds.to_dict()
+                d = ds.to_dict(all=True)
                 d["view_only"] = all(
                     project(ds.groups, self.current_user.group_ids).values()
                 )
@@ -155,10 +161,18 @@ class DataSourceListResource(BaseResource):
 
         try:
             datasource = models.DataSource.create_with_group(
-                org=self.current_org, name=req["name"], type=req["type"], options=config
+                org=self.current_org,
+                name=req["name"],
+                type=req["type"],
+                description=req["description"] if "description" in req else "",
+                options=config,
             )
 
             models.db.session.commit()
+
+            # Refresh the stored schemas when a new data source is added to the list
+            refresh_schema.delay(datasource.id)
+
         except IntegrityError as e:
             models.db.session.rollback()
             if req["name"] in str(e):
@@ -183,6 +197,14 @@ class DataSourceListResource(BaseResource):
 
 
 class DataSourceSchemaResource(BaseResource):
+    @require_admin
+    def post(self, data_source_id):
+        get_object_or_404(
+            models.DataSource.get_by_id_and_org, data_source_id, self.current_org
+        )
+        new_schema_data = request.get_json(force=True)
+        models.DataSource.save_schema(new_schema_data)
+
     def get(self, data_source_id):
         data_source = get_object_or_404(
             models.DataSource.get_by_id_and_org, data_source_id, self.current_org
@@ -193,7 +215,7 @@ class DataSourceSchemaResource(BaseResource):
         response = {}
 
         try:
-            response["schema"] = data_source.get_schema(refresh)
+            response["schema"] = SchemaCache(data_source).get_schema(refresh)
         except NotSupported:
             response["error"] = {
                 "code": 1,
