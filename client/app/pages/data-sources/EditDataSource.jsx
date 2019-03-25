@@ -8,6 +8,7 @@ import navigateTo from "@/components/ApplicationArea/navigateTo";
 import notification from "@/services/notification";
 import LoadingState from "@/components/items-list/components/LoadingState";
 import DynamicForm from "@/components/dynamic-form/DynamicForm";
+import SchemaTable from "@/pages/data-sources/schema-table-components/SchemaTable";
 import helper from "@/components/dynamic-form/dynamicFormHelper";
 import HelpTrigger, { TYPES as HELP_TRIGGER_TYPES } from "@/components/HelpTrigger";
 import wrapSettingsTab from "@/components/SettingsWrapper";
@@ -26,6 +27,7 @@ class EditDataSource extends React.Component {
     dataSource: null,
     type: null,
     loading: true,
+    schema: null,
   };
 
   componentDidMount() {
@@ -34,6 +36,7 @@ class EditDataSource extends React.Component {
         const { type } = dataSource;
         this.setState({ dataSource });
         DataSource.types().then(types => this.setState({ type: find(types, { type }), loading: false }));
+        DataSource.fetchSchema({ id: this.props.dataSourceId }).then(data => this.setState({ schema: data.schema, loading: false }));
       })
       .catch(error => this.props.onError(error));
   }
@@ -73,6 +76,12 @@ class EditDataSource extends React.Component {
       maskClosable: true,
       autoFocusButton: null,
     });
+  };
+
+  updateSchema = (schema, tableId, columnId) => {
+    const { dataSource } = this.state;
+    const data = { tableId, columnId, schema };
+    DataSource.updateSchema({ id: dataSource.id, data: data });
   };
 
   testConnection = callback => {
@@ -126,6 +135,9 @@ class EditDataSource extends React.Component {
         </div>
         <div className="col-md-4 col-md-offset-4 m-b-10">
           <DynamicForm {...formProps} />
+        </div>
+        <div className="col-md-12 admin-schema-editor">
+          <SchemaTable schema={this.state.schema} updateSchema={this.updateSchema} />
         </div>
       </div>
     );
