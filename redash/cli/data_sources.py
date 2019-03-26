@@ -110,7 +110,7 @@ def new(name=None, type=None, options=None, organization='default'):
 
         options_obj = {}
 
-        for k, prop in schema['properties'].iteritems():
+        for k, prop in sorted(schema['properties'].iteritems()):
             required = k in schema.get('required', [])
             default_value = "<<DEFAULT_VALUE>>"
             if required:
