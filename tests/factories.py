@@ -111,7 +111,9 @@ query_result_factory = ModelFactory(redash.models.QueryResult,
                                     query_hash=gen_query_hash('SELECT 1'),
                                     data_source=data_source_factory.create,
                                     org_id=1)
-
+query_resultset_factory = ModelFactory(redash.models.QueryResultSet,
+                                       query_rel=query_factory.create,
+                                       result=query_result_factory.create)
 visualization_factory = ModelFactory(redash.models.Visualization,
                                      type='CHART',
                                      query_rel=query_factory.create,
@@ -267,7 +269,10 @@ class Factory(object):
             'org': self.org
         }
         args.update(kwargs)
-        return query_factory.create(**args)
+        query = query_factory.create(**args)
+        if 'schedule_failures' in args:
+            query.schedule_failures = args['schedule_failures']
+        return query
 
     def create_query_with_params(self, **kwargs):
         args = {
@@ -296,6 +301,9 @@ class Factory(object):
             args['org'] = args['data_source'].org
 
         return query_result_factory.create(**args)
+
+    def create_query_resultset(self, **kwargs):
+        return query_resultset_factory.create(**kwargs)
 
     def create_visualization(self, **kwargs):
         args = {
