@@ -124,11 +124,17 @@ workflows:
       - python-flake8-tests
       - legacy-python-flake8-tests
       - backend-unit-tests:
-        filters:
-          tags:
-            only: /^m[0-9]+(\.[0-9]+)?$/
-      - frontend-unit-tests
-      - frontend-e2e-tests
+          filters:
+            tags:
+              only: /^m[0-9]+(\.[0-9]+)?$/
+      - frontend-unit-tests:
+          filters:
+            tags:
+              only: /^m[0-9]+(\.[0-9]+)?$/
+      - frontend-e2e-tests:
+          filters:
+            tags:
+              only: /^m[0-9]+(\.[0-9]+)?$/
       - build-tarball:
           requires:
             - backend-unit-tests
