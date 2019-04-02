@@ -35,6 +35,10 @@ class Presto(BaseQueryRunner):
         'host': {
             'type': 'string'
         },
+        'protocol': {
+            'type': 'string',
+            'default': 'http',
+        },
         'port': {
             'type': 'number'
         },
