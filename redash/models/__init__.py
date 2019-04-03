@@ -80,7 +80,7 @@ class TableMetadata(TimestampMixin, db.Model):
     __tablename__ = 'table_metadata'
 
     def __str__(self):
-        return text_type(self.table_name)
+        return text_type(self.name)
 
     def to_dict(self):
         return {
