@@ -77,10 +77,10 @@ class TestRefreshSchemas(BaseTestCase):
 
         refresh_schema(self.factory.data_source.id)
         get_table_sample_data(
-            self.factory.data_source.id, {
-                "name": 'table',
-                "columns": [self.COLUMN_NAME]
-            }, 1
+            [self.COLUMN_NAME],
+            self.factory.data_source.id,
+            'table',
+            1
         )
         table_metadata = TableMetadata.query.all()
         column_metadata = ColumnMetadata.query.all()
@@ -144,10 +144,10 @@ class TestRefreshSchemas(BaseTestCase):
 
         refresh_schema(self.factory.data_source.id)
         get_table_sample_data(
-            self.factory.data_source.id, {
-                "name": 'table',
-                "columns": [self.COLUMN_NAME]
-            }, 1
+            [self.COLUMN_NAME],
+            self.factory.data_source.id,
+            'table',
+            1
         )
         column_metadata = ColumnMetadata.query.all()
         self.assertEqual(column_metadata[0].to_dict(), self.EXPECTED_COLUMN_METADATA)

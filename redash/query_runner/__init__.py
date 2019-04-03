@@ -127,9 +127,6 @@ class BaseQueryRunner(object):
         return json_loads(results)['rows']
 
     def get_table_sample(self, table_name):
-        if not self.configuration.get('samples', False):
-            return {}
-
         if self.data_sample_query is None:
             raise NotImplementedError()
 

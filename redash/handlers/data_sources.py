@@ -10,7 +10,7 @@ from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, require_fields
 from redash.permissions import (require_access, require_admin,
                                 require_permission, view_only)
-from redash.tasks.queries import refresh_schemas
+from redash.tasks.queries import refresh_schema
 from redash.query_runner import (get_configuration_schema_for_query_runner_type,
                                  query_runners, NotSupported)
 from redash.utils import filter_none
@@ -54,7 +54,7 @@ class DataSourceResource(BaseResource):
         models.db.session.add(data_source)
 
         # Refresh the stored schemas when a data source is updated
-        refresh_schemas.apply_async(queue=settings.SCHEMAS_REFRESH_QUEUE)
+        refresh_schema.apply_async(args=(data_source.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
 
         try:
             models.db.session.commit()
@@ -133,7 +133,7 @@ class DataSourceListResource(BaseResource):
             models.db.session.commit()
 
             # Refresh the stored schemas when a new data source is added to the list
-            refresh_schemas.apply_async(queue=settings.SCHEMAS_REFRESH_QUEUE)
+            refresh_schema.apply_async(args=(datasource.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
         except IntegrityError as e:
             models.db.session.rollback()
             if req['name'] in e.message:
@@ -158,10 +158,9 @@ class DataSourceSchemaResource(BaseResource):
 
         response = {}
         try:
-            current_schema = data_source.get_schema()
-            if refresh or len(current_schema) == 0:
-                refresh_schemas.apply(queue=settings.SCHEMAS_REFRESH_QUEUE)
-            response['schema'] = current_schema
+            if refresh:
+                refresh_schema.apply_async(args=(data_source.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
+            response['schema'] = data_source.get_schema()
         except NotSupported:
             response['error'] = {
                 'code': 1,
