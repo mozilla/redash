@@ -67,6 +67,7 @@ scheduled_queries_executions = ScheduledQueriesExecutions()
 
 
 @python_2_unicode_compatible
+@generic_repr('id', 'name', 'data_source_id', 'org_id', 'exists', 'column_metadata')
 class TableMetadata(TimestampMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
@@ -96,6 +97,7 @@ class TableMetadata(TimestampMixin, db.Model):
 
 
 @python_2_unicode_compatible
+@generic_repr('id', 'name', 'type', 'table_id', 'org_id', 'exists')
 class ColumnMetadata(TimestampMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))

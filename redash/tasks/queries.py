@@ -232,11 +232,13 @@ def cleanup_query_results():
     models.db.session.commit()
     logger.info("Deleted %d unused query results.", deleted_count)
 
+
 def truncate_long_string(original_str, max_length):
     new_str = original_str
     if original_str and len(original_str) > max_length:
         new_str = u'{}...'.format(original_str[:max_length])
     return new_str
+
 
 @celery.task(name="redash.tasks.get_table_sample_data")
 def get_table_sample_data(existing_columns, data_source_id, table_name, table_id):
@@ -250,7 +252,7 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
         ColumnMetadata.table_id == table_id,
     ).options(load_only('id')).all()
 
-     # If a column exists, add a sample to it.
+    #  If a column exists, add a sample to it.
     column_examples = []
     for persisted_column in persisted_columns:
         column_example = sample.get(persisted_column.name, None)
@@ -270,9 +272,10 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
     )
     models.db.session.commit()
 
+
 def cleanup_data_in_table(table_model):
     removed_metadata = table_model.query.filter(
-        table_model.exists == False,
+        table_model.exists.is_(False),
     ).options(load_only('updated_at'))
 
     for removed_metadata_row in removed_metadata:
@@ -280,49 +283,51 @@ def cleanup_data_in_table(table_model):
             utils.utcnow() - removed_metadata_row.updated_at
         ) > datetime.timedelta(days=settings.SCHEMA_METADATA_TTL_DAYS)
 
-        table_model.query.filter(
-            table_model.id == removed_metadata_row.id,
-        ).delete()
+        if is_old_data:
+            table_model.query.filter(
+                table_model.id == removed_metadata_row.id,
+            ).delete()
 
     db.session.commit()
+
 
 @celery.task(name="redash.tasks.cleanup_schema_metadata")
 def cleanup_schema_metadata():
     cleanup_data_in_table(TableMetadata)
     cleanup_data_in_table(ColumnMetadata)
 
-def insert_or_update_table_metadata(ds, existing_tables_set, table_data):
+
+def insert_or_update_table_metadata(data_source, existing_tables_set, table_data):
     # Update all persisted tables that exist to reflect this.
     persisted_tables = TableMetadata.query.filter(
-        TableMetadata.name.in_(tuple(existing_tables_set)),
-        TableMetadata.data_source_id == ds.id,
+        TableMetadata.name.in_(existing_tables_set),
+        TableMetadata.data_source_id == data_source.id,
     )
     persisted_tables.update({"exists": True}, synchronize_session='fetch')
 
-
     # Find the tables that need to be created by subtracting the sets:
-    # existing_table_set - persisted table_set
     persisted_table_set = set([
         persisted_table.name for persisted_table in persisted_tables.all()
     ])
 
     tables_to_create = existing_tables_set.difference(persisted_table_set)
-    table_metadata = [table_data[table_name] for table_name in list(tables_to_create)]
+    table_metadata = [table_data[table_name] for table_name in tables_to_create]
 
     models.db.session.bulk_insert_mappings(
         TableMetadata,
         table_metadata
     )
 
+
 def insert_or_update_column_metadata(table, existing_columns_set, column_data):
     persisted_columns = ColumnMetadata.query.filter(
-        ColumnMetadata.name.in_(tuple(existing_columns_set)),
+        ColumnMetadata.name.in_(existing_columns_set),
         ColumnMetadata.table_id == table.id,
     ).all()
 
     persisted_column_data = []
     for persisted_column in persisted_columns:
-        # Add id's to persisted column data so it can be used for updates.
+        # Add IDs to persisted column data so it can be used for updates.
         column_data[persisted_column.name]['id'] = persisted_column.id
         persisted_column_data.append(column_data[persisted_column.name])
 
@@ -333,12 +338,13 @@ def insert_or_update_column_metadata(table, existing_columns_set, column_data):
     persisted_column_set = set([col_data['name'] for col_data in persisted_column_data])
     columns_to_create = existing_columns_set.difference(persisted_column_set)
 
-    column_metadata = [column_data[col_name] for col_name in list(columns_to_create)]
+    column_metadata = [column_data[col_name] for col_name in columns_to_create]
 
     models.db.session.bulk_insert_mappings(
         ColumnMetadata,
         column_metadata
     )
+
 
 @celery.task(name="redash.tasks.refresh_schema", time_limit=600, soft_time_limit=300)
 def refresh_schema(data_source_id):
@@ -365,7 +371,6 @@ def refresh_schema(data_source_id):
             table_name = table['name']
             existing_tables_set.add(table_name)
 
-            metadata = 'metadata' in table
             table_data[table_name] = {
                 "org_id": ds.org_id,
                 "name": table_name,
@@ -379,11 +384,11 @@ def refresh_schema(data_source_id):
         models.db.session.flush()
 
         all_existing_persisted_tables = TableMetadata.query.filter(
-            TableMetadata.exists == True,
+            TableMetadata.exists.is_(True),
             TableMetadata.data_source_id == ds.id,
         ).all()
 
-        for j, table in enumerate(all_existing_persisted_tables):
+        for table in all_existing_persisted_tables:
             for i, column in enumerate(new_column_names.get(table.name, [])):
                 existing_columns_set.add(column)
                 column_data[column] = {
@@ -403,16 +408,17 @@ def refresh_schema(data_source_id):
             insert_or_update_column_metadata(table, existing_columns_set, column_data)
             models.db.session.commit()
 
+            existing_columns_list = list(existing_columns_set)
+
             if ds.query_runner.configuration.get('samples', False):
                 get_table_sample_data.apply_async(
-                    args=(tuple(existing_columns_set), ds.id, table.name, table.id),
+                    args=(existing_columns_list, ds.id, table.name, table.id),
                     queue=settings.SCHEMAS_REFRESH_QUEUE
                 )
 
             # If a column did not exist, set the 'column_exists' flag to false.
-            existing_columns_list = tuple(existing_columns_set)
             ColumnMetadata.query.filter(
-                ColumnMetadata.exists == True,
+                ColumnMetadata.exists.is_(True),
                 ColumnMetadata.table_id == table.id,
                 ~ColumnMetadata.name.in_(existing_columns_list),
             ).update({
@@ -420,13 +426,14 @@ def refresh_schema(data_source_id):
                 "updated_at": db.func.now()
             }, synchronize_session='fetch')
 
-            existing_columns_set = set()
+            # Clear the set for the next round
+            existing_columns_set.clear()
 
-
-        # If a table did not exist in the get_schema() response above, set the 'exists' flag to false.
-        existing_tables_list = tuple(existing_tables_set)
+        # If a table did not exist in the get_schema() response above,
+        # set the 'exists' flag to false.
+        existing_tables_list = list(existing_tables_set)
         TableMetadata.query.filter(
-            TableMetadata.exists == True,
+            TableMetadata.exists.is_(True),
             TableMetadata.data_source_id == ds.id,
             ~TableMetadata.name.in_(existing_tables_list)
         ).update({
