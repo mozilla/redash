@@ -38,7 +38,6 @@ class TestRefreshSchemas(BaseTestCase):
         }]
         self.patched_get_schema.return_value = self.default_schema_return_value
 
-
         get_table_sample_patcher = patch('redash.query_runner.BaseQueryRunner.get_table_sample')
         patched_get_table_sample = get_table_sample_patcher.start()
         self.addCleanup(get_table_sample_patcher.stop)
