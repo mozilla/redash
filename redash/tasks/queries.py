@@ -12,7 +12,7 @@ from sqlalchemy.orm import load_only
 
 from redash import models, redis_connection, settings, statsd_client, utils
 from redash.models import TableMetadata, ColumnMetadata, db
-from redash.query_runner import InterruptException
+from redash.query_runner import InterruptException, NotSupported
 from redash.tasks.alerts import check_alerts_for_query
 from redash.utils import gen_query_hash, json_dumps, json_loads, utcnow, mustache_render
 from redash.worker import celery
@@ -234,16 +234,23 @@ def cleanup_query_results():
 
 
 def truncate_long_string(original_str, max_length):
-    new_str = original_str
-    if original_str and len(original_str) > max_length:
-        new_str = u'{}...'.format(original_str[:max_length])
+    # Remove null characters so we can save as string to postgres
+    new_str = original_str.replace('\x00', '')
+
+    if new_str and len(new_str) > max_length:
+        new_str = u'{}...'.format(new_str[:max_length])
     return new_str
 
 
 @celery.task(name="redash.tasks.get_table_sample_data")
 def get_table_sample_data(existing_columns, data_source_id, table_name, table_id):
     ds = models.DataSource.get_by_id(data_source_id)
-    sample = ds.query_runner.get_table_sample(table_name)
+    sample = None
+    try:
+        sample = ds.query_runner.get_table_sample(table_name)
+    except NotSupported:
+        logger.info(u"Unable to fetch samples for {}".format(table_name))
+
     if not sample:
         return
 
@@ -256,7 +263,8 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
     column_examples = []
     for persisted_column in persisted_columns:
         column_example = sample.get(persisted_column.name, None)
-        column_example = column_example if isinstance(column_example, unicode) else str(column_example)
+        column_example = column_example if isinstance(
+            column_example, unicode) else str(column_example)
         column_example = truncate_long_string(column_example, 4000)
 
         column_examples.append({
