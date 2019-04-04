@@ -134,6 +134,7 @@ class BaseQueryRunner(object):
 
         results, error = self.run_query(query, None)
         if error is not None:
+            logger.exception(error)
             raise NotSupported()
 
         rows = json_loads(results).get('rows', [])
