@@ -59,7 +59,7 @@ class Mysql(BaseSQLQueryRunner):
             'title': 'Show Data Samples'
         },
     }
-    data_sample_query = "SELECT * FROM {table} LIMIT 1"
+    sample_query = "SELECT * FROM {table} LIMIT 1"
 
     @classmethod
     def configuration_schema(cls):

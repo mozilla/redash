@@ -43,7 +43,7 @@ class SimpleFormatter(object):
 
 class Athena(BaseQueryRunner):
     noop_query = 'SELECT 1'
-    data_sample_query = "SELECT * FROM {table} LIMIT 1"
+    sample_query = "SELECT * FROM {table} LIMIT 1"
 
     @classmethod
     def name(cls):
