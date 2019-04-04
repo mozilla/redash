@@ -256,9 +256,7 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
     column_examples = []
     for persisted_column in persisted_columns:
         column_example = sample.get(persisted_column.name, None)
-        column_example = column_example if isinstance(column_example, unicode) else (
-            str(column_example).decode("utf-8", errors="replace").strip()
-        )
+        column_example = column_example if isinstance(column_example, unicode) else str(column_example)
         column_example = truncate_long_string(column_example, 4000)
 
         column_examples.append({
@@ -274,19 +272,13 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
 
 
 def cleanup_data_in_table(table_model):
-    removed_metadata = table_model.query.filter(
-        table_model.exists.is_(False),
-    ).options(load_only('updated_at'))
+    TTL_DAYS_AGO = (
+        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_METADATA_TTL_DAYS))
 
-    for removed_metadata_row in removed_metadata:
-        is_old_data = (
-            utils.utcnow() - removed_metadata_row.updated_at
-        ) > datetime.timedelta(days=settings.SCHEMA_METADATA_TTL_DAYS)
-
-        if is_old_data:
-            table_model.query.filter(
-                table_model.id == removed_metadata_row.id,
-            ).delete()
+    table_model.query.filter(
+        table_model.exists == False,
+        table_model.updated_at < TTL_DAYS_AGO
+    ).delete()
 
     db.session.commit()
 
