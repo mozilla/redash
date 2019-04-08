@@ -30,12 +30,19 @@ class SchemaData extends React.PureComponent {
       dataIndex: 'type',
       width: 400,
       key: 'type',
-    }, {
-      title: 'Example',
-      dataIndex: 'example',
-      width: 400,
-      key: 'example',
     }];
+
+    const hasExample =
+      this.props.tableMetadata.some(columnMetadata => columnMetadata.example);
+
+    if (hasExample) {
+      columns.push({
+        title: 'Example',
+        dataIndex: 'example',
+        width: 400,
+        key: 'example',
+      });
+    }
 
     return (
       <Drawer
