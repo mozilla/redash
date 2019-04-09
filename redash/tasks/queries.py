@@ -378,7 +378,7 @@ def refresh_schema(data_source_id):
                 "column_metadata": "metadata" in table
             }
             new_column_names[table_name] = table['columns']
-            new_column_metadata[table_name] = table['metadata']
+            new_column_metadata[table_name] = table.get('metadata', None)
 
         insert_or_update_table_metadata(ds, existing_tables_set, table_data)
         models.db.session.flush()
