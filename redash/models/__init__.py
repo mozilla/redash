@@ -206,7 +206,22 @@ class DataSource(BelongsToOrgMixin, db.Model):
 
     def get_schema(self):
         schema = []
+        columns_by_table_id = {}
         tables = TableMetadata.query.filter(TableMetadata.data_source_id == self.id).all()
+        columns = ColumnMetadata.query.all()
+
+        for column in columns:
+            if not column.exists:
+                continue
+
+            columns_by_table_id.setdefault(column.table_id, []).append({
+                'key': column.id,
+                'name': column.name,
+                'type': column.type,
+                'exists': column.exists,
+                'example': column.example
+            })
+
         for table in tables:
             if not table.exists:
                 continue
@@ -216,14 +231,9 @@ class DataSource(BelongsToOrgMixin, db.Model):
                 'exists': table.exists,
                 'hasColumnMetadata': table.column_metadata,
                 'columns': []}
-            columns = ColumnMetadata.query.filter(ColumnMetadata.table_id == table.id)
-            table_info['columns'] = sorted([{
-                'key': column.id,
-                'name': column.name,
-                'type': column.type,
-                'exists': column.exists,
-                'example': column.example
-            } for column in columns if column.exists == True], key=itemgetter('name'))
+
+            table_info['columns'] = sorted(
+                columns_by_table_id.get(table.id, []), key=itemgetter('name'))
             schema.append(table_info)
 
         return sorted(schema, key=itemgetter('name'))
