@@ -206,24 +206,37 @@ class DataSource(BelongsToOrgMixin, db.Model):
 
     def get_schema(self):
         schema = []
-        tables = TableMetadata.query.filter(TableMetadata.data_source_id == self.id).all()
-        for table in tables:
-            if not table.exists:
-                continue
+        columns_by_table_id = {}
 
-            table_info = {
-                'name': table.name,
-                'exists': table.exists,
-                'hasColumnMetadata': table.column_metadata,
-                'columns': []}
-            columns = ColumnMetadata.query.filter(ColumnMetadata.table_id == table.id)
-            table_info['columns'] = sorted([{
+        tables = TableMetadata.query.filter(
+            TableMetadata.data_source_id == self.id,
+            TableMetadata.exists.is_(True),
+        ).all()
+        table_ids = [table.id for table in tables]
+
+        columns = ColumnMetadata.query.filter(
+            ColumnMetadata.exists.is_(True),
+            ColumnMetadata.table_id.in_(table_ids),
+        ).all()
+
+        for column in columns:
+            columns_by_table_id.setdefault(column.table_id, []).append({
                 'key': column.id,
                 'name': column.name,
                 'type': column.type,
                 'exists': column.exists,
                 'example': column.example
-            } for column in columns if column.exists == True], key=itemgetter('name'))
+            })
+
+        for table in tables:
+            table_info = {
+                'name': table.name,
+                'exists': table.exists,
+                'hasColumnMetadata': table.column_metadata,
+                'columns': []}
+
+            table_info['columns'] = sorted(
+                columns_by_table_id.get(table.id, []), key=itemgetter('name'))
             schema.append(table_info)
 
         return sorted(schema, key=itemgetter('name'))

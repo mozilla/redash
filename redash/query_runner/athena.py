@@ -143,9 +143,18 @@ class Athena(BaseQueryRunner):
                     table_name = '%s.%s' % (database['Name'], table['Name'])
                     if table_name not in schema:
                         column = [columns['Name'] for columns in table['StorageDescriptor']['Columns']]
-                        schema[table_name] = {'name': table_name, 'columns': column}
+                        metadata = [{
+                            "name": column_data['Name'],
+                            "type": column_data['Type']
+                        } for column_data in table['StorageDescriptor']['Columns']]
+                        schema[table_name] = {'name': table_name, 'columns': column, 'metadata': metadata}
                         for partition in table.get('PartitionKeys', []):
                             schema[table_name]['columns'].append(partition['Name'])
+                            schema[table_name]['metadata'].append({
+                                "name": partition['Name'],
+                                "type": partition['Type']
+                            })
+
         return schema.values()
 
     def get_schema(self, get_stats=False):
