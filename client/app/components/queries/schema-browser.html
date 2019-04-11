@@ -34,7 +34,6 @@
       <div uib-collapse="table.collapsed">
         <div ng-repeat="column in table.columns | filter:$ctrl.schemaFilterColumn track by column.key" class="table-open">
           {{column.name}}
-          <span ng-if="column.type !== undefined">({{column.type}})</span>
           <i class="fa fa-angle-double-right copy-to-editor" aria-hidden="true"
             ng-click="$ctrl.itemSelected($event, [column.name])"></i>
         </div>
