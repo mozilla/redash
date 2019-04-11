@@ -115,6 +115,35 @@ class TestRefreshSchemas(BaseTestCase):
         table_metadata = TableMetadata.query.all()
         self.assertTrue(table_metadata[0].to_dict()['exists'])
 
+    def test_refresh_schema_table_with_new_metadata_updated(self):
+        refresh_schema(self.factory.data_source.id)
+        table_metadata = TableMetadata.query.all()
+        column_metadata = ColumnMetadata.query.all()
+
+        self.assertEqual(len(table_metadata), 1)
+        self.assertEqual(len(column_metadata), 1)
+        self.assertTrue(table_metadata[0].to_dict()['column_metadata'])
+
+        # Table has no metdata field, `column_metadata` should be False.
+        self.patched_get_schema.return_value = [{
+            'name': 'table',
+            'columns': [self.COLUMN_NAME],
+        }]
+
+        refresh_schema(self.factory.data_source.id)
+        table_metadata = TableMetadata.query.all()
+        column_metadata = ColumnMetadata.query.all()
+
+        self.assertEqual(len(table_metadata), 1)
+        self.assertEqual(len(column_metadata), 1)
+        self.assertFalse(table_metadata[0].to_dict()['column_metadata'])
+
+        # Table metadata field is back, `column_metadata` should be True again.
+        self.patched_get_schema.return_value = self.default_schema_return_value
+        refresh_schema(self.factory.data_source.id)
+        table_metadata = TableMetadata.query.all()
+        self.assertTrue(table_metadata[0].to_dict()['column_metadata'])
+
     def test_refresh_schema_delete_column(self):
         NEW_COLUMN_NAME = 'new_column'
         refresh_schema(self.factory.data_source.id)
