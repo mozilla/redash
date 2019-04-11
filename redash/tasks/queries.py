@@ -303,14 +303,21 @@ def insert_or_update_table_metadata(data_source, existing_tables_set, table_data
         TableMetadata.name.in_(existing_tables_set),
         TableMetadata.data_source_id == data_source.id,
     )
-    persisted_tables.update({"exists": True}, synchronize_session='fetch')
+    persisted_table_data = []
+    for persisted_table in persisted_tables:
+        # Add IDs to persisted table data so it can be used for updates.
+        table_data[persisted_table.name]['id'] = persisted_table.id
+        persisted_table_data.append(table_data[persisted_table.name])
+
+    models.db.session.bulk_update_mappings(
+        TableMetadata,
+        persisted_table_data
+    )
 
     # Find the tables that need to be created by subtracting the sets:
-    persisted_table_set = set([
-        persisted_table.name for persisted_table in persisted_tables.all()
-    ])
-
+    persisted_table_set = set([col_data['name'] for col_data in persisted_table_data])
     tables_to_create = existing_tables_set.difference(persisted_table_set)
+
     table_metadata = [table_data[table_name] for table_name in tables_to_create]
 
     models.db.session.bulk_insert_mappings(
@@ -335,6 +342,8 @@ def insert_or_update_column_metadata(table, existing_columns_set, column_data):
         ColumnMetadata,
         persisted_column_data
     )
+
+    # Find the columns that need to be created by subtracting the sets:
     persisted_column_set = set([col_data['name'] for col_data in persisted_column_data])
     columns_to_create = existing_columns_set.difference(persisted_column_set)
 
@@ -372,16 +381,17 @@ def refresh_schema(data_source_id):
             existing_tables_set.add(table_name)
 
             table_data[table_name] = {
-                "org_id": ds.org_id,
-                "name": table_name,
-                "data_source_id": ds.id,
-                "column_metadata": "metadata" in table
+                'org_id': ds.org_id,
+                'name': table_name,
+                'data_source_id': ds.id,
+                'column_metadata': "metadata" in table,
+                'exists': True
             }
             new_column_names[table_name] = table['columns']
             new_column_metadata[table_name] = table.get('metadata', None)
 
         insert_or_update_table_metadata(ds, existing_tables_set, table_data)
-        models.db.session.flush()
+        models.db.session.commit()
 
         all_existing_persisted_tables = TableMetadata.query.filter(
             TableMetadata.exists.is_(True),
