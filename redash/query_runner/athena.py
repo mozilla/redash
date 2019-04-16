@@ -43,7 +43,10 @@ class SimpleFormatter(object):
 
 class Athena(BaseQueryRunner):
     noop_query = 'SELECT 1'
-    sample_query = "SELECT * FROM {table} LIMIT 1"
+
+    # This takes a 1% random sample from {table}, reducing
+    # the runtime and data scanned for the query
+    sample_query = "SELECT * FROM {table} TABLESAMPLE SYSTEM (1) LIMIT 1"
 
     @classmethod
     def name(cls):

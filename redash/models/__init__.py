@@ -77,6 +77,7 @@ class TableMetadata(TimestampMixin, db.Model):
     description = Column(db.String(4096), nullable=True)
     column_metadata = Column(db.Boolean, default=False)
     sample_query = Column("sample_query", db.Text, nullable=True)
+    sample_updated_at = Column(db.DateTime(True), nullable=True)
 
     __tablename__ = 'table_metadata'
 
@@ -93,6 +94,7 @@ class TableMetadata(TimestampMixin, db.Model):
             'description': self.description,
             'column_metadata': self.column_metadata,
             'sample_query': self.sample_query,
+            'sample_updated_at': self.sample_updated_at,
         }
 
 
