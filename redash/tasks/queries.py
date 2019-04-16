@@ -4,11 +4,13 @@ import time
 import datetime
 
 import redis
+from celery import group
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 from six import text_type
 from sqlalchemy.orm import load_only
+from sqlalchemy import or_
 
 from redash import models, redis_connection, settings, statsd_client, utils
 from redash.models import TableMetadata, ColumnMetadata, db
@@ -242,8 +244,14 @@ def truncate_long_string(original_str, max_length):
     return new_str
 
 
-@celery.task(name="redash.tasks.get_table_sample_data")
-def get_table_sample_data(existing_columns, data_source_id, table_name, table_id):
+@celery.task(name="redash.tasks.update_sample")
+def update_sample(data_source_id, table_name, table_id):
+    """
+    For a given table, find look up a sample row for it and update
+    the "example" fields for it in the column_metadata table.
+    """
+    logger.info(u"task=update_sample state=start table_name=%s", table_name)
+    start_time = time.time()
     ds = models.DataSource.get_by_id(data_source_id)
     sample = None
     try:
@@ -255,7 +263,7 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
         return
 
     persisted_columns = ColumnMetadata.query.filter(
-        ColumnMetadata.name.in_(existing_columns),
+        ColumnMetadata.exists.is_(True),
         ColumnMetadata.table_id == table_id,
     ).options(load_only('id')).all()
 
@@ -277,6 +285,48 @@ def get_table_sample_data(existing_columns, data_source_id, table_name, table_id
         column_examples
     )
     models.db.session.commit()
+    logger.info(u"task=update_sample state=finished table_name=%s runtime=%.2f",
+                table_name, time.time() - start_time)
+
+
+@celery.task(name="redash.tasks.refresh_samples")
+def refresh_samples(data_source_id, table_sample_limit):
+    """
+    For a given data source, refresh the data samples stored for each
+    table. This is done for tables with no samples or samples older
+    than DAYS_AGO
+    """
+    logger.info(u"task=refresh_samples state=start ds_id=%s", data_source_id)
+    ds = models.DataSource.get_by_id(data_source_id)
+
+    if not ds.query_runner.configuration.get('samples', False):
+        return
+
+    DAYS_AGO = (
+        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS))
+
+    # Find all existing tables that have an empty or old sample_updated_at
+    tables_to_sample = TableMetadata.query.filter(
+        TableMetadata.exists.is_(True),
+        or_(
+            TableMetadata.sample_updated_at.is_(None),
+            TableMetadata.sample_updated_at < DAYS_AGO
+        )
+    ).limit(table_sample_limit).all()
+
+    tasks = []
+    for table in tables_to_sample:
+        tasks.append(
+            update_sample.signature(
+                args=(ds.id, table.name, table.id),
+                queue=settings.SCHEMAS_REFRESH_QUEUE
+            )
+        )
+        table.sample_updated_at = db.func.now()
+        models.db.session.add(table)
+
+    group(tasks).apply_async()
+    models.db.session.commit()
 
 
 def cleanup_data_in_table(table_model):
@@ -284,7 +334,7 @@ def cleanup_data_in_table(table_model):
         utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_METADATA_TTL_DAYS))
 
     table_model.query.filter(
-        table_model.exists == False,
+        table_model.exists.is_(False),
         table_model.updated_at < TTL_DAYS_AGO
     ).delete()
 
@@ -420,12 +470,6 @@ def refresh_schema(data_source_id):
 
             existing_columns_list = list(existing_columns_set)
 
-            if ds.query_runner.configuration.get('samples', False):
-                get_table_sample_data.apply_async(
-                    args=(existing_columns_list, ds.id, table.name, table.id),
-                    queue=settings.SCHEMAS_REFRESH_QUEUE
-                )
-
             # If a column did not exist, set the 'column_exists' flag to false.
             ColumnMetadata.query.filter(
                 ColumnMetadata.exists.is_(True),
@@ -469,6 +513,7 @@ def refresh_schemas():
     """
     Refreshes the data sources schemas.
     """
+    TABLE_SAMPLE_LIMIT = 50
     blacklist = [int(ds_id) for ds_id in redis_connection.smembers('data_sources:schema:blacklist') if ds_id]
     global_start_time = time.time()
 
@@ -483,6 +528,7 @@ def refresh_schemas():
             logger.info(u"task=refresh_schema state=skip ds_id=%s reason=org_disabled", ds.id)
         else:
             refresh_schema.apply_async(args=(ds.id,), queue=settings.SCHEMAS_REFRESH_QUEUE)
+            refresh_samples.apply_async(args=(ds.id, TABLE_SAMPLE_LIMIT), queue=settings.SAMPLES_REFRESH_QUEUE)
 
     logger.info(u"task=refresh_schemas state=finish total_runtime=%.2f", time.time() - global_start_time)
 

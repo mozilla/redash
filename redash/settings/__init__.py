@@ -48,6 +48,7 @@ QUERY_RESULTS_CLEANUP_MAX_AGE = int(os.environ.get("REDASH_QUERY_RESULTS_CLEANUP
 
 SCHEMAS_REFRESH_SCHEDULE = int(os.environ.get("REDASH_SCHEMAS_REFRESH_SCHEDULE", 360))
 SCHEMAS_REFRESH_QUEUE = os.environ.get("REDASH_SCHEMAS_REFRESH_QUEUE", "celery")
+SAMPLES_REFRESH_QUEUE = os.environ.get("REDASH_SAMPLES_REFRESH_QUEUE", "celery")
 
 AUTH_TYPE = os.environ.get("REDASH_AUTH_TYPE", "api_key")
 ENFORCE_HTTPS = parse_boolean(os.environ.get("REDASH_ENFORCE_HTTPS", "false"))
@@ -254,6 +255,9 @@ SCHEMA_RUN_TABLE_SIZE_CALCULATIONS = parse_boolean(os.environ.get("REDASH_SCHEMA
 
 # Frequency of clearing out old schema metadata.
 SCHEMA_METADATA_TTL_DAYS = int(os.environ.get("REDASH_SCHEMA_METADATA_TTL_DAYS", 60))
+
+# Frequency of schema samples refresh
+SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS = int(os.environ.get("REDASH_SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS", 14))
 
 # Allow Parameters in Embeds
 # WARNING: With this option enabled, Redash reads query parameters from the request URL (risk of SQL injection!)
