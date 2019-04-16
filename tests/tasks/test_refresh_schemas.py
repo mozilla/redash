@@ -1,10 +1,12 @@
 import copy
+import datetime
 
 from mock import patch
 from tests import BaseTestCase
 
-from redash import models
-from redash.tasks import refresh_schemas, refresh_schema, get_table_sample_data
+from redash import models, utils
+from redash.tasks import (refresh_schemas, refresh_schema,
+    update_sample, refresh_samples)
 from redash.models import TableMetadata, ColumnMetadata
 
 
@@ -43,6 +45,9 @@ class TestRefreshSchemas(BaseTestCase):
         self.addCleanup(get_table_sample_patcher.stop)
         patched_get_table_sample.return_value = {self.COLUMN_NAME: self.COLUMN_EXAMPLE}
 
+    def tearDown(self):
+        self.factory.data_source.query_runner.configuration['samples'] = False
+
     def test_calls_refresh_of_all_data_sources(self):
         self.factory.data_source  # trigger creation
         with patch('redash.tasks.queries.refresh_schema.apply_async') as refresh_job:
@@ -71,12 +76,12 @@ class TestRefreshSchemas(BaseTestCase):
             'sample_query': None,
             'description': None,
             'column_metadata': True,
-            'data_source_id': 1
+            'data_source_id': 1,
+            'sample_updated_at': None,
         }
 
         refresh_schema(self.factory.data_source.id)
-        get_table_sample_data(
-            [self.COLUMN_NAME],
+        update_sample(
             self.factory.data_source.id,
             'table',
             1
@@ -171,8 +176,7 @@ class TestRefreshSchemas(BaseTestCase):
         UPDATED_COLUMN_TYPE = 'varchar'
 
         refresh_schema(self.factory.data_source.id)
-        get_table_sample_data(
-            [self.COLUMN_NAME],
+        update_sample(
             self.factory.data_source.id,
             'table',
             1
@@ -188,3 +192,89 @@ class TestRefreshSchemas(BaseTestCase):
         column_metadata = ColumnMetadata.query.all()
         self.assertNotEqual(column_metadata[0].to_dict(), self.EXPECTED_COLUMN_METADATA)
         self.assertEqual(column_metadata[0].to_dict()['type'], UPDATED_COLUMN_TYPE)
+
+    def test_refresh_samples_rate_limits(self):
+        NEW_COLUMN_NAME = 'new_column'
+        NUM_TABLES = 105
+        tables = []
+
+        for i in range(NUM_TABLES):
+            tables.append({
+                'name': 'table{}'.format(i),
+                'columns': [NEW_COLUMN_NAME],
+                'metadata': [{
+                    'name': NEW_COLUMN_NAME,
+                    'type': self.COLUMN_TYPE,
+                }]
+            })
+
+        self.patched_get_schema.return_value = tables
+        self.factory.data_source.query_runner.configuration['samples'] = True
+
+        refresh_schema(self.factory.data_source.id)
+        refresh_samples(self.factory.data_source.id, 50)
+
+        # There's a total of 105 tables
+        table_metadata = TableMetadata.query.count()
+        self.assertEqual(table_metadata, NUM_TABLES)
+
+        # 50 tables are processed on the first call
+        table_metadata = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.is_(None)
+        ).all()
+        self.assertEqual(len(table_metadata), 55)
+
+        # 50 more tables are processed on the second call
+        refresh_samples(self.factory.data_source.id, 50)
+        table_metadata = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.is_(None)
+        ).all()
+        self.assertEqual(len(table_metadata), 5)
+
+        # All tables are processed by the third call
+        refresh_samples(self.factory.data_source.id, 50)
+        table_metadata = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.is_(None)
+        ).all()
+        self.assertEqual(len(table_metadata), 0)
+
+    def test_refresh_samples_refreshes(self):
+        NEW_COLUMN_NAME = 'new_column'
+        NUM_TABLES = 5
+        TIME_BEFORE_UPDATE = utils.utcnow()
+        tables = []
+
+        for i in range(NUM_TABLES):
+            tables.append({
+                'name': 'table{}'.format(i),
+                'columns': [NEW_COLUMN_NAME],
+                'metadata': [{
+                    'name': NEW_COLUMN_NAME,
+                    'type': self.COLUMN_TYPE,
+                }]
+            })
+
+        self.patched_get_schema.return_value = tables
+        self.factory.data_source.query_runner.configuration['samples'] = True
+
+        refresh_schema(self.factory.data_source.id)
+        refresh_samples(self.factory.data_source.id, 50)
+
+        # There's a total of 5 processed tables
+        table_metadata = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.isnot(None)
+        )
+        self.assertEqual(table_metadata.count(), NUM_TABLES)
+        self.assertTrue(table_metadata.first().sample_updated_at > TIME_BEFORE_UPDATE)
+
+        table_metadata.update({
+            'sample_updated_at': utils.utcnow() - datetime.timedelta(days=30)
+        })
+        models.db.session.commit()
+
+        TIME_BEFORE_UPDATE = utils.utcnow()
+        refresh_samples(self.factory.data_source.id, 50)
+        table_metadata_list = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.isnot(None)
+        )
+        self.assertTrue(table_metadata_list.first().sample_updated_at > TIME_BEFORE_UPDATE)
