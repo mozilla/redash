@@ -456,7 +456,6 @@ def refresh_schema(data_source_id):
                     'table_id': table.id,
                     'name': column,
                     'type': None,
-                    'example': None,
                     'exists': True
                 }
 
