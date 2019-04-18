@@ -278,3 +278,23 @@ class TestRefreshSchemas(BaseTestCase):
             TableMetadata.sample_updated_at.isnot(None)
         )
         self.assertTrue(table_metadata_list.first().sample_updated_at > TIME_BEFORE_UPDATE)
+
+    def test_refresh_schema_doesnt_overwrite_samples(self):
+        self.factory.data_source.query_runner.configuration['samples'] = True
+
+        refresh_schema(self.factory.data_source.id)
+        column_metadata = ColumnMetadata.query.first()
+        self.assertEqual(column_metadata.example, None)
+
+        update_sample(
+            self.factory.data_source.id,
+            'table',
+            1
+        )
+        column_metadata = ColumnMetadata.query.first()
+        self.assertEqual(column_metadata.example, self.COLUMN_EXAMPLE)
+
+        # Check that a schema refresh doesn't overwrite examples
+        refresh_schema(self.factory.data_source.id)
+        column_metadata = ColumnMetadata.query.first()
+        self.assertEqual(column_metadata.example, self.COLUMN_EXAMPLE)
