@@ -308,6 +308,7 @@ def refresh_samples(data_source_id, table_sample_limit):
     # Find all existing tables that have an empty or old sample_updated_at
     tables_to_sample = TableMetadata.query.filter(
         TableMetadata.exists.is_(True),
+        TableMetadata.data_source_id == data_source_id,
         or_(
             TableMetadata.sample_updated_at.is_(None),
             TableMetadata.sample_updated_at < DAYS_AGO
