@@ -298,3 +298,19 @@ class TestRefreshSchemas(BaseTestCase):
         refresh_schema(self.factory.data_source.id)
         column_metadata = ColumnMetadata.query.first()
         self.assertEqual(column_metadata.example, self.COLUMN_EXAMPLE)
+
+    def test_refresh_samples_applied_to_one_data_source(self):
+        ds1 = self.factory.create_data_source()
+        ds2 = self.factory.create_data_source()
+
+        ds1.query_runner.configuration['samples'] = True
+        ds2.query_runner.configuration['samples'] = True
+
+        refresh_schema(ds1.id)
+        refresh_schema(ds2.id)
+        refresh_samples(ds1.id, 50)
+
+        table_metadata = TableMetadata.query.filter(
+            TableMetadata.sample_updated_at.isnot(None)
+        )
+        self.assertEqual(table_metadata.count(), len(self.default_schema_return_value))
