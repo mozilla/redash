@@ -6,6 +6,14 @@ import Table from 'antd/lib/table';
 
 import { DataSourceMetadata } from '@/components/proptypes';
 
+function textWrapRenderer(text) {
+  return (
+    <div style={{ wordWrap: 'break-word', wordBreak: 'break-all' }}>
+      {text}
+    </div>
+  );
+}
+
 class SchemaData extends React.PureComponent {
   static propTypes = {
     show: PropTypes.bool.isRequired,
@@ -25,11 +33,13 @@ class SchemaData extends React.PureComponent {
       dataIndex: 'name',
       width: 400,
       key: 'name',
+      render: textWrapRenderer,
     }, {
       title: 'Column Type',
       dataIndex: 'type',
       width: 400,
       key: 'type',
+      render: textWrapRenderer,
     }];
 
     const hasExample =
@@ -41,6 +51,7 @@ class SchemaData extends React.PureComponent {
         dataIndex: 'example',
         width: 400,
         key: 'example',
+        render: textWrapRenderer,
       });
     }
 
