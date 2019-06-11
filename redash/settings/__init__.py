@@ -256,11 +256,11 @@ SCHEMA_RUN_TABLE_SIZE_CALCULATIONS = parse_boolean(os.environ.get("REDASH_SCHEMA
 # Frequency of clearing out old schema metadata.
 SCHEMA_METADATA_TTL_DAYS = int(os.environ.get("REDASH_SCHEMA_METADATA_TTL_DAYS", 60))
 
-# Frequency of schema samples refresh
-SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS = int(os.environ.get("REDASH_SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS", 14))
+# Frequency of schema samples updates
+SCHEMA_SAMPLE_UPDATE_FREQUENCY_DAYS = int(os.environ.get("REDASH_SCHEMA_SAMPLE_UPDATE_FREQUENCY_DAYS", 14))
 
 # Frequency of schema samples refresh when no samples are stored
-SCHEMA_SAMPLE_EMPTY_REFRESH_FREQUENCY_DAYS = int(os.environ.get("REDASH_SCHEMA_SAMPLE_EMPTY_REFRESH_FREQUENCY_DAYS", 2))
+SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS = int(os.environ.get("REDASH_SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS", 2))
 
 # Allow Parameters in Embeds
 # WARNING: With this option enabled, Redash reads query parameters from the request URL (risk of SQL injection!)

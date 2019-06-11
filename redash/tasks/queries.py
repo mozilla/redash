@@ -248,22 +248,20 @@ def truncate_long_string(original_str, max_length):
 @celery.task(name="redash.tasks.update_sample")
 def update_sample(data_source_id, table_name, table_id, sample_updated_at):
     """
-    For a given table, find look up a sample row for it and update
+    For a given table, look up a sample row for it and update
     the "example" fields for it in the column_metadata table.
     """
     logger.info(u"task=update_sample state=start table_name=%s", table_name)
     start_time = time.time()
     ds = models.DataSource.get_by_id(data_source_id)
 
-    # Look at the first example in the persisted columns.
-    # If this is *not* empty AND sample_updated_at is recent, don't update sample
     persisted_columns = ColumnMetadata.query.filter(
         ColumnMetadata.exists.is_(True),
         ColumnMetadata.table_id == table_id,
     ).options(load_only('id', 'name', 'example'))
 
     DAYS_AGO = (
-        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS))
+        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_SAMPLE_UPDATE_FREQUENCY_DAYS))
 
     first_column = persisted_columns.first()
 
@@ -271,6 +269,10 @@ def update_sample(data_source_id, table_name, table_id, sample_updated_at):
         sample_updated_at and
         first_column.example and
         parser.parse(sample_updated_at) > DAYS_AGO):
+        # Look at the first example in the persisted columns.
+        # If this is *not* empty AND sample_updated_at is recent, don't update sample
+        logger.info(u"task=update_sample state=abort - recent sample exists table_name=%s",
+                table_name)
         return
 
     sample = None
@@ -318,7 +320,7 @@ def refresh_samples(data_source_id, table_sample_limit):
         return
 
     DAYS_AGO = (
-        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_SAMPLE_EMPTY_REFRESH_FREQUENCY_DAYS))
+        utils.utcnow() - datetime.timedelta(days=settings.SCHEMA_SAMPLE_REFRESH_FREQUENCY_DAYS))
 
     # Find all existing tables that have an empty or old sample_updated_at
     tables_to_sample = TableMetadata.query.filter(
