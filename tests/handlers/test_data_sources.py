@@ -26,14 +26,19 @@ class TestDataSourceGetSchema(BaseTestCase):
 
         return_value = [{
             'id': table_metadata.id,
+            'data_source_id': 1,
+            'org_id': 1,
             'name': 'table',
-            'hasColumnMetadata': False,
+            'column_metadata': False,
             'exists': True,
             'visible': True,
             'description': None,
+            'sample_updated_at': None,
             'sample_queries': {},
             'columns': [{
-                'key': 1,
+                'id': 1,
+                'org_id': 1,
+                'table_id': 1,
                 'name': 'column',
                 'type': 'boolean',
                 'description': None,

@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from redash import models, settings
 from redash.models import TableMetadata, ColumnMetadata
-from redash.serializers import QuerySerializer
+from redash.serializers import ColumnMetadataSerializer, TableMetadataSerializer
 from redash.handlers.base import BaseResource, get_object_or_404, require_fields
 from redash.permissions import (require_access, require_admin,
                                 require_permission, view_only)
@@ -186,30 +186,14 @@ class DataSourceSchemaResource(BaseResource):
             ).all()
 
             for column in columns:
-                columns_by_table_id.setdefault(column.table_id, []).append({
-                    'key': column.id,
-                    'name': column.name,
-                    'type': column.type,
-                    'exists': column.exists,
-                    'example': column.example,
-                    'description': column.description,
-                })
+                serialized_col = ColumnMetadataSerializer(column).serialize()
+                columns_by_table_id.setdefault(column.table_id, []).append(serialized_col)
 
             for table in tables:
-                sample_queries_dict = dict([(v['id'], v) for v in QuerySerializer(table.sample_queries).serialize()])
-                table_info = {
-                    'id': table.id,
-                    'name': table.name,
-                    'exists': table.exists,
-                    'visible': table.visible,
-                    'hasColumnMetadata': table.column_metadata,
-                    'description': table.description,
-                    'sample_queries': sample_queries_dict,
-                    'columns': []}
-
-                table_info['columns'] = sorted(
+                serialized_table = TableMetadataSerializer(table).serialize()
+                serialized_table['columns'] = sorted(
                     columns_by_table_id.get(table.id, []), key=itemgetter('name'))
-                schema.append(table_info)
+                schema.append(serialized_table)
 
             response['schema'] = sorted(schema, key=itemgetter('name'))
         except NotSupported:

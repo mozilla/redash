@@ -11,7 +11,7 @@ import './schema-table.css';
 
 function fetchTableData(schema) {
   return schema.map(tableData => ({
-    key: tableData.id,
+    id: tableData.id,
     name: tableData.name,
     description: tableData.description || '',
     visible: tableData.visible,
@@ -168,8 +168,8 @@ class SchemaTable extends React.Component {
 
   fieldEditor(text, record, tableData) {
     const editable = this.isEditing(record);
-    const tableKey = tableData ? tableData.key : record.key;
-    const columnKey = tableData ? record.key : undefined;
+    const tableKey = tableData ? tableData.id : record.id;
+    const columnKey = tableData ? record.id : undefined;
     return (
       <div>
         {editable ? (
@@ -187,13 +187,13 @@ class SchemaTable extends React.Component {
             </EditableContext.Consumer>
             <Popconfirm
               title="Sure to cancel?"
-              onConfirm={() => this.cancel(record.key)}
+              onConfirm={() => this.cancel(record.id)}
             >
               <a>Cancel</a>
             </Popconfirm>
           </span>
         ) : (
-          <a onClick={() => this.edit(record.key)}>Edit</a>
+          <a onClick={() => this.edit(record.id)}>Edit</a>
         )}
       </div>
     );
@@ -208,7 +208,7 @@ class SchemaTable extends React.Component {
   }
 
   isEditing(record) {
-    return record.key === this.state.editingKey;
+    return record.id === this.state.editingKey;
   }
 
   save(form, tableKey, columnKey) {
@@ -217,7 +217,7 @@ class SchemaTable extends React.Component {
         return;
       }
       const newData = [...this.state.data];
-      let spliceIndex = newData.findIndex(item => tableKey === item.key);
+      let spliceIndex = newData.findIndex(item => tableKey === item.id);
 
       if (spliceIndex < 0) {
         return;
@@ -227,7 +227,7 @@ class SchemaTable extends React.Component {
       let dataToUpdate = newData;
       let rowToUpdate = tableRow;
 
-      const columnIndex = tableRow.columns.findIndex(item => columnKey === item.key);
+      const columnIndex = tableRow.columns.findIndex(item => columnKey === item.id);
       const columnRow = tableRow.columns[columnIndex];
       if (columnKey) {
         dataToUpdate = tableRow.columns;
@@ -239,7 +239,7 @@ class SchemaTable extends React.Component {
         ...rowToUpdate,
         ...editedFields,
       });
-      this.props.updateSchema(editedFields, tableRow.key, columnRow ? columnRow.key : undefined);
+      this.props.updateSchema(editedFields, tableRow.id, columnRow ? columnRow.id : undefined);
       this.setState({ data: newData, editingKey: '' });
     });
   }

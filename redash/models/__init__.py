@@ -80,27 +80,13 @@ class TableMetadata(TimestampMixin, db.Model):
     sample_queries = relationship(
         'Query',
         secondary='tablemetadata_queries_link',
-        back_populates='relevant_tables'
+        backref='relevant_tables'
     )
 
     __tablename__ = 'table_metadata'
 
     def __str__(self):
         return text_type(self.name)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'org_id': self.org_id,
-            'data_source_id': self.data_source_id,
-            'exists': self.exists,
-            'visible': self.visible,
-            'name': self.name,
-            'description': self.description,
-            'column_metadata': self.column_metadata,
-            'sample_updated_at': self.sample_updated_at,
-            'sample_queries': self.sample_queries,
-        }
 
 
 @python_2_unicode_compatible
@@ -119,18 +105,6 @@ class ColumnMetadata(TimestampMixin, db.Model):
 
     def __str__(self):
         return text_type(self.name)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'org_id': self.org_id,
-            'table_id': self.table_id,
-            'name': self.name,
-            'type': self.type,
-            'example': self.example,
-            'exists': self.exists,
-            'description': self.description,
-        }
 
 
 @python_2_unicode_compatible
@@ -223,23 +197,21 @@ class DataSource(BelongsToOrgMixin, db.Model):
         if 'columnId' in schema_info:
             ColumnMetadata.query.filter(
                 ColumnMetadata.table_id == schema_info['tableId'],
-                ColumnMetadata.id == schema_info['columnId']
+                ColumnMetadata.id == schema_info['columnId'],
             ).update(schema_info['schema'])
             db.session.commit()
             return
 
-        if 'sample_queries' in schema_info['schema']:
-            sample_queries = schema_info['schema']['sample_queries']
-            del schema_info['schema']['sample_queries']
-
+        sample_queries = schema_info['schema'].pop('sample_queries', None)
+        if sample_queries is not None:
             table_metadata_object = TableMetadata.query.filter(
                 TableMetadata.id == schema_info['tableId']
             ).first()
             table_metadata_object.sample_queries = []
 
-            for sample_query in sample_queries.values():
-                query_object = Query.query.filter(Query.id == sample_query['id']).first()
-                table_metadata_object.sample_queries.append(query_object)
+            query_ids = [sample_query['id'] for sample_query in sample_queries.values()]
+            query_objects = Query.query.filter(Query.id.in_(query_ids))
+            table_metadata_object.sample_queries.extend(query_objects)
             db.session.commit()
 
         TableMetadata.query.filter(
@@ -527,12 +499,6 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                                                  'query': 'D'}),
                            nullable=True)
     tags = Column('tags', MutableList.as_mutable(postgresql.ARRAY(db.Unicode)), nullable=True)
-    relevant_tables = relationship(
-        TableMetadata,
-        secondary='tablemetadata_queries_link',
-        back_populates='sample_queries'
-    )
-
     query_class = SearchBaseQuery
     __tablename__ = 'queries'
     __mapper_args__ = {
