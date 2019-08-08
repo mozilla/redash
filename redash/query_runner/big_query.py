@@ -85,6 +85,11 @@ def _get_query_results(jobs, project_id, location, job_id, start_index):
 
 class BigQuery(BaseQueryRunner):
     noop_query = "SELECT 1"
+    sample_query = (
+        "#standardSQL\n"
+        "SELECT * FROM {table} LIMIT 1"
+    )
+
     configuration_properties = {
         'projectId': {
             'type': 'string',
@@ -368,7 +373,10 @@ class BigQuery(BaseQueryRunner):
                 table_name,
                 http_error
             )
-            return {}
+
+            # If there is an error getting the sample using the API,
+            # try to do it by running a `select *` with a limit.
+            return super(BigQuery, self).get_table_sample(table_name)
 
     def get_schema(self, get_stats=False):
         if not self.configuration.get('loadSchema', False):
