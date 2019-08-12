@@ -34,7 +34,8 @@ const QueryListItem = (props) => {
             }}
           >
             <i className="text-muted fa fa-times" />
-          </a>) : null
+          </a>
+        ) : null
       }
     </div>
   );

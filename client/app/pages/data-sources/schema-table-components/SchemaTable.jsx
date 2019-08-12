@@ -176,7 +176,6 @@ export default class SchemaTable extends React.Component {
             <EditableContext.Consumer>
               {form => (
                 <a
-                  href="javascript:;"
                   onClick={() => this.save(form, tableKey, columnKey)}
                   style={{ marginRight: 8 }}
                 >
