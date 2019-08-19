@@ -13,6 +13,9 @@ services:
       REDASH_LOG_LEVEL: "INFO"
       REDASH_REDIS_URL: "redis://redis:6379/0"
       REDASH_DATABASE_URL: "postgresql://postgres@postgres/postgres"
+      # Disable building Cython extension for cassandra-driver
+      # https://docs.datastax.com/en/developer/python-driver/3.11/installation/#cython-based-extensions
+      CASS_DRIVER_NO_CYTHON: "1"
   redis:
     image: redis:3.0-alpine
     restart: unless-stopped
