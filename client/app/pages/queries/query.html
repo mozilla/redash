@@ -96,6 +96,8 @@
             <img ng-src="/static/images/db-logos/{{ds.type}}.png" width="20" height="20" class="m-r-5">{{ds.name}}
           </ui-select-choices>
         </ui-select>
+        <datasource-link datasource-id="query.data_source_id"></datasource-link>
+        <datasource-version datasource-id="query.data_source_id"></datasource-version>
       </div>
 
       <div class="editor__left__schema" ng-if="sourceMode">
