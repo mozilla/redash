@@ -447,7 +447,7 @@ def insert_or_update_column_metadata(table, existing_columns_set, column_data):
     )
 
 
-@celery.task(name="redash.tasks.refresh_schema", time_limit=600, soft_time_limit=300)
+@celery.task(name="redash.tasks.refresh_schema", time_limit=1500, soft_time_limit=1200)
 def refresh_schema(data_source_id):
     ds = models.DataSource.get_by_id(data_source_id)
     logger.info(u"task=refresh_schema state=start ds_id=%s", ds.id)
