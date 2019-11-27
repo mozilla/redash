@@ -68,20 +68,29 @@ scheduled_queries_executions = ScheduledQueriesExecutions()
 class TableMetadata(TimestampMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
-    data_source_id = Column(db.Integer, db.ForeignKey("data_sources.id", ondelete="CASCADE"))
-    exists = Column(db.Boolean, default=True)
+    data_source_id = Column(db.Integer, db.ForeignKey("data_sources.id", ondelete="CASCADE"), index=True)
+    exists = Column(db.Boolean, default=True, index=True)
     visible = Column(db.Boolean, default=True)
-    name = Column(db.String(255))
+    name = Column(db.String(255), index=True)
     description = Column(db.String(4096), nullable=True)
     column_metadata = Column(db.Boolean, default=False)
-    sample_updated_at = Column(db.DateTime(True), nullable=True)
+    sample_updated_at = Column(db.DateTime(True), nullable=True, index=True)
     sample_queries = relationship(
         'Query',
         secondary='tablemetadata_queries_link',
         backref='relevant_tables'
     )
+    columns = db.relationship(
+        "ColumnMetadata",
+        backref="table",
+        order_by='ColumnMetadata.name',
+    )
 
     __tablename__ = 'table_metadata'
+    __table_args__ = (
+        db.Index('ix_table_metadata_data_source_id_exists', 'data_source_id', 'exists'),
+        db.Index('ix_table_metadata_data_source_id_name_exists', 'data_source_id', 'exists', 'name'),
+    )
 
     def __str__(self):
         return text_type(self.name)
@@ -92,14 +101,19 @@ class TableMetadata(TimestampMixin, db.Model):
 class ColumnMetadata(TimestampMixin, db.Model):
     id = Column(db.Integer, primary_key=True)
     org_id = Column(db.Integer, db.ForeignKey("organizations.id"))
-    table_id = Column(db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"))
-    name = Column(db.String(255))
+    table_id = Column(db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"), index=True)
+    name = Column(db.String(255), index=True)
     type = Column(db.String(255), nullable=True)
     example = Column(db.String(4096), nullable=True)
-    exists = Column(db.Boolean, default=True)
+    exists = Column(db.Boolean, default=True, index=True)
     description = Column(db.String(4096), nullable=True)
 
     __tablename__ = 'column_metadata'
+    __table_args__ = (
+        db.Index('ix_column_metadata_table_id_pkey', 'table_id', 'id'),
+        db.Index('ix_column_metadata_table_id_exists', 'table_id', 'exists'),
+        db.Index('ix_column_metadata_table_id_name_exists', 'table_id', 'exists', 'name'),
+    )
 
     def __str__(self):
         return text_type(self.name)
