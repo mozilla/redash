@@ -149,7 +149,7 @@ class SchemaCache(object):
             # load method and set the cache and refresh keys.
             return self.populate(schema)
 
-    def populate(self, schema=None):
+    def populate(self, schema=None, forced=False):
         """
         This is the central method to populate the cache and return
         either the provided fallback schema or the value loaded
@@ -168,7 +168,7 @@ class SchemaCache(object):
         lock = redis_connection.lock(self.lock_key, timeout=self.timeout)
         acquired = lock.acquire(blocking=False)
 
-        if acquired:
+        if acquired or forced:
             try:
                 schema = self.load()
             except Exception:
@@ -180,6 +180,7 @@ class SchemaCache(object):
                 pipeline.set(self.fresh_key, 1, self.timeout)
                 pipeline.execute()
             finally:
-                lock.release()
+                if acquired:
+                    lock.release()
 
         return schema or []

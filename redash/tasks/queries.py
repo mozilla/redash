@@ -477,7 +477,7 @@ def refresh_schema(data_source_id, max_type_string_length=250):
             models.db.session.commit()
 
             logger.info(u"task=refresh_schema state=caching ds_id=%s", ds.id)
-            schema.SchemaCache(ds).populate()
+            schema.SchemaCache(ds).populate(forced=True)
             logger.info(u"task=refresh_schema state=cached ds_id=%s", ds.id)
 
             logger.info(u"task=refresh_schema state=finished ds_id=%s runtime=%.2f", ds.id, time.time() - start_time)
