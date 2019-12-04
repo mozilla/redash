@@ -377,16 +377,18 @@ def cleanup_schema_metadata():
     schema.cleanup_data_in_table(ColumnMetadata)
 
 
-REFRESH_SCHEMA_TIME_LIMIT = 1500
-
-@celery.task(name="redash.tasks.refresh_schema", time_limit=REFRESH_SCHEMA_TIME_LIMIT, soft_time_limit=1200)
+@celery.task(
+    name="redash.tasks.refresh_schema",
+    time_limit=settings.SCHEMA_REFRESH_TIME_LIMIT,
+    soft_time_limit=settings.SCHEMA_REFRESH_SOFT_TIME_LIMIT,
+)
 def refresh_schema(data_source_id, max_type_string_length=250):
     ds = models.DataSource.get_by_id(data_source_id)
     logger.info(u"task=refresh_schema state=start ds_id=%s", ds.id)
     lock_key = "data_source:schema:refresh:{}:lock".format(data_source_id)
     lock = redis_connection.lock(
         lock_key,
-        timeout=REFRESH_SCHEMA_TIME_LIMIT,
+        timeout=settings.SCHEMA_REFRESH_TIME_LIMIT,
     )
     acquired = lock.acquire(blocking=False)
     start_time = time.time()
