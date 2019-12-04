@@ -80,10 +80,11 @@ class TableMetadata(TimestampMixin, db.Model):
         secondary='tablemetadata_queries_link',
         backref='relevant_tables'
     )
-    columns = db.relationship(
+    existing_columns = db.relationship(
         "ColumnMetadata",
         backref="table",
         order_by='ColumnMetadata.name',
+        primaryjoin="and_(TableMetadata.id == ColumnMetadata.table_id, ColumnMetadata.exists.is_(True))"
     )
 
     __tablename__ = 'table_metadata'

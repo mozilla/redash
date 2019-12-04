@@ -132,7 +132,7 @@ def serialize_table_metadata(table_metadata, options, include_columns=True):
     if include_columns:
         d['columns'] = [
             ColumnMetadataSerializer(column).serialize()
-            for column in table_metadata.columns
+            for column in table_metadata.existing_columns
         ]
     return d
 
