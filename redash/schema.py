@@ -128,16 +128,18 @@ class SchemaCache(object):
             refresh_schema.apply_async(
                 args=(self.data_source.id,), queue=settings.SCHEMAS_REFRESH_QUEUE,
             )
-        # First check if the fresh key is still there
-        is_fresh = redis_connection.get(self.fresh_key)
-        # Then try to find out if there is a cached schema
-        # already and hasn't timed out yet.
+        # First let's try to find out if there is a cached schema
+        # already and hasn't timed out yet and load it with json.
         schema = redis_connection.get(self.cache_key)
         if schema:
             schema = utils.json_loads(schema)
         else:
+            # Otherwise we assume the cache key has timed out or was
+            # never populated before.
             schema = []
 
+        # Now check if there is a fresh key from the last time populating.
+        is_fresh = redis_connection.get(self.fresh_key)
         if is_fresh:
             # If the cache value is still fresh, just return it.
             return schema
