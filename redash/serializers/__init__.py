@@ -112,7 +112,7 @@ class TableMetadataSerializer(Serializer):
         return result
 
 
-def serialize_table_metadata(table_metadata, options):
+def serialize_table_metadata(table_metadata, options, include_columns=True):
     sample_queries_dict = dict(
         [(v['id'], v) for v in QuerySerializer(
             table_metadata.sample_queries, **options).serialize()]
@@ -129,7 +129,11 @@ def serialize_table_metadata(table_metadata, options):
         'sample_updated_at': table_metadata.sample_updated_at,
         'sample_queries': sample_queries_dict,
     }
-
+    if include_columns:
+        d['columns'] = [
+            ColumnMetadataSerializer(column).serialize()
+            for column in table_metadata.existing_columns
+        ]
     return d
 
 

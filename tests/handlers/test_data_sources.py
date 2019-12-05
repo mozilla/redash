@@ -4,6 +4,7 @@ from mock import patch
 
 from redash.models import DataSource
 from redash.query_runner.pg import PostgreSQL
+from redash.schema import SchemaCache
 
 
 class TestDataSourceGetSchema(BaseTestCase):
@@ -24,6 +25,7 @@ class TestDataSourceGetSchema(BaseTestCase):
             type='boolean',
             example=True)
         admin = self.factory.create_admin()
+        SchemaCache(data_source).populate()
         response = self.make_request("get", "/api/data_sources/{}/schema".format(data_source.id), user=admin)
 
         return_value = [{

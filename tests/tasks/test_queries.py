@@ -10,7 +10,8 @@ from redash import redis_connection, models, utils
 from redash.models import TableMetadata
 from redash.query_runner.pg import PostgreSQL
 from redash.tasks.queries import (QueryExecutionError, enqueue_query,
-                                    execute_query, cleanup_data_in_table)
+                                  execute_query)
+from redash.schema import cleanup_data_in_table
 
 
 FakeResult = namedtuple('FakeResult', 'id')
