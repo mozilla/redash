@@ -94,7 +94,8 @@ class SchemaCache(object):
         schema = []
         tables = (
             TableMetadata.query.filter(
-                TableMetadata.data_source_id == 1, TableMetadata.exists.is_(True),
+                TableMetadata.data_source_id == self.data_source.id,
+                TableMetadata.exists.is_(True),
             )
             .order_by(TableMetadata.name)
             .options(
