@@ -72,7 +72,7 @@ def run_query(query, parameters, data_source, query_id, max_age=0):
     try:
         query.apply(parameters)
     except (InvalidParameterError, QueryDetachedFromDataSourceError) as e:
-        abort(400, message=e.message)
+        abort(400, message=str(e))
 
     if query.missing_params:
         return error_response(
@@ -187,7 +187,7 @@ class QueryResultDropdownResource(BaseResource):
         try:
             return dropdown_values(query_id, self.current_org)
         except QueryDetachedFromDataSourceError as e:
-            abort(400, message=e.message)
+            abort(400, message=str(e))
 
 
 class QueryDropdownsResource(BaseResource):

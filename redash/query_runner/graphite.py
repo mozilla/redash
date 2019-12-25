@@ -95,7 +95,7 @@ class Graphite(BaseQueryRunner):
                 error = "Failed getting results (%d)" % response.status_code
         except Exception as ex:
             data = None
-            error = ex.message
+            error = str(ex)
 
         return data, error
 

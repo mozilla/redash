@@ -140,7 +140,7 @@ class DynamoDBSQL(BaseSQLQueryRunner):
             )
             json_data = None
         except (SyntaxError, RuntimeError) as e:
-            error = e.message
+            error = str(e)
             json_data = None
         except KeyboardInterrupt:
             if engine and engine.connection:
