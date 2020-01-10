@@ -5,7 +5,6 @@ import redis
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
-from six import text_type
 
 from redash import models, redis_connection, settings
 from redash.query_runner import InterruptException
@@ -245,7 +244,7 @@ class QueryExecutor(object):
             if isinstance(e, SoftTimeLimitExceeded):
                 error = TIMEOUT_MESSAGE
             else:
-                error = text_type(e)
+                error = str(e)
 
             data = None
             logging.warning("Unexpected error while running query:", exc_info=1)
