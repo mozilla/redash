@@ -39,9 +39,6 @@ class NotificationsService {
       body: content,
       icon: "/images/redash_icon_small.png",
     });
-    setTimeout(() => {
-      notification.close();
-    }, 3000);
     notification.onclick = function onClick() {
       window.focus();
       this.close();
