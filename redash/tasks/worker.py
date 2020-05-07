@@ -1,8 +1,6 @@
 import errno
 import os
-import signal
-import time
-from rq import Worker as BaseWorker, Queue as BaseQueue, get_current_job
+from rq import Worker as BaseWorker, Queue as BaseQueue
 from rq.utils import utcnow
 from rq.timeouts import UnixSignalDeathPenalty, HorseMonitorTimeoutException
 from rq.job import Job as BaseJob, JobStatus
@@ -46,7 +44,7 @@ class HardLimitingWorker(BaseWorker):
     job_class = CancellableJob
 
     def stop_executing_job(self, job):
-        os.kill(self.horse_pid, signal.SIGINT)
+        self.kill_horse()
         self.log.warning("Job %s has been cancelled.", job.id)
 
     def soft_limit_exceeded(self, job):
