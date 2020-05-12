@@ -3,7 +3,7 @@ VERSION_TAG="$MOZILLA_VERSION"
 
 docker login -u $DOCKER_USER -p $DOCKER_PASS
 
-docker build -t $DOCKERHUB_REPO:$VERSION_TAG .
+docker build --build-arg skip_dev_deps=true -t $DOCKERHUB_REPO:$VERSION_TAG .
 docker push $DOCKERHUB_REPO:$VERSION_TAG
 
 echo "Built: $VERSION_TAG"
