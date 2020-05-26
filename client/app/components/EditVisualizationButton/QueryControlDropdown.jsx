@@ -9,6 +9,7 @@ import ShareAltOutlinedIcon from "@ant-design/icons/ShareAltOutlined";
 import FileOutlinedIcon from "@ant-design/icons/FileOutlined";
 import FileExcelOutlinedIcon from "@ant-design/icons/FileExcelOutlined";
 import EllipsisOutlinedIcon from "@ant-design/icons/EllipsisOutlined";
+import DynamicComponent from "@/components/DynamicComponent";
 
 import QueryResultsLink from "./QueryResultsLink";
 
@@ -62,6 +63,12 @@ export default function QueryControlDropdown(props) {
           <FileExcelOutlinedIcon /> Download as Excel File
         </QueryResultsLink>
       </Menu.Item>
+      <DynamicComponent
+        name="QueryControlDropdownExtra"
+        query={props.query}
+        queryResult={props.queryResult}
+        queryExecuting={props.queryExecuting}
+      />
     </Menu>
   );
 
