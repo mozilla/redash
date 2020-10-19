@@ -1,14 +1,14 @@
-import React from "react";
-import PropTypes from "prop-types";
-import Table from "antd/lib/table";
-import Popconfirm from "antd/lib/popconfirm";
-import { Schema } from "@/components/proptypes";
-import { EditableCell, EditableRow, EditableContext } from "./EditableTable";
+import React, { useState } from 'react';
+import { Table, Input, InputNumber, Popconfirm, Form } from 'antd';
+//import { TableMetadata } from "@/components/proptypes";
 import TableVisibilityCheckbox from "./TableVisibilityCheckbox";
+import SampleQueryList from "./SampleQueryList";
 
 import "./schema-table.css";
 
-function fetchTableData(schema) {
+const { TextArea } = Input;
+
+const fetchTableData = (schema) => {
   return schema.map(tableData => ({
     id: tableData.id,
     name: tableData.name,
@@ -19,151 +19,95 @@ function fetchTableData(schema) {
   }));
 }
 
-const components = {
-  body: {
-    row: EditableRow,
-    cell: EditableCell,
-  },
+const EditableCell = ({
+  editing,
+  dataIndex,
+  title,
+  inputType,
+  record,
+  index,
+  children,
+  ...restProps
+}) => {
+  const [data, setData] = useState(record);
+
+  const onVisibilityCheckboxChanged = () => {
+    let newRecord = Object.assign({}, record);
+    newRecord.visible = !record.visible;
+    setData(newRecord);
+  };
+
+  const getInput = (inputType, record) => {
+    if (inputType=== "visible") {
+      return <TableVisibilityCheckbox visible={record.visible} onChange={onVisibilityCheckboxChanged}/>;
+    } else if (inputType === "sample_queries") {
+      return <SampleQueryList />;
+    }
+    return <TextArea className="table-textarea" placeholder="Enter description..." style={{ resize: "vertical" }} />;
+  };
+
+  return (
+    <td {...restProps}>
+      {editing ? (
+        <Form.Item style={{ margin: 0 }} name={[dataIndex, record.id]} initialValue={record[dataIndex]}>
+          {getInput(inputType, record)}
+        </Form.Item>
+      ) : (
+        children
+      )}
+    </td>
+  );
 };
 
-export default class SchemaTable extends React.Component {
-  static propTypes = {
-    schema: Schema, // eslint-disable-line react/no-unused-prop-types
-    updateSchema: PropTypes.func.isRequired,
-  };
-
-  static defaultProps = {
-    schema: null,
-  };
-
-  constructor(props) {
-    super(props);
-    this.state = { data: [], editingKey: "" };
-    this.columns = [
-      {
-        title: "Table Name",
-        dataIndex: "name",
-        width: "18%",
-        key: "name",
-      },
-      {
-        title: "Table Description",
-        dataIndex: "description",
-        width: "36%",
-        key: "description",
-        editable: true,
-        render: this.truncateDescriptionText,
-      },
-      {
-        title: "Sample Queries",
-        dataIndex: "sample_queries",
-        width: "24%",
-        key: "sample_queries",
-        editable: true,
-        render: text => (
-          <ul style={{ margin: 0, paddingLeft: "15px" }}>
-            {Object.values(text).map(query => (
-              <li key={query.id}>
-                <a target="_blank" rel="noopener noreferrer" href={`queries/${query.id}/source`}>
-                  {query.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ),
-      },
-      {
-        title: "Visibility",
-        dataIndex: "visible",
-        width: "10%",
-        key: "visible",
-        editable: true,
-        render: (text, record) => (
-          <div>
-            <TableVisibilityCheckbox disabled visible={record.visible} />
-          </div>
-        ),
-      },
-      {
-        title: "",
-        width: "12%",
-        dataIndex: "edit",
-        key: "edit",
-        // Purposely calling fieldEditor() instead of setting render() to it
-        // because render() will pass a different third argument than what
-        // fieldEditory() takes
-        render: (text, record) => this.fieldEditor(text, record),
-      },
-    ];
+export const SchemaTable = (props) => {
+  if (!props.schema) {
+    return <div></div>;
   }
+  let tableData = fetchTableData(props.schema);
+  const [form] = Form.useForm();
+  const [data, setData] = useState(tableData);
+  const [editingKey, setEditingKey] = useState('');
 
-  static getDerivedStateFromProps(nextProps, prevState) {
-    if (nextProps.schema && prevState.data.length === 0) {
-      return {
-        data: fetchTableData(nextProps.schema),
-        editingKey: prevState.editingKey,
-      };
+  const isEditing = (record) => record.id === editingKey;
+
+  const edit = (record) => {
+    setEditingKey(record.id);
+  };
+
+  const cancel = () => {
+    setEditingKey('');
+  };
+
+  const save = async (tableKey, columnKey) => {
+    try {
+      const row = await form.validateFields();
+      const newData = [...data];
+      const spliceIndex = newData.findIndex(item => tableKey === item.id);
+
+      if (spliceIndex < 0) {
+        return;
+      }
+
+      const tableRow = newData[spliceIndex];
+      let rowToUpdate = tableRow;
+
+      const columnIndex = tableRow.columns.findIndex(item => columnKey === item.id);
+      const columnRow = tableRow.columns[columnIndex];
+      if (columnKey) {
+        spliceIndex = columnIndex;
+        rowToUpdate = columnRow;
+      }
+
+      // NEED TO FIND EDITED FIELDS
+      props.updateSchema(row, tableRow.id, columnRow ? columnRow.id : undefined);
+      setData(newData);
+      setEditingKey('');
+    } catch (errInfo) {
+      console.log('Validate Failed:', errInfo);
     }
-    return prevState;
-  }
-
-  expandedRowRender = tableData => {
-    const columns = [
-      {
-        title: "Column Name",
-        dataIndex: "name",
-        key: "name",
-        width: "15%",
-      },
-      {
-        title: "Column Type",
-        dataIndex: "type",
-        key: "type",
-        width: "15%",
-      },
-      {
-        title: "Column Example",
-        dataIndex: "example",
-        key: "example",
-        width: "20%",
-      },
-      {
-        title: "Column Description",
-        dataIndex: "description",
-        key: "description",
-        width: "35%",
-        editable: true,
-        render: this.truncateDescriptionText,
-        onCell: record => ({
-          record,
-          input_type: "text",
-          dataIndex: "description",
-          title: "Column Description",
-          editing: this.isEditing(record),
-        }),
-      },
-      {
-        title: "",
-        width: "15%",
-        dataIndex: "edit",
-        key: "edit",
-        render: (text, record) => this.fieldEditor(text, record, tableData),
-      },
-    ];
-
-    return (
-      <Table
-        components={components}
-        columns={columns}
-        rowKey="id"
-        dataSource={tableData.columns}
-        rowClassName="editable-row"
-        pagination={false}
-      />
-    );
   };
 
-  truncateDescriptionText = text => {
+  const truncateDescriptionText = text => {
     if (!text) {
       return;
     }
@@ -176,101 +120,123 @@ export default class SchemaTable extends React.Component {
     );
   };
 
-  fieldEditor(text, record, tableData) {
-    const editable = this.isEditing(record);
+  const columns = [
+    {
+      title: "Table Name",
+      dataIndex: "name",
+      width: "18%",
+      key: "name",
+    },
+    {
+      title: "Table Description",
+      dataIndex: "description",
+      width: "36%",
+      key: "description",
+      editable: true,
+      render: truncateDescriptionText,
+    },
+    {
+      title: "Sample Queries",
+      dataIndex: "sample_queries",
+      width: "24%",
+      key: "sample_queries",
+      editable: true,
+      render: text => {
+        return (
+        <ul style={{ margin: 0, paddingLeft: "15px" }}>
+          {Object.values(text).map(query => (
+            <li key={query.id}>
+              <a target="_blank" rel="noopener noreferrer" href={`queries/${query.id}/source`}>
+                {query.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )},
+    },
+    {
+      title: "Visibility",
+      dataIndex: "visible",
+      width: "10%",
+      key: "visible",
+      editable: true,
+      render: (text, record) => (
+        <div>
+          <TableVisibilityCheckbox disabled visible={record.visible} />
+        </div>
+      ),
+    },
+    {
+      title: "",
+      width: "12%",
+      dataIndex: "edit",
+      key: "edit",
+      // Purposely calling fieldEditor() instead of setting render() to it
+      // because render() will pass a different third argument than what
+      // fieldEditory() takes
+      render: (text, record) => fieldEditor(text, record),
+    },
+  ];
+
+  const fieldEditor = (text, record, tableData) => {
+    const editable = isEditing(record);
     const tableKey = tableData ? tableData.id : record.id;
     const columnKey = tableData ? record.id : undefined;
-    return (
-      <div>
-        {editable ? (
-          <span>
-            <EditableContext.Consumer>
-              {form => (
-                <a onClick={() => this.save(form, tableKey, columnKey)} style={{ marginRight: 8 }}>
-                  Save
-                </a>
-              )}
-            </EditableContext.Consumer>
-            <Popconfirm title="Sure to cancel?" onConfirm={() => this.cancel(record.id)}>
-              <a>Cancel</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <a onClick={() => this.edit(record.id)}>Edit</a>
-        )}
-      </div>
+    return editable ? (
+      <span>
+        <a
+          href="javascript:;"
+          onClick={() => save(tableKey, columnKey)}
+          style={{
+            marginRight: 8
+          }}
+        >
+          Save
+        </a>
+        <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
+          <a>Cancel</a>
+        </Popconfirm>
+      </span>
+     ) : (
+      <a disabled={editingKey !== ''} onClick={() => edit(record)}>
+        Edit
+      </a>
     );
-  }
+  };
 
-  cancel() {
-    this.setState({ editingKey: "" });
-  }
+  const mergedColumns = columns.map((col) => {
+    if (!col.editable) {
+      return col;
+    }
 
-  edit(key) {
-    this.setState({ editingKey: key });
-  }
-
-  isEditing(record) {
-    return record.id === this.state.editingKey;
-  }
-
-  save(form, tableKey, columnKey) {
-    form.validateFields((error, editedFields) => {
-      if (error) {
-        return;
-      }
-      const newData = [...this.state.data];
-      let spliceIndex = newData.findIndex(item => tableKey === item.id);
-
-      if (spliceIndex < 0) {
-        return;
-      }
-
-      const tableRow = newData[spliceIndex];
-      let dataToUpdate = newData;
-      let rowToUpdate = tableRow;
-
-      const columnIndex = tableRow.columns.findIndex(item => columnKey === item.id);
-      const columnRow = tableRow.columns[columnIndex];
-      if (columnKey) {
-        dataToUpdate = tableRow.columns;
-        spliceIndex = columnIndex;
-        rowToUpdate = columnRow;
-      }
-
-      dataToUpdate.splice(spliceIndex, 1, {
-        ...rowToUpdate,
-        ...editedFields,
-      });
-      this.props.updateSchema(editedFields, tableRow.id, columnRow ? columnRow.id : undefined);
-      this.setState({ data: newData, editingKey: "" });
-    });
-  }
-
-  render() {
-    const columns = this.columns.map(col => ({
+    return {
       ...col,
-      onCell: record => ({
+      onCell: (record) => ({
         record,
-        input_type: col.dataIndex,
+        inputType: col.dataIndex,
         dataIndex: col.dataIndex,
         title: col.title,
-        editing: col.editable ? this.isEditing(record) : false,
+        editing: col.editable ? isEditing(record) : false,
       }),
-    }));
-
-    return (
+    };
+  });
+  return (
+    <Form form={form} component={false}>
       <Table
-        components={components}
+        components={{
+          body: {
+            cell: EditableCell,
+          },
+        }}
         bordered
-        side="middle"
-        dataSource={this.state.data}
-        pagination={false}
-        columns={columns}
-        rowKey={row => row.id}
+        dataSource={data}
+        columns={mergedColumns}
         rowClassName="editable-row"
-        expandedRowRender={this.expandedRowRender}
+        pagination={{
+          onChange: cancel,
+        }}
+        side="middle"
       />
-    );
-  }
-}
+    </Form>
+  );
+};

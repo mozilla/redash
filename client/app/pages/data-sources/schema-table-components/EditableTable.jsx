@@ -37,11 +37,18 @@ export class EditableCell extends React.Component {
     super(props);
     this.state = {
       visible: this.props.record ? this.props.record.visible : false,
+      description: this.props.record ? this.props.record.description : "test"
     };
+
   }
 
   onChange = () => {
     this.setState(prevState => ({ visible: !prevState.visible }));
+  };
+
+  onChangeDesc = (e) => {
+    let newThing = e.target ? e.target.value : "";
+    this.setState(prevState => ({ description: newThing }));
   };
 
   getInput = () => {
@@ -50,7 +57,13 @@ export class EditableCell extends React.Component {
     } else if (this.props.input_type === "sample_queries") {
       return <SampleQueryList />;
     }
-    return <TextArea className="table-textarea" placeholder="Enter description..." style={{ resize: "vertical" }} />;
+    return <TextArea
+      className="table-textarea"
+      style={{ resize: "vertical" }}
+      rows={3}
+      value={this.state.description}
+      onChange={this.onChangeDesc}
+    />;
   };
 
   render() {
@@ -62,9 +75,11 @@ export class EditableCell extends React.Component {
           return (
             <td {...restProps}>
               {editing ? (
-                <Form.Item style={{ margin: 0 }} name={dataIndex} initialValue={record[dataIndex]}>
-                {this.getInput()}
-                </Form.Item>
+                <Form>
+                  <Form.Item style={{ margin: 0 }} name={dataIndex} initialValue={record[dataIndex]}>
+                  {this.getInput()}
+                  </Form.Item>
+                </Form>
               ) : (
                 restProps.children
               )}

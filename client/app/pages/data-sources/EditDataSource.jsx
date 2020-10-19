@@ -7,7 +7,7 @@ import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSess
 import navigateTo from "@/components/ApplicationArea/navigateTo";
 import LoadingState from "@/components/items-list/components/LoadingState";
 import DynamicForm from "@/components/dynamic-form/DynamicForm";
-import SchemaTable from "@/pages/data-sources/schema-table-components/SchemaTable";
+import { SchemaTable } from "@/pages/data-sources/schema-table-components/SchemaTable";
 import helper from "@/components/dynamic-form/dynamicFormHelper";
 import HelpTrigger, { TYPES as HELP_TRIGGER_TYPES } from "@/components/HelpTrigger";
 import wrapSettingsTab from "@/components/SettingsWrapper";
