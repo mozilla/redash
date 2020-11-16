@@ -10,19 +10,19 @@ class TestBuildSchema(TestCase):
                     "table_schema": "public",
                     "table_name": "main.users",
                     "column_name": "id",
-                    "column_type": "character varying",
+                    "data_type": "character varying",
                 },
                 {
                     "table_schema": "main",
                     "table_name": "users",
                     "column_name": "id",
-                    "column_type": "character varying",
+                    "data_type": "character varying",
                 },
                 {
                     "table_schema": "main",
                     "table_name": "users",
                     "column_name": "name",
-                    "column_type": "character varying",
+                    "data_type": "character varying",
                 },
             ]
         }
@@ -32,6 +32,6 @@ class TestBuildSchema(TestCase):
         build_schema(results, schema)
 
         self.assertIn("main.users", schema.keys())
-        self.assertListEqual(schema["main.users"]["columns"], ["id", "name"])
+        self.assertListEqual([column["name"] for column in schema["main.users"]["columns"]], ["id", "name"])
         self.assertIn('public."main.users"', schema.keys())
-        self.assertListEqual(schema['public."main.users"']["columns"], ["id"])
+        self.assertListEqual([column["name"] for column in schema['public."main.users"']["columns"]], ["id"])

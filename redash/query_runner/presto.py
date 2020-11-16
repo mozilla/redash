@@ -78,7 +78,7 @@ class Presto(BaseQueryRunner):
     def get_schema(self, get_stats=False):
         schema = {}
         query = """
-        SELECT table_schema, table_name, column_name, data_type AS column_type
+        SELECT table_schema, table_name, column_name, data_type
         FROM information_schema.columns
         WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
         """
@@ -97,7 +97,7 @@ class Presto(BaseQueryRunner):
                 schema[table_name] = {"name": table_name, "columns": []}
 
             schema[table_name]["columns"].append(
-                {"name": row["column_name"], "type": row["column_type"],}
+                {"name": row["column_name"], "type": row["data_type"],}
             )
 
         return list(schema.values())

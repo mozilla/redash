@@ -135,7 +135,7 @@ class Mysql(BaseSQLQueryRunner):
         SELECT col.table_schema as table_schema,
                col.table_name as table_name,
                col.column_name as column_name,
-               col.column_type as column_type
+               col.column_type as data_type
         FROM `information_schema`.`columns` col
         WHERE col.table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys');
         """
@@ -157,7 +157,7 @@ class Mysql(BaseSQLQueryRunner):
                 schema[table_name] = {"name": table_name, "columns": []}
 
             schema[table_name]["columns"].append(
-                {"name": row["column_name"], "type": row["column_type"]}
+                {"name": row["column_name"], "type": row["data_type"]}
             )
 
         return list(schema.values())

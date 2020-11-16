@@ -169,7 +169,7 @@ class TestRefreshSchemas(BaseTestCase):
 
         # Table has no metdata field, `column_metadata` should be False.
         self.patched_get_schema.return_value = [
-            {"name": "table", "columns": [self.COLUMN_NAME],}
+            {"name": "table", "columns": [{"name": self.COLUMN_NAME}]}
         ]
 
         refresh_schema(self.factory.data_source.id)

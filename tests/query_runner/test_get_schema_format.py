@@ -38,7 +38,7 @@ class TestBaseQueryRunner(TestCase):
                 {
                     "table_schema": "default",
                     "table_name": "table_name",
-                    "column_type": "varchar",
+                    "data_type": "varchar",
                     "column_name": "created_date",
                 }
             ]

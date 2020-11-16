@@ -186,7 +186,7 @@ def refresh_schema(data_source_id, max_type_string_length=250):
                     "org_id": ds.org_id,
                     "name": table_name,
                     "data_source_id": ds.id,
-                    "column_metadata": "type" in table["columns"],
+                    "column_metadata": any(col.get("type", None) for col in table["columns"]),
                     "exists": True,
                 }
 
@@ -199,17 +199,18 @@ def refresh_schema(data_source_id, max_type_string_length=250):
 
             for table in all_existing_persisted_tables:
                 for column in new_columns.get(table.name, []):
-                    existing_columns_set.add(column["name"])
-                    column_data[column] = {
+                    column_name = column["name"]
+                    existing_columns_set.add(column_name)
+                    column_data[column_name] = {
                         "org_id": ds.org_id,
                         "table_id": table.id,
-                        "name": column["name"],
+                        "name": column_name,
                         "type": None,
                         "exists": True,
                     }
 
                     if table.column_metadata:
-                        column_data[column]["type"] = truncate_long_string(
+                        column_data[column_name]["type"] = truncate_long_string(
                             column["type"], max_type_string_length
                         )
 
@@ -262,6 +263,7 @@ def refresh_schema(data_source_id, max_type_string_length=250):
             )
             statsd_client.incr("refresh_schema.timeout")
         except Exception:
+            raise
             logger.warning(
                 "Failed refreshing schema for the data source: %s", ds.name, exc_info=1
             )
