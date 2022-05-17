@@ -24,8 +24,8 @@ Redash features:
 
 ## Getting Started
 
-* [Setting up Redash instance](https://redash.io/help/open-source/setup) (includes links to ready-made AWS/GCE images).
-* [Documentation](https://redash.io/help/).
+* [Setting up Redash instance](https://redash.io/help/open-source/setup) (includes links to ready-made AWS/GCE images)
+* [Documentation](https://redash.io/help/)
 
 ## Supported Data Sources
 
