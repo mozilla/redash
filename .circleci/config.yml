@@ -13,7 +13,7 @@ jobs:
       COMPOSE_FILE: .circleci/docker-compose.circle.yml
       COMPOSE_PROJECT_NAME: redash
     docker:
-      - image: circleci/buildpack-deps:xenial
+      - image: cimg/base:current-18.04
     steps:
       - setup_remote_docker
       - checkout
