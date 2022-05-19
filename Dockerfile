@@ -25,30 +25,30 @@ RUN useradd --create-home redash
 # Ubuntu packages
 RUN apt-get update && \
   apt-get install -y \
-    curl \
-    gnupg \
-    build-essential \
-    pwgen \
-    libffi-dev \
-    sudo \
-    git-core \
-    wget \
-    # Postgres client
-    libpq-dev \
-    # ODBC support:
-    g++ unixodbc-dev \
-    # for SAML
-    xmlsec1 \
-    # Additional packages required for data sources:
-    libssl-dev \
-    default-libmysqlclient-dev \
-    freetds-dev \
-    libsasl2-dev \
-    unzip \
-    libsasl2-modules-gssapi-mit && \
+  curl \
+  gnupg \
+  build-essential \
+  pwgen \
+  libffi-dev \
+  sudo \
+  git-core \
+  wget \
+  # Postgres client
+  libpq-dev \
+  # ODBC support:
+  g++ unixodbc-dev \
+  # for SAML
+  xmlsec1 \
+  # Additional packages required for data sources:
+  libssl-dev \
+  default-libmysqlclient-dev \
+  freetds-dev \
+  libsasl2-dev \
+  unzip \
+  libsasl2-modules-gssapi-mit && \
   # MSSQL ODBC Driver:  
   curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-  curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+  curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
   apt-get update && \
   ACCEPT_EULA=Y apt-get install -y msodbcsql17 && \
   apt-get clean && \
