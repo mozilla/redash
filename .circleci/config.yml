@@ -16,7 +16,7 @@ jobs:
       - image: cimg/base:stable-18.04
     steps:
       - setup_remote_docker:
-          version: 20.10.16
+          version: 20.10.12
       - checkout
       - run:
           name: Build Docker Images
