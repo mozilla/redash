@@ -97,28 +97,29 @@ class DataSourceCommandTests(BaseTestCase):
             options=ConfigurationContainer({"dbpath": "/tmp/test.db"}),
         )
         runner = CliRunner()
-        result = runner.invoke(manager, ["ds", "list"])
-        self.assertFalse(result.exception)
-        self.assertEqual(result.exit_code, 0)
-        expected_output = """
-        Id: 3
-        Name: Atest
-        Type: sqlite
-        Options: {"dbpath": "/tmp/test.db"}
-        --------------------
-        Id: 1
-        Name: test1
-        Type: pg
-        Options: {"dbname": "testdb1", "host": "example.com"}
-        --------------------
-        Id: 2
-        Name: test2
-        Type: sqlite
-        Options: {"dbpath": "/tmp/test.db"}
-        """
-        self.assertMultiLineEqual(
-            result.output, textwrap.dedent(expected_output).lstrip()
-        )
+        with runner.isolated_filesystem():
+            result = runner.invoke(manager, ["ds", "list"])
+            self.assertFalse(result.exception)
+            self.assertEqual(result.exit_code, 0)
+            expected_output = """
+            Id: 3
+            Name: Atest
+            Type: sqlite
+            Options: {"dbpath": "/tmp/test.db"}
+            --------------------
+            Id: 1
+            Name: test1
+            Type: pg
+            Options: {"dbname": "testdb1", "host": "example.com"}
+            --------------------
+            Id: 2
+            Name: test2
+            Type: sqlite
+            Options: {"dbpath": "/tmp/test.db"}
+            """
+            self.assertMultiLineEqual(
+                result.output, textwrap.dedent(expected_output).lstrip()
+            )
 
     def test_connection_test(self):
         self.factory.create_data_source(
@@ -303,46 +304,47 @@ class GroupCommandTests(BaseTestCase):
         )
 
         runner = CliRunner()
-        result = runner.invoke(manager, ["groups", "list"])
-        self.assertFalse(result.exception)
-        self.assertEqual(result.exit_code, 0)
-        output = """
-        Id: 1
-        Name: admin
-        Type: builtin
-        Organization: default
-        Permissions: [admin,super_admin]
-        Users: 
-        --------------------
-        Id: 4
-        Name: agroup
-        Type: regular
-        Organization: default
-        Permissions: [list_dashboards]
-        Users: 
-        --------------------
-        Id: 5
-        Name: bgroup
-        Type: regular
-        Organization: default
-        Permissions: [list_dashboards]
-        Users: 
-        --------------------
-        Id: 2
-        Name: default
-        Type: builtin
-        Organization: default
-        Permissions: [create_dashboard,create_query,edit_dashboard,edit_query,view_query,view_source,execute_query,list_users,schedule_query,list_dashboards,list_alerts,list_data_sources]
-        Users: Fred Foobar
-        --------------------
-        Id: 3
-        Name: test
-        Type: regular
-        Organization: default
-        Permissions: [list_dashboards]
-        Users: 
-        """
-        self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
+        with runner.isolated_filesystem():
+            result = runner.invoke(manager, ["groups", "list"])
+            self.assertFalse(result.exception)
+            self.assertEqual(result.exit_code, 0)
+            output = """
+            Id: 1
+            Name: admin
+            Type: builtin
+            Organization: default
+            Permissions: [admin,super_admin]
+            Users: 
+            --------------------
+            Id: 4
+            Name: agroup
+            Type: regular
+            Organization: default
+            Permissions: [list_dashboards]
+            Users: 
+            --------------------
+            Id: 5
+            Name: bgroup
+            Type: regular
+            Organization: default
+            Permissions: [list_dashboards]
+            Users: 
+            --------------------
+            Id: 2
+            Name: default
+            Type: builtin
+            Organization: default
+            Permissions: [create_dashboard,create_query,edit_dashboard,edit_query,view_query,view_source,execute_query,list_users,schedule_query,list_dashboards,list_alerts,list_data_sources]
+            Users: Fred Foobar
+            --------------------
+            Id: 3
+            Name: test
+            Type: regular
+            Organization: default
+            Permissions: [list_dashboards]
+            Users: 
+            """
+            self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
 
 
 class OrganizationCommandTests(BaseTestCase):
@@ -365,40 +367,42 @@ class OrganizationCommandTests(BaseTestCase):
         db.session.add(self.factory.org)
         db.session.commit()
         runner = CliRunner()
-        result = runner.invoke(manager, ["org", "show_google_apps_domains"])
-        self.assertFalse(result.exception)
-        self.assertEqual(result.exit_code, 0)
-        output = """
-        Current list of Google Apps domains: example.org, example.com
-        """
-        self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
+        with runner.isolated_filesystem():
+            result = runner.invoke(manager, ["org", "show_google_apps_domains"])
+            self.assertFalse(result.exception)
+            self.assertEqual(result.exit_code, 0)
+            output = """
+            Current list of Google Apps domains: example.org, example.com
+            """
+            self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
 
     def test_list(self):
         self.factory.create_org(name="test", slug="test_org")
         self.factory.create_org(name="Borg", slug="B_org")
         self.factory.create_org(name="Aorg", slug="A_org")
         runner = CliRunner()
-        result = runner.invoke(manager, ["org", "list"])
-        self.assertFalse(result.exception)
-        self.assertEqual(result.exit_code, 0)
-        output = """
-        Id: 4
-        Name: Aorg
-        Slug: A_org
-        --------------------
-        Id: 3
-        Name: Borg
-        Slug: B_org
-        --------------------
-        Id: 1
-        Name: Default
-        Slug: default
-        --------------------
-        Id: 2
-        Name: test
-        Slug: test_org
-        """
-        self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
+        with runner.isolated_filesystem():
+            result = runner.invoke(manager, ["org", "list"])
+            self.assertFalse(result.exception)
+            self.assertEqual(result.exit_code, 0)
+            output = """
+            Id: 4
+            Name: Aorg
+            Slug: A_org
+            --------------------
+            Id: 3
+            Name: Borg
+            Slug: B_org
+            --------------------
+            Id: 1
+            Name: Default
+            Slug: default
+            --------------------
+            Id: 2
+            Name: test
+            Slug: test_org
+            """
+            self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
 
 
 class UserCommandTests(BaseTestCase):
@@ -548,32 +552,33 @@ class UserCommandTests(BaseTestCase):
         )
 
         runner = CliRunner()
-        result = runner.invoke(manager, ["users", "list"])
-        self.assertFalse(result.exception)
-        self.assertEqual(result.exit_code, 0)
-        output = """
-        Id: 3
-        Name: Andrew Foobar
-        Email: andrew@example.com
-        Organization: Default
-        Active: True
-        Groups: default
-        --------------------
-        Id: 1
-        Name: Fred Foobar
-        Email: foobar@example.com
-        Organization: Default
-        Active: True
-        Groups: default
-        --------------------
-        Id: 2
-        Name: William Foobar
-        Email: william@example.com
-        Organization: Default
-        Active: True
-        Groups: default
-        """
-        self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
+        with runner.isolated_filesystem():
+            result = runner.invoke(manager, ["users", "list"])
+            self.assertFalse(result.exception)
+            self.assertEqual(result.exit_code, 0)
+            output = """
+            Id: 3
+            Name: Andrew Foobar
+            Email: andrew@example.com
+            Organization: Default
+            Active: True
+            Groups: default
+            --------------------
+            Id: 1
+            Name: Fred Foobar
+            Email: foobar@example.com
+            Organization: Default
+            Active: True
+            Groups: default
+            --------------------
+            Id: 2
+            Name: William Foobar
+            Email: william@example.com
+            Organization: Default
+            Active: True
+            Groups: default
+            """
+            self.assertMultiLineEqual(result.output, textwrap.dedent(output).lstrip())
 
     def test_grant_admin(self):
         u = self.factory.create_user(
