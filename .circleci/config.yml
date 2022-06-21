@@ -32,9 +32,6 @@ jobs:
           name: List Databases
           command: docker-compose run --rm postgres psql -h postgres -U postgres -l
       - run:
-          name: List DBs Other Container
-          command: docker-compose run --rm tester psql -h postgres -U postgres -l
-      - run:
           name: List Enabled Query Runners
           command: docker-compose run --rm redash manage ds list_types
       - run:
