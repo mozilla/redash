@@ -46,7 +46,7 @@ jobs:
           path: coverage.xml
   frontend-lint:
     docker:
-      - image: circleci/node:12
+      - image: cimg/node:12.22.8
     steps:
       - checkout
       - run: mkdir -p /tmp/test-results/eslint
@@ -56,7 +56,7 @@ jobs:
           path: /tmp/test-results
   frontend-unit-tests:
     docker:
-      - image: circleci/node:12
+      - image: cimg/node:12.22.8
     steps:
       - checkout
       - run: sudo apt update
@@ -73,7 +73,7 @@ jobs:
       - run: npm run lint
   build-docker-image:
     docker:
-      - image: circleci/node:12
+      - image: cimg/node:12.22.8
     steps:
       - setup_remote_docker
       - checkout
@@ -86,7 +86,7 @@ jobs:
       - run: .circleci/docker_build
   build-docker-image-tag:
     docker:
-      - image: circleci/node:12
+      - image: cimg/node:12.22.8
     steps:
       - setup_remote_docker
       - checkout
