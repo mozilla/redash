@@ -244,7 +244,7 @@ class ColumnMetadata(TimestampMixin, db.Model):
     table_id = Column(
         db.Integer, db.ForeignKey("table_metadata.id", ondelete="CASCADE"), index=True
     )
-    name = Column(db.String(255), index=True)
+    name = Column(db.String(300), index=True)
     type = Column(db.String(255), nullable=True)
     example = Column(db.String(4096), nullable=True)
     exists = Column(db.Boolean, default=True, index=True)
