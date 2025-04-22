@@ -1,24 +1,32 @@
 import datetime
 import logging
-import operator
-import sys
+import socket
 import time
 from base64 import b64decode
 
-import httplib2
-import requests
-
 from redash import settings
-from redash.query_runner import *
-from redash.utils import json_dumps, json_loads
+from redash.query_runner import (
+    TYPE_BOOLEAN,
+    TYPE_DATE,
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseQueryRunner,
+    InterruptException,
+    JobTimeoutException,
+    register,
+)
+from redash.utils import json_loads
 
 logger = logging.getLogger(__name__)
 
 try:
     import apiclient.errors
+    import google.auth
     from apiclient.discovery import build
-    from apiclient.errors import HttpError
-    from oauth2client.service_account import ServiceAccountCredentials
+    from apiclient.errors import HttpError  # noqa: F401
+    from google.oauth2.service_account import Credentials
 
     enabled = True
 except ImportError:
@@ -30,6 +38,8 @@ types_map = {
     "BOOLEAN": TYPE_BOOLEAN,
     "STRING": TYPE_STRING,
     "TIMESTAMP": TYPE_DATETIME,
+    "DATETIME": TYPE_DATETIME,
+    "DATE": TYPE_DATE,
 }
 
 
@@ -53,9 +63,7 @@ def transform_row(row, fields):
     for column_index, cell in enumerate(row["f"]):
         field = fields[column_index]
         if field.get("mode") == "REPEATED":
-            cell_value = [
-                transform_cell(field["type"], item["v"]) for item in cell["v"]
-            ]
+            cell_value = [transform_cell(field["type"], item["v"]) for item in cell["v"]]
         else:
             cell_value = transform_cell(field["type"], cell["v"])
 
@@ -65,7 +73,7 @@ def transform_row(row, fields):
 
 
 def _load_key(filename):
-    f = file(filename, "rb")
+    f = open(filename, "rb")
     try:
         return f.read()
     finally:
@@ -78,16 +86,24 @@ def _get_query_results(jobs, project_id, location, job_id, start_index):
     ).execute()
     logging.debug("query_reply %s", query_reply)
     if not query_reply["jobComplete"]:
-        time.sleep(10)
+        time.sleep(1)
         return _get_query_results(jobs, project_id, location, job_id, start_index)
 
     return query_reply
 
 
+def _get_total_bytes_processed_for_resp(bq_response):
+    # BigQuery hides the total bytes processed for queries to tables with row-level access controls.
+    # For these queries the "totalBytesProcessed" field may not be defined in the response.
+    return int(bq_response.get("totalBytesProcessed", "0"))
+
+
 class BigQuery(BaseQueryRunner):
-    should_annotate_query = False
     noop_query = "SELECT 1"
-    sample_query = "#standardSQL\n SELECT * FROM {table} LIMIT 1"
+
+    def __init__(self, configuration):
+        super().__init__(configuration)
+        self.should_annotate_query = configuration.get("useQueryAnnotation", False)
 
     @classmethod
     def enabled(cls):
@@ -99,7 +115,7 @@ class BigQuery(BaseQueryRunner):
             "type": "object",
             "properties": {
                 "projectId": {"type": "string", "title": "Project ID"},
-                "jsonKeyFile": {"type": "string", "title": "JSON Key File"},
+                "jsonKeyFile": {"type": "string", "title": "JSON Key File (ADC is used if omitted)"},
                 "totalMBytesProcessedLimit": {
                     "type": "number",
                     "title": "Scanned Data Limit (MB)",
@@ -119,15 +135,13 @@ class BigQuery(BaseQueryRunner):
                     "type": "number",
                     "title": "Maximum Billing Tier",
                 },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                "useQueryAnnotation": {
+                    "type": "boolean",
+                    "title": "Use Query Annotation",
+                    "default": False,
                 },
-                "samples": {"type": "boolean", "title": "Show Data Samples"},
             },
-            "required": ["jsonKeyFile", "projectId"],
+            "required": ["projectId"],
             "order": [
                 "projectId",
                 "jsonKeyFile",
@@ -137,23 +151,26 @@ class BigQuery(BaseQueryRunner):
                 "totalMBytesProcessedLimit",
                 "maximumBillingTier",
                 "userDefinedFunctionResourceUri",
+                "useQueryAnnotation",
             ],
             "secret": ["jsonKeyFile"],
         }
 
     def _get_bigquery_service(self):
-        scope = [
+        socket.setdefaulttimeout(settings.BIGQUERY_HTTP_TIMEOUT)
+
+        scopes = [
             "https://www.googleapis.com/auth/bigquery",
             "https://www.googleapis.com/auth/drive",
         ]
 
-        key = json_loads(b64decode(self.configuration["jsonKeyFile"]))
+        try:
+            key = json_loads(b64decode(self.configuration["jsonKeyFile"]))
+            creds = Credentials.from_service_account_info(key, scopes=scopes)
+        except KeyError:
+            creds = google.auth.default(scopes=scopes)[0]
 
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(key, scope)
-        http = httplib2.Http(timeout=settings.BIGQUERY_HTTP_TIMEOUT)
-        http = creds.authorize(http)
-
-        return build("bigquery", "v2", http=http)
+        return build("bigquery", "v2", credentials=creds, cache_discovery=False)
 
     def _get_project_id(self):
         return self.configuration["projectId"]
@@ -171,7 +188,7 @@ class BigQuery(BaseQueryRunner):
             job_data["useLegacySql"] = False
 
         response = jobs.query(projectId=self._get_project_id(), body=job_data).execute()
-        return int(response["totalBytesProcessed"])
+        return _get_total_bytes_processed_for_resp(response)
 
     def _get_job_data(self, query):
         job_data = {"configuration": {"query": {"query": query}}}
@@ -183,17 +200,13 @@ class BigQuery(BaseQueryRunner):
             job_data["configuration"]["query"]["useLegacySql"] = False
 
         if self.configuration.get("userDefinedFunctionResourceUri"):
-            resource_uris = self.configuration["userDefinedFunctionResourceUri"].split(
-                ","
-            )
+            resource_uris = self.configuration["userDefinedFunctionResourceUri"].split(",")
             job_data["configuration"]["query"]["userDefinedFunctionResources"] = [
                 {"resourceUri": resource_uri} for resource_uri in resource_uris
             ]
 
         if "maximumBillingTier" in self.configuration:
-            job_data["configuration"]["query"][
-                "maximumBillingTier"
-            ] = self.configuration["maximumBillingTier"]
+            job_data["configuration"]["query"]["maximumBillingTier"] = self.configuration["maximumBillingTier"]
 
         return job_data
 
@@ -236,9 +249,7 @@ class BigQuery(BaseQueryRunner):
             {
                 "name": f["name"],
                 "friendly_name": f["name"],
-                "type": "string"
-                if f.get("mode") == "REPEATED"
-                else types_map.get(f["type"], "string"),
+                "type": "string" if f.get("mode") == "REPEATED" else types_map.get(f["type"], "string"),
             }
             for f in query_reply["schema"]["fields"]
         ]
@@ -246,188 +257,77 @@ class BigQuery(BaseQueryRunner):
         data = {
             "columns": columns,
             "rows": rows,
-            "metadata": {"data_scanned": int(query_reply["totalBytesProcessed"])},
+            "metadata": {"data_scanned": _get_total_bytes_processed_for_resp(query_reply)},
         }
 
         return data
 
     def _get_columns_schema(self, table_data):
         columns = []
-        metadata = []
         for column in table_data.get("schema", {}).get("fields", []):
-            metadatum = self._get_column_metadata(column)
-            metadata.extend(metadatum)
-            columns.extend(map(operator.itemgetter("name"), metadatum))
+            columns.extend(self._get_columns_schema_column(column))
 
         project_id = self._get_project_id()
         table_name = table_data["id"].replace("%s:" % project_id, "")
-        return {"name": table_name, "columns": columns, "metadata": metadata}
+        return {"name": table_name, "columns": columns}
 
-    def _get_column_metadata(self, column):
-        metadata = []
+    def _get_columns_schema_column(self, column):
+        columns = []
         if column["type"] == "RECORD":
             for field in column["fields"]:
-                field_name = u"{}.{}".format(column["name"], field["name"])
-                metadata.append({"name": field_name, "type": field["type"]})
+                columns.append("{}.{}".format(column["name"], field["name"]))
         else:
-            metadata.append({"name": column["name"], "type": column["type"]})
-        return metadata
+            columns.append(column["name"])
 
-    def _columns_and_samples_to_dict(self, schema, samples):
-        samples_dict = {}
-        if not samples:
-            return samples_dict
+        return columns
 
-        # If a sample exists, its shape/length should be analogous to
-        # the schema provided (i.e their lengths should match up)
-        for i, column in enumerate(schema):
-            if column["type"] == "RECORD":
-                if column.get("mode", None) == "REPEATED":
-                    # Repeated fields have multiple samples of the same format.
-                    # We only need to show the first one as an example.
-                    associated_sample = [] if len(samples[i]) == 0 else samples[i][0]
-                else:
-                    associated_sample = samples[i] or []
-
-                for j, field in enumerate(column["fields"]):
-                    field_name = u"{}.{}".format(column["name"], field["name"])
-                    samples_dict[field_name] = None
-                    if len(associated_sample) > 0:
-                        samples_dict[field_name] = associated_sample[j]
-            else:
-                samples_dict[column["name"]] = samples[i]
-
-        return samples_dict
-
-    def _flatten_samples(self, samples):
-        samples_list = []
-        for field in samples:
-            value = field["v"]
-            if isinstance(value, dict):
-                samples_list.append(self._flatten_samples(value.get("f", [])))
-            elif isinstance(value, list):
-                samples_list.append(self._flatten_samples(value))
-            else:
-                samples_list.append(value)
-
-        return samples_list
-
-    def get_table_sample(self, table_name):
-        if not self.configuration.get("loadSchema", False):
-            return {}
-
+    def _get_project_datasets(self, project_id):
+        result = []
         service = self._get_bigquery_service()
-        project_id = self._get_project_id()
 
-        dataset_id, table_id = table_name.split(".", 1)
+        datasets = service.datasets().list(projectId=project_id).execute()
+        result.extend(datasets.get("datasets", []))
+        nextPageToken = datasets.get("nextPageToken", None)
 
-        try:
-            # NOTE: the `sample_response` is limited by `maxResults` here.
-            # Without this limit, the response would be very large and require
-            # pagination using `nextPageToken`.
-            sample_response = (
-                service.tabledata()
-                .list(
-                    projectId=project_id,
-                    datasetId=dataset_id,
-                    tableId=table_id,
-                    fields="rows",
-                    maxResults=1,
-                )
-                .execute()
-            )
-            schema_response = (
-                service.tables()
-                .get(
-                    projectId=project_id,
-                    datasetId=dataset_id,
-                    tableId=table_id,
-                    fields="schema,id",
-                )
-                .execute()
-            )
-            table_rows = sample_response.get("rows", [])
+        while nextPageToken is not None:
+            datasets = service.datasets().list(projectId=project_id, pageToken=nextPageToken).execute()
+            result.extend(datasets.get("datasets", []))
+            nextPageToken = datasets.get("nextPageToken", None)
 
-            if len(table_rows) == 0:
-                samples = []
-            else:
-                samples = table_rows[0].get("f", [])
-
-            schema = schema_response.get("schema", {}).get("fields", [])
-            columns = self._get_columns_schema(schema_response).get("columns", [])
-
-            flattened_samples = self._flatten_samples(samples)
-            samples_dict = self._columns_and_samples_to_dict(schema, flattened_samples)
-            return samples_dict
-        except HttpError as http_error:
-            logger.exception(
-                "Error communicating with server for sample for table %s: %s",
-                table_name,
-                http_error,
-            )
-
-            # If there is an error getting the sample using the API,
-            # try to do it by running a `select *` with a limit.
-            return super().get_table_sample(table_name)
+        return result
 
     def get_schema(self, get_stats=False):
         if not self.configuration.get("loadSchema", False):
             return []
 
-        service = self._get_bigquery_service()
         project_id = self._get_project_id()
-        # get a list of Big Query datasets
-        datasets_request = service.datasets().list(
-            projectId=project_id,
-            fields="datasets/datasetReference/datasetId,nextPageToken",
-        )
-        datasets = []
-        while datasets_request:
-            # request datasets
-            datasets_response = datasets_request.execute()
-            # store results
-            datasets.extend(datasets_response.get("datasets", []))
-            # try loading next page
-            datasets_request = service.datasets().list_next(
-                datasets_request,
-                datasets_response,
-            )
+        datasets = self._get_project_datasets(project_id)
 
-        schema = []
-        # load all tables for all datasets
+        query_base = """
+        SELECT table_schema, table_name, field_path, data_type
+        FROM `{dataset_id}`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+        WHERE table_schema NOT IN ('information_schema')
+        """
+
+        schema = {}
+        queries = []
         for dataset in datasets:
             dataset_id = dataset["datasetReference"]["datasetId"]
-            tables_request = service.tables().list(
-                projectId=project_id,
-                datasetId=dataset_id,
-                fields="tables/tableReference/tableId,nextPageToken",
-            )
-            while tables_request:
-                # request tables with fields above
-                tables_response = tables_request.execute()
-                for table in tables_response.get("tables", []):
-                    # load schema for given table
-                    table_data = (
-                        service.tables()
-                        .get(
-                            projectId=project_id,
-                            datasetId=dataset_id,
-                            tableId=table["tableReference"]["tableId"],
-                            fields="id,schema",
-                        )
-                        .execute()
-                    )
-                    # build schema data with given table data
-                    table_schema = self._get_columns_schema(table_data)
-                    schema.append(table_schema)
+            query = query_base.format(dataset_id=dataset_id)
+            queries.append(query)
 
-                # try loading next page of results
-                tables_request = service.tables().list_next(
-                    tables_request,
-                    tables_response,
-                )
+        query = "\nUNION ALL\n".join(queries)
+        results, error = self.run_query(query, None)
+        if error is not None:
+            self._handle_run_query_error(error)
 
-        return schema
+        for row in results["rows"]:
+            table_name = "{0}.{1}".format(row["table_schema"], row["table_name"])
+            if table_name not in schema:
+                schema[table_name] = {"name": table_name, "columns": []}
+            schema[table_name]["columns"].append({"name": row["field_path"], "type": row["data_type"]})
+
+        return list(schema.values())
 
     def run_query(self, query, user):
         logger.debug("BigQuery got query: %s", query)
@@ -438,23 +338,19 @@ class BigQuery(BaseQueryRunner):
         try:
             if "totalMBytesProcessedLimit" in self.configuration:
                 limitMB = self.configuration["totalMBytesProcessedLimit"]
-                processedMB = (
-                    self._get_total_bytes_processed(jobs, query) / 1000.0 / 1000.0
-                )
+                processedMB = self._get_total_bytes_processed(jobs, query) / 1000.0 / 1000.0
                 if limitMB < processedMB:
                     return (
                         None,
-                        "Larger than %d MBytes will be processed (%f MBytes)"
-                        % (limitMB, processedMB),
+                        "Larger than %d MBytes will be processed (%f MBytes)" % (limitMB, processedMB),
                     )
 
             data = self._get_query_result(jobs, query)
             error = None
 
-            json_data = json_dumps(data, ignore_nan=True)
         except apiclient.errors.HttpError as e:
-            json_data = None
-            if e.resp.status == 400:
+            data = None
+            if e.resp.status in [400, 404]:
                 error = json_loads(e.content)["error"]["message"]
             else:
                 error = e.content
@@ -468,7 +364,7 @@ class BigQuery(BaseQueryRunner):
 
             raise
 
-        return json_data, error
+        return data, error
 
 
 register(BigQuery)

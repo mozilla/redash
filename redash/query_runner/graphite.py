@@ -3,8 +3,13 @@ import logging
 
 import requests
 
-from redash.query_runner import *
-from redash.utils import json_dumps
+from redash.query_runner import (
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_STRING,
+    BaseQueryRunner,
+    register,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +34,7 @@ def _transform_result(response):
                 }
             )
 
-    data = {"columns": columns, "rows": rows}
-    return json_dumps(data)
+    return {"columns": columns, "rows": rows}
 
 
 class Graphite(BaseQueryRunner):
@@ -45,12 +49,6 @@ class Graphite(BaseQueryRunner):
                 "username": {"type": "string"},
                 "password": {"type": "string"},
                 "verify": {"type": "boolean", "title": "Verify SSL certificate"},
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
-                },
             },
             "required": ["url"],
             "secret": ["password"],
@@ -75,11 +73,7 @@ class Graphite(BaseQueryRunner):
             verify=self.verify,
         )
         if r.status_code != 200:
-            raise Exception(
-                "Got invalid response from Graphite (http status code: {0}).".format(
-                    r.status_code
-                )
-            )
+            raise Exception("Got invalid response from Graphite (http status code: {0}).".format(r.status_code))
 
     def run_query(self, query, user):
         url = "%s%s" % (self.base_url, "&".join(query.split("\n")))

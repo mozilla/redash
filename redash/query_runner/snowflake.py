@@ -6,16 +6,17 @@ except ImportError:
     enabled = False
 
 
-from redash.query_runner import BaseQueryRunner, register
+from redash import __version__
 from redash.query_runner import (
-    TYPE_STRING,
+    TYPE_BOOLEAN,
     TYPE_DATE,
     TYPE_DATETIME,
-    TYPE_INTEGER,
     TYPE_FLOAT,
-    TYPE_BOOLEAN,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseSQLQueryRunner,
+    register,
 )
-from redash.utils import json_dumps, json_loads
 
 TYPES_MAP = {
     0: TYPE_INTEGER,
@@ -31,7 +32,7 @@ TYPES_MAP = {
 }
 
 
-class Snowflake(BaseQueryRunner):
+class Snowflake(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
 
     @classmethod
@@ -45,16 +46,27 @@ class Snowflake(BaseQueryRunner):
                 "warehouse": {"type": "string"},
                 "database": {"type": "string"},
                 "region": {"type": "string", "default": "us-west"},
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                "lower_case_columns": {
+                    "type": "boolean",
+                    "title": "Lower Case Column Names in Results",
+                    "default": False,
                 },
+                "host": {"type": "string"},
             },
-            "order": ["account", "user", "password", "warehouse", "database", "region"],
+            "order": [
+                "account",
+                "user",
+                "password",
+                "warehouse",
+                "database",
+                "region",
+                "host",
+            ],
             "required": ["user", "password", "account", "database", "warehouse"],
             "secret": ["password"],
+            "extra_options": [
+                "host",
+            ],
         }
 
     @classmethod
@@ -70,27 +82,42 @@ class Snowflake(BaseQueryRunner):
 
     def _get_connection(self):
         region = self.configuration.get("region")
+        account = self.configuration["account"]
 
         # for us-west we don't need to pass a region (and if we do, it fails to connect)
         if region == "us-west":
             region = None
 
+        if self.configuration.__contains__("host"):
+            host = self.configuration.get("host")
+        else:
+            if region:
+                host = "{}.{}.snowflakecomputing.com".format(account, region)
+            else:
+                host = "{}.snowflakecomputing.com".format(account)
+
         connection = snowflake.connector.connect(
             user=self.configuration["user"],
             password=self.configuration["password"],
-            account=self.configuration["account"],
+            account=account,
             region=region,
+            host=host,
+            application="Redash/{} (Snowflake)".format(__version__.split("-")[0]),
         )
 
         return connection
 
+    def _column_name(self, column_name):
+        if self.configuration.get("lower_case_columns", False):
+            return column_name.lower()
+
+        return column_name
+
     def _parse_results(self, cursor):
         columns = self.fetch_columns(
-            [(i[0], self.determine_type(i[1], i[5])) for i in cursor.description]
+            [(self._column_name(i[0]), self.determine_type(i[1], i[5])) for i in cursor.description]
         )
-        rows = [
-            dict(zip((column["name"] for column in columns), row)) for row in cursor
-        ]
+        rows = [dict(zip((column["name"] for column in columns), row)) for row in cursor]
 
         data = {"columns": columns, "rows": rows}
         return data
@@ -107,12 +134,11 @@ class Snowflake(BaseQueryRunner):
 
             data = self._parse_results(cursor)
             error = None
-            json_data = json_dumps(data)
         finally:
             cursor.close()
             connection.close()
 
-        return json_data, error
+        return data, error
 
     def _run_query_without_warehouse(self, query):
         connection = self._get_connection()
@@ -129,10 +155,10 @@ class Snowflake(BaseQueryRunner):
             cursor.close()
             connection.close()
 
-        return data, error    
-    
+        return data, error
+
     def _database_name_includes_schema(self):
-        return '.' in self.configuration.get('database')
+        return "." in self.configuration.get("database")
 
     def get_schema(self, get_stats=False):
         if self._database_name_includes_schema():
@@ -143,7 +169,7 @@ class Snowflake(BaseQueryRunner):
         results, error = self._run_query_without_warehouse(query)
 
         if error is not None:
-            raise Exception("Failed getting schema.")
+            self._handle_run_query_error(error)
 
         schema = {}
         for row in results["rows"]:
