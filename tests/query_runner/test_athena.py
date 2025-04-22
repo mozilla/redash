@@ -1,6 +1,7 @@
 """
 Some test cases around the Glue catalog.
 """
+
 from unittest import TestCase
 
 import botocore
@@ -12,7 +13,6 @@ from redash.query_runner.athena import Athena
 
 class TestGlueSchema(TestCase):
     def setUp(self):
-
         client = botocore.session.get_session().create_client(
             "glue",
             region_name="mars-east-1",
@@ -32,9 +32,7 @@ class TestGlueSchema(TestCase):
         """Unpartitioned table crawled through a JDBC connection"""
         query_runner = Athena({"glue": True, "region": "mars-east-1"})
 
-        self.stubber.add_response(
-            "get_databases", {"DatabaseList": [{"Name": "test1"}]}, {}
-        )
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {})
         self.stubber.add_response(
             "get_tables",
             {
@@ -78,11 +76,7 @@ class TestGlueSchema(TestCase):
         )
         with self.stubber:
             assert query_runner.get_schema() == [
-                {
-                    "columns": ["row_id"],
-                    "name": "test1.jdbc_table",
-                    "metadata": [{"type": "int", "name": "row_id"}],
-                }
+                {"columns": [{"name": "row_id", "type": "int"}], "name": "test1.jdbc_table"}
             ]
 
     def test_partitioned_table(self):
@@ -92,9 +86,7 @@ class TestGlueSchema(TestCase):
 
         query_runner = Athena({"glue": True, "region": "mars-east-1"})
 
-        self.stubber.add_response(
-            "get_databases", {"DatabaseList": [{"Name": "test1"}]}, {}
-        )
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {})
         self.stubber.add_response(
             "get_tables",
             {
@@ -136,21 +128,15 @@ class TestGlueSchema(TestCase):
         with self.stubber:
             assert query_runner.get_schema() == [
                 {
-                    "columns": ["sk", "category"],
+                    "columns": [{"name": "sk", "type": "int"}, {"name": "category", "type": "int"}],
                     "name": "test1.partitioned_table",
-                    "metadata": [
-                        {"type": "int", "name": "sk"},
-                        {"type": "int", "name": "category"},
-                    ],
                 }
             ]
 
     def test_view(self):
         query_runner = Athena({"glue": True, "region": "mars-east-1"})
 
-        self.stubber.add_response(
-            "get_databases", {"DatabaseList": [{"Name": "test1"}]}, {}
-        )
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {})
         self.stubber.add_response(
             "get_tables",
             {
@@ -177,13 +163,7 @@ class TestGlueSchema(TestCase):
             {"DatabaseName": "test1"},
         )
         with self.stubber:
-            assert query_runner.get_schema() == [
-                {
-                    "columns": ["sk"],
-                    "name": "test1.view",
-                    "metadata": [{"type": "int", "name": "sk"}],
-                }
-            ]
+            assert query_runner.get_schema() == [{"columns": [{"name": "sk", "type": "int"}], "name": "test1.view"}]
 
     def test_dodgy_table_does_not_break_schema_listing(self):
         """
@@ -193,9 +173,7 @@ class TestGlueSchema(TestCase):
         """
         query_runner = Athena({"glue": True, "region": "mars-east-1"})
 
-        self.stubber.add_response(
-            "get_databases", {"DatabaseList": [{"Name": "test1"}]}, {}
-        )
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {})
         self.stubber.add_response(
             "get_tables",
             {
@@ -226,9 +204,123 @@ class TestGlueSchema(TestCase):
         )
         with self.stubber:
             assert query_runner.get_schema() == [
-                {
-                    "columns": ["region"],
-                    "name": "test1.csv",
-                    "metadata": [{"type": "string", "name": "region"}],
-                }
+                {"columns": [{"name": "region", "type": "string"}], "name": "test1.csv"}
+            ]
+
+    def test_no_storage_descriptor_table(self):
+        """
+        For some reason, not all Glue tables contain a "StorageDescriptor" entry.
+        """
+        query_runner = Athena({"glue": True, "region": "mars-east-1"})
+
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {})
+        self.stubber.add_response(
+            "get_tables",
+            {
+                "TableList": [
+                    {
+                        "Name": "no_storage_descriptor_table",
+                        "PartitionKeys": [],
+                        "TableType": "EXTERNAL_TABLE",
+                        "Parameters": {"EXTERNAL": "TRUE"},
+                    }
+                ]
+            },
+            {"DatabaseName": "test1"},
+        )
+        with self.stubber:
+            assert query_runner.get_schema() == []
+
+    def test_multi_catalog_tables(self):
+        """Tables of multi-catalogs"""
+        query_runner = Athena({"glue": True, "region": "mars-east-1", "catalog_ids": "foo,bar"})
+
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test1"}]}, {"CatalogId": "foo"})
+        self.stubber.add_response(
+            "get_tables",
+            {
+                "TableList": [
+                    {
+                        "Name": "jdbc_table",
+                        "StorageDescriptor": {
+                            "Columns": [{"Name": "row_id", "Type": "int"}],
+                            "Location": "Database.Schema.Table",
+                            "Compressed": False,
+                            "NumberOfBuckets": -1,
+                            "SerdeInfo": {"Parameters": {}},
+                            "BucketColumns": [],
+                            "SortColumns": [],
+                            "Parameters": {
+                                "CrawlerSchemaDeserializerVersion": "1.0",
+                                "CrawlerSchemaSerializerVersion": "1.0",
+                                "UPDATED_BY_CRAWLER": "jdbc",
+                                "classification": "sqlserver",
+                                "compressionType": "none",
+                                "connectionName": "jdbctest",
+                                "typeOfData": "view",
+                            },
+                            "StoredAsSubDirectories": False,
+                        },
+                        "PartitionKeys": [],
+                        "TableType": "EXTERNAL_TABLE",
+                        "Parameters": {
+                            "CrawlerSchemaDeserializerVersion": "1.0",
+                            "CrawlerSchemaSerializerVersion": "1.0",
+                            "UPDATED_BY_CRAWLER": "jdbc",
+                            "classification": "sqlserver",
+                            "compressionType": "none",
+                            "connectionName": "jdbctest",
+                            "typeOfData": "view",
+                        },
+                    }
+                ]
+            },
+            {"CatalogId": "foo", "DatabaseName": "test1"},
+        )
+        self.stubber.add_response("get_databases", {"DatabaseList": [{"Name": "test2"}]}, {"CatalogId": "bar"})
+        self.stubber.add_response(
+            "get_tables",
+            {
+                "TableList": [
+                    {
+                        "Name": "jdbc_table",
+                        "StorageDescriptor": {
+                            "Columns": [{"Name": "row_id", "Type": "int"}],
+                            "Location": "Database.Schema.Table",
+                            "Compressed": False,
+                            "NumberOfBuckets": -1,
+                            "SerdeInfo": {"Parameters": {}},
+                            "BucketColumns": [],
+                            "SortColumns": [],
+                            "Parameters": {
+                                "CrawlerSchemaDeserializerVersion": "1.0",
+                                "CrawlerSchemaSerializerVersion": "1.0",
+                                "UPDATED_BY_CRAWLER": "jdbc",
+                                "classification": "sqlserver",
+                                "compressionType": "none",
+                                "connectionName": "jdbctest",
+                                "typeOfData": "view",
+                            },
+                            "StoredAsSubDirectories": False,
+                        },
+                        "PartitionKeys": [],
+                        "TableType": "EXTERNAL_TABLE",
+                        "Parameters": {
+                            "CrawlerSchemaDeserializerVersion": "1.0",
+                            "CrawlerSchemaSerializerVersion": "1.0",
+                            "UPDATED_BY_CRAWLER": "jdbc",
+                            "classification": "sqlserver",
+                            "compressionType": "none",
+                            "connectionName": "jdbctest",
+                            "typeOfData": "view",
+                        },
+                    }
+                ]
+            },
+            {"CatalogId": "bar", "DatabaseName": "test2"},
+        )
+        with self.stubber:
+            assert query_runner.get_schema() == [
+                {"columns": [{"name": "row_id", "type": "int"}], "name": "test1.jdbc_table"},
+                {"columns": [{"name": "row_id", "type": "int"}], "name": "test2.jdbc_table"},
             ]

@@ -113,6 +113,10 @@ export function fetchDataFromJob(jobId, interval = 1000) {
   });
 }
 
+export function isDateTime(v) {
+  return isString(v) && moment(v, moment.ISO_8601, true).isValid() && /^\d{4}-\d{2}-\d{2}T/.test(v);
+}
+
 class QueryResult {
   constructor(props) {
     this.deferred = defer();
@@ -147,7 +151,7 @@ class QueryResult {
           let newType = null;
           if (isNumber(v)) {
             newType = "float";
-          } else if (isString(v) && v.match(/^\d{4}-\d{2}-\d{2}T/)) {
+          } else if (isDateTime(v)) {
             row[k] = moment.utc(v);
             newType = "datetime";
           } else if (isString(v) && v.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -271,6 +275,10 @@ class QueryResult {
     return this.getColumnNames().map(col => getColumnFriendlyName(col));
   }
 
+  getTruncated() {
+    return this.query_result.data ? this.query_result.data.truncated : null;
+  }
+
   getFilters() {
     if (!this.getColumns()) {
       return [];
@@ -314,6 +322,9 @@ class QueryResult {
         }
         return v;
       });
+      if (filter.values.length > 1 && filter.multiple) {
+        filter.current = filter.values.slice();
+      }
     });
 
     return filters;
@@ -435,11 +446,11 @@ class QueryResult {
     return `${queryName.replace(/ /g, "_") + moment(this.getUpdatedAt()).format("_YYYY_MM_DD")}.${fileType}`;
   }
 
-  static getByQueryId(id, parameters, maxAge) {
+  static getByQueryId(id, parameters, applyAutoLimit, maxAge) {
     const queryResult = new QueryResult();
 
     axios
-      .post(`api/queries/${id}/results`, { id, parameters, max_age: maxAge })
+      .post(`api/queries/${id}/results`, { id, parameters, apply_auto_limit: applyAutoLimit, max_age: maxAge })
       .then(response => {
         queryResult.update(response);
 
@@ -454,13 +465,14 @@ class QueryResult {
     return queryResult;
   }
 
-  static get(dataSourceId, query, parameters, maxAge, queryId) {
+  static get(dataSourceId, query, parameters, applyAutoLimit, maxAge, queryId) {
     const queryResult = new QueryResult();
 
     const params = {
       data_source_id: dataSourceId,
       parameters,
       query,
+      apply_auto_limit: applyAutoLimit,
       max_age: maxAge,
     };
 

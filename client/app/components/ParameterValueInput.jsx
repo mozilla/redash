@@ -1,7 +1,7 @@
-import { isEqual, isEmpty } from "lodash";
+import { isEqual, isEmpty, map } from "lodash";
 import React from "react";
 import PropTypes from "prop-types";
-import Select from "antd/lib/select";
+import SelectWithVirtualScroll from "@/components/SelectWithVirtualScroll";
 import Input from "antd/lib/input";
 import InputNumber from "antd/lib/input-number";
 import DateParameter from "@/components/dynamic-parameters/DateParameter";
@@ -9,13 +9,12 @@ import DateRangeParameter from "@/components/dynamic-parameters/DateRangeParamet
 import QueryBasedParameterInput from "./QueryBasedParameterInput";
 
 import "./ParameterValueInput.less";
-
-const { Option } = Select;
+import Tooltip from "./Tooltip";
 
 const multipleValuesProps = {
   maxTagCount: 3,
   maxTagTextLength: 10,
-  maxTagPlaceholder: num => `+${num.length} more`,
+  maxTagPlaceholder: (num) => `+${num.length} more`,
 };
 
 class ParameterValueInput extends React.Component {
@@ -27,6 +26,7 @@ class ParameterValueInput extends React.Component {
     parameter: PropTypes.any, // eslint-disable-line react/forbid-prop-types
     onSelect: PropTypes.func,
     className: PropTypes.string,
+    regex: PropTypes.string,
   };
 
   static defaultProps = {
@@ -37,6 +37,7 @@ class ParameterValueInput extends React.Component {
     parameter: null,
     onSelect: () => {},
     className: "",
+    regex: "",
   };
 
   constructor(props) {
@@ -47,7 +48,7 @@ class ParameterValueInput extends React.Component {
     };
   }
 
-  componentDidUpdate = prevProps => {
+  componentDidUpdate = (prevProps) => {
     const { value, parameter } = this.props;
     // if value prop updated, reset dirty state
     if (prevProps.value !== value || prevProps.parameter !== parameter) {
@@ -58,7 +59,7 @@ class ParameterValueInput extends React.Component {
     }
   };
 
-  onSelect = value => {
+  onSelect = (value) => {
     const isDirty = !isEqual(value, this.props.value);
     this.setState({ value, isDirty });
     this.props.onSelect(value, isDirty);
@@ -95,28 +96,22 @@ class ParameterValueInput extends React.Component {
   renderEnumInput() {
     const { enumOptions, parameter } = this.props;
     const { value } = this.state;
-    const enumOptionsArray = enumOptions.split("\n").filter(v => v !== "");
+    const enumOptionsArray = enumOptions.split("\n").filter((v) => v !== "");
     // Antd Select doesn't handle null in multiple mode
-    const normalize = val => (parameter.multiValuesOptions && val === null ? [] : val);
+    const normalize = (val) => (parameter.multiValuesOptions && val === null ? [] : val);
+
     return (
-      <Select
+      <SelectWithVirtualScroll
         className={this.props.className}
         mode={parameter.multiValuesOptions ? "multiple" : "default"}
-        optionFilterProp="children"
         value={normalize(value)}
         onChange={this.onSelect}
-        dropdownMatchSelectWidth={false}
+        options={map(enumOptionsArray, (opt) => ({ label: String(opt), value: opt }))}
         showSearch
         showArrow
-        style={{ minWidth: 60 }}
         notFoundContent={isEmpty(enumOptionsArray) ? "No options available" : null}
-        {...multipleValuesProps}>
-        {enumOptionsArray.map(option => (
-          <Option key={option} value={option}>
-            {option}
-          </Option>
-        ))}
-      </Select>
+        {...multipleValuesProps}
+      />
     );
   }
 
@@ -127,7 +122,6 @@ class ParameterValueInput extends React.Component {
       <QueryBasedParameterInput
         className={this.props.className}
         mode={parameter.multiValuesOptions ? "multiple" : "default"}
-        optionFilterProp="children"
         parameter={parameter}
         value={value}
         queryId={queryId}
@@ -142,10 +136,33 @@ class ParameterValueInput extends React.Component {
     const { className } = this.props;
     const { value } = this.state;
 
-    const normalize = val => (isNaN(val) ? undefined : val);
+    const normalize = (val) => (isNaN(val) ? undefined : val);
 
     return (
-      <InputNumber className={className} value={normalize(value)} onChange={val => this.onSelect(normalize(val))} />
+      <InputNumber
+        className={className}
+        value={normalize(value)}
+        aria-label="Parameter number value"
+        onChange={(val) => this.onSelect(normalize(val))}
+      />
+    );
+  }
+
+  renderTextPatternInput() {
+    const { className } = this.props;
+    const { value } = this.state;
+
+    return (
+      <React.Fragment>
+        <Tooltip title={`Regex to match: ${this.props.regex}`} placement="right">
+          <Input
+            className={className}
+            value={value}
+            aria-label="Parameter text pattern value"
+            onChange={(e) => this.onSelect(e.target.value)}
+          />
+        </Tooltip>
+      </React.Fragment>
     );
   }
 
@@ -157,8 +174,9 @@ class ParameterValueInput extends React.Component {
       <Input
         className={className}
         value={value}
+        aria-label="Parameter text value"
         data-test="TextParamInput"
-        onChange={e => this.onSelect(e.target.value)}
+        onChange={(e) => this.onSelect(e.target.value)}
       />
     );
   }
@@ -180,6 +198,8 @@ class ParameterValueInput extends React.Component {
         return this.renderQueryBasedInput();
       case "number":
         return this.renderNumberInput();
+      case "text-pattern":
+        return this.renderTextPatternInput();
       default:
         return this.renderTextInput();
     }

@@ -1,4 +1,5 @@
-from mock import patch, ANY
+from mock import ANY, patch
+
 from tests import BaseTestCase
 
 
@@ -6,4 +7,4 @@ from tests import BaseTestCase
 class TestRequestMetrics(BaseTestCase):
     def test_flask_request_records_statsd_metrics(self, timing):
         self.client.get("/ping")
-        timing.assert_called_with("requests.redash_ping.get", ANY)
+        timing.assert_called_once_with("requests.redash_ping.get", ANY)
