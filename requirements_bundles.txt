@@ -3,7 +3,7 @@
 # when moved to Python 3.
 # It's automatically installed when running npm run bundle
 # This is the Mozilla Redash extension
-redash-stmo>=2019.9.0
+redash-stmo>=2025.5.1
 
 # These can be removed when upgrading to Python 3.x
 importlib-metadata>=1.6,<5.0.0  # remove when on 3.8
