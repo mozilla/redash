@@ -12,7 +12,9 @@ services:
       PYTHONUNBUFFERED: 0
       REDASH_LOG_LEVEL: "INFO"
       REDASH_REDIS_URL: "redis://redis:6379/0"
-      REDASH_DATABASE_URL: "postgresql://postgres@postgres/postgres"
+      POSTGRES_PASSWORD: "FmTKs5vX52ufKR1rd8tn4MoSP7zvCJwb"
+      REDASH_DATABASE_URL: "postgresql://postgres:FmTKs5vX52ufKR1rd8tn4MoSP7zvCJwb@postgres/postgres"
+      REDASH_COOKIE_SECRET: "2H9gNG9obnAQ9qnR9BDTQUph6CbXKCzF"
   redis:
     image: redis:3.0-alpine
     restart: unless-stopped
