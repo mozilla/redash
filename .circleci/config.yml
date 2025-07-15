@@ -62,9 +62,6 @@ jobs:
       - image: cimg/node:18.20
     steps:
       - checkout
-      - run: sudo apt update
-      - run: sudo apt install python3-pip
-      - run: sudo pip3 install -r requirements_bundles.txt
       - run: |
           npm install --global --force yarn@$1.22.22
           yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
@@ -126,9 +123,9 @@ jobs:
       - setup_remote_docker
       - checkout
       - run: echo "export MOZILLA_VERSION=master" >> $BASH_ENV
-      - run: sudo apt update
-      - run: sudo apt install python3-pip
-      - run: sudo pip3 install -r requirements_bundles.txt
+      - run: |
+          npm install --global --force yarn@$1.22.22
+          yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
       - run: .ci/update_version
       # Bundle extensions:
       # - run: npm run bundle
@@ -140,9 +137,9 @@ jobs:
       - setup_remote_docker
       - checkout
       - run: echo "export MOZILLA_VERSION=$CIRCLE_TAG" >> $BASH_ENV
-      - run: sudo apt update
-      - run: sudo apt install python3-pip
-      - run: sudo pip3 install -r requirements_bundles.txt
+      - run: |
+          npm install --global --force yarn@$1.22.22
+          yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
       - run: .ci/update_version
       # Bundle extensions:
       # - run: npm run bundle
