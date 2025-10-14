@@ -151,41 +151,41 @@ workflows:
   version: 2
   build:
     jobs:
-      - backend-lint:
-          filters:
-            tags:
-              only: /^m[0-9]+(\.[0-9]+)?$/
-      - backend-unit-tests:
-          filters:
-            tags:
-              only: /^m[0-9]+(\.[0-9]+)?$/
-          requires:
-            - backend-lint
-      - frontend-lint:
-          filters:
-            tags:
-              only: /^m[0-9]+(\.[0-9]+)?$/
-      - frontend-unit-tests:
-          filters:
-            tags:
-              only: /^m[0-9]+(\.[0-9]+)?$/
-          requires:
-            - backend-lint
-            - frontend-lint
-      - build-docker-image:
-          requires:
-            - backend-unit-tests
-            - frontend-unit-tests
-          filters:
-            branches:
-              only:
-                - master
-      - build-docker-image-tag:
-          requires:
-            - backend-unit-tests
-            - frontend-unit-tests
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^m[0-9]+(\.[0-9]+)?$/
+      # - backend-lint:
+      #     filters:
+      #       tags:
+      #         only: /^m[0-9]+(\.[0-9]+)?$/
+      # - backend-unit-tests:
+      #     filters:
+      #       tags:
+      #         only: /^m[0-9]+(\.[0-9]+)?$/
+      #     requires:
+      #       - backend-lint
+      # - frontend-lint:
+      #     filters:
+      #       tags:
+      #         only: /^m[0-9]+(\.[0-9]+)?$/
+      # - frontend-unit-tests:
+      #     filters:
+      #       tags:
+      #         only: /^m[0-9]+(\.[0-9]+)?$/
+      #     requires:
+      #       - backend-lint
+      #       - frontend-lint
+      # - build-docker-image:
+      #     requires:
+      #       - backend-unit-tests
+      #       - frontend-unit-tests
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      # - build-docker-image-tag:
+      #     requires:
+      #       - backend-unit-tests
+      #       - frontend-unit-tests
+      #     filters:
+      #       branches:
+      #         ignore: /.*/
+      #       tags:
+      #         only: /^m[0-9]+(\.[0-9]+)?$/

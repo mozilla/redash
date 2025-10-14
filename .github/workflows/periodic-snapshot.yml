@@ -1,18 +1,19 @@
 name: Periodic Snapshot
 
 on:
-  schedule:
-    - cron: '10 0 1 * *'  # 10 minutes after midnight on the first day of every month
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: 'Bump the last digit of the version'
-        required: false
-        type: boolean
-      version:
-        description: 'Specific version to set'
-        required: false
-        default: ''
+  # DISABLED
+  # schedule:
+  #   - cron: '10 0 1 * *'  # 10 minutes after midnight on the first day of every month
+  # workflow_dispatch:
+  #   inputs:
+  #     bump:
+  #       description: 'Bump the last digit of the version'
+  #       required: false
+  #       type: boolean
+  #     version:
+  #       description: 'Specific version to set'
+  #       required: false
+  #       default: ''
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
