@@ -1,13 +1,26 @@
 import logging
 import re
 from urllib.parse import urlparse
+from uuid import uuid4
 
 import requests
 
-from redash.query_runner import *
-from redash.utils import json_dumps, json_loads
+from redash.query_runner import (
+    TYPE_DATE,
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseSQLQueryRunner,
+    register,
+    split_sql_statements,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def split_multi_query(query):
+    return [st for st in split_sql_statements(query) if st != ""]
 
 
 class ClickHouse(BaseSQLQueryRunner):
@@ -32,22 +45,12 @@ class ClickHouse(BaseSQLQueryRunner):
                     "title": "Verify SSL certificate",
                     "default": True,
                 },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
-                },
             },
             "order": ["url", "user", "password", "dbname"],
             "required": ["dbname"],
             "extra_options": ["timeout", "verify"],
             "secret": ["password"],
         }
-
-    @classmethod
-    def type(cls):
-        return "clickhouse"
 
     @property
     def _url(self):
@@ -79,9 +82,7 @@ class ClickHouse(BaseSQLQueryRunner):
         results, error = self.run_query(query, None)
 
         if error is not None:
-            raise Exception("Failed getting schema.")
-
-        results = json_loads(results)
+            self._handle_run_query_error(error)
 
         for row in results["rows"]:
             table_name = "{}.{}".format(row["database"], row["table"])
@@ -93,31 +94,49 @@ class ClickHouse(BaseSQLQueryRunner):
 
         return list(schema.values())
 
-    def _send_query(self, data, stream=False):
+    def _send_query(self, data, session_id=None, session_check=None):
         url = self.configuration.get("url", "http://127.0.0.1:8123")
+        timeout = self.configuration.get("timeout", 30)
+
+        params = {
+            "user": self.configuration.get("user", "default"),
+            "password": self.configuration.get("password", ""),
+            "database": self.configuration["dbname"],
+            "default_format": "JSON",
+        }
+
+        if session_id:
+            params["session_id"] = session_id
+            params["session_check"] = "1" if session_check else "0"
+            params["session_timeout"] = timeout
+
         try:
             verify = self.configuration.get("verify", True)
             r = requests.post(
                 url,
-                data=data.encode("utf-8","ignore"),
-                stream=stream,
-                timeout=self.configuration.get("timeout", 30),
-                params={
-                    "user": self.configuration.get("user", "default"),
-                    "password": self.configuration.get("password", ""),
-                    "database": self.configuration["dbname"],
-                },
+                data=data.encode("utf-8", "ignore"),
+                stream=False,
+                timeout=timeout,
+                params=params,
                 verify=verify,
             )
-            if r.status_code != 200:
+
+            if not r.ok:
                 raise Exception(r.text)
-            # logging.warning(r.json())
-            return r.json()
+
+            # In certain situations the response body can be empty even if the query was successful, for example
+            # when creating temporary tables.
+            if not r.text:
+                return {}
+
+            response = r.json()
+            if "exception" in response:
+                raise Exception(response["exception"])
+
+            return response
         except requests.RequestException as e:
             if e.response:
-                details = "({}, Status Code: {})".format(
-                    e.__class__.__name__, e.response.status_code
-                )
+                details = "({}, Status Code: {})".format(e.__class__.__name__, e.response.status_code)
             else:
                 details = "({})".format(e.__class__.__name__)
             raise Exception("Connection error to: {} {}.".format(url, details))
@@ -139,29 +158,30 @@ class ClickHouse(BaseSQLQueryRunner):
         else:
             return TYPE_STRING
 
-    def _clickhouse_query(self, query):
+    def _clickhouse_query(self, query, session_id=None, session_check=None):
+        logger.debug(f"{self.name()} is about to execute query: %s", query)
+
         query += "\nFORMAT JSON"
-        result = self._send_query(query)
+
+        response = self._send_query(query, session_id, session_check)
+
         columns = []
         columns_int64 = []  # db converts value to string if its type equals UInt64
         columns_totals = {}
 
-        for r in result["meta"]:
+        meta = response.get("meta", [])
+        for r in meta:
             column_name = r["name"]
             column_type = self._define_column_type(r["type"])
 
             if r["type"] in ("Int64", "UInt64", "Nullable(Int64)", "Nullable(UInt64)"):
                 columns_int64.append(column_name)
             else:
-                columns_totals[column_name] = (
-                    "Total" if column_type == TYPE_STRING else None
-                )
+                columns_totals[column_name] = "Total" if column_type == TYPE_STRING else None
 
-            columns.append(
-                {"name": column_name, "friendly_name": column_name, "type": column_type}
-            )
+            columns.append({"name": column_name, "friendly_name": column_name, "type": column_type})
 
-        rows = result["data"]
+        rows = response.get("data", [])
         for row in rows:
             for column in columns_int64:
                 try:
@@ -169,8 +189,8 @@ class ClickHouse(BaseSQLQueryRunner):
                 except TypeError:
                     row[column] = None
 
-        if "totals" in result:
-            totals = result["totals"]
+        if "totals" in response:
+            totals = response["totals"]
             for column, value in columns_totals.items():
                 totals[column] = value
             rows.append(totals)
@@ -178,14 +198,27 @@ class ClickHouse(BaseSQLQueryRunner):
         return {"columns": columns, "rows": rows}
 
     def run_query(self, query, user):
-        logger.debug("Clickhouse is about to execute query: %s", query)
-        if query == "":
-            json_data = None
+        queries = split_multi_query(query)
+
+        if not queries:
+            data = None
             error = "Query is empty"
-            return json_data, error
+            return data, error
+
         try:
-            q = self._clickhouse_query(query)
-            data = json_dumps(q)
+            # If just one query was given no session is needed
+            if len(queries) == 1:
+                data = self._clickhouse_query(queries[0])
+            else:
+                # If more than one query was given, a session is needed. Parameter session_check must be false
+                # for the first query
+                session_id = "redash_{}".format(uuid4().hex)
+
+                data = self._clickhouse_query(queries[0], session_id, session_check=False)
+
+                for query in queries[1:]:
+                    data = self._clickhouse_query(query, session_id, session_check=True)
+
             error = None
         except Exception as e:
             data = None

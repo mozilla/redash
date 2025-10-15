@@ -1,10 +1,11 @@
 from sys import exit
 
 import click
+from click.types import convert_type
 from flask.cli import AppGroup
 from sqlalchemy.orm.exc import NoResultFound
 
-from redash import models, tasks
+from redash import models
 from redash.query_runner import (
     get_configuration_schema_for_query_runner_type,
     query_runners,
@@ -33,14 +34,10 @@ def list_command(organization=None):
         if i > 0:
             print("-" * 20)
 
-        print(
-            "Id: {}\nName: {}\nType: {}\nOptions: {}".format(
-                ds.id, ds.name, ds.type, ds.options.to_json()
-            )
-        )
+        print("Id: {}\nName: {}\nType: {}\nOptions: {}".format(ds.id, ds.name, ds.type, ds.options.to_json()))
 
 
-@manager.command()
+@manager.command(name="list_types")
 def list_types():
     print("Enabled Query Runners:")
     types = sorted(query_runners.keys())
@@ -75,9 +72,7 @@ def test(name, organization="default"):
         data_source = models.DataSource.query.filter(
             models.DataSource.name == name, models.DataSource.org == org
         ).one()
-        print(
-            "Testing connection to data source: {} (id={})".format(name, data_source.id)
-        )
+        print("Testing connection to data source: {} (id={})".format(name, data_source.id))
         try:
             data_source.query_runner.test_connection()
         except Exception as e:
@@ -139,11 +134,19 @@ def new(name=None, type=None, options=None, organization="default"):
             else:
                 prompt = "{} (optional)".format(prompt)
 
+            _type = types[prop["type"]]
+
+            def value_proc(value):
+                if value == default_value:
+                    return default_value
+                return convert_type(_type, default_value)(value)
+
             value = click.prompt(
                 prompt,
                 default=default_value,
-                type=types[prop["type"]],
+                type=_type,
                 show_default=False,
+                value_proc=value_proc,
             )
             if value != default_value:
                 options_obj[k] = value
@@ -154,13 +157,9 @@ def new(name=None, type=None, options=None, organization="default"):
 
     if not options.is_valid():
         print("Error: invalid configuration.")
-        exit()
+        exit(1)
 
-    print(
-        "Creating {} data source ({}) with options:\n{}".format(
-            type, name, options.to_json()
-        )
-    )
+    print("Creating {} data source ({}) with options:\n{}".format(type, name, options.to_json()))
 
     data_source = models.DataSource.create_with_group(
         name=name,
@@ -200,38 +199,6 @@ def update_attr(obj, attr, new_value):
         old_value = getattr(obj, attr)
         print("Updating {}: {} -> {}".format(attr, old_value, new_value))
         setattr(obj, attr, new_value)
-
-
-@manager.command()
-@click.argument("name")
-@click.option(
-    "--org",
-    "organization",
-    default="default",
-    help="The organization the user belongs to (leave blank for " "'default').",
-)
-@click.option(
-    "--count",
-    "num_tables",
-    default=50,
-    help="number of tables to process data samples for",
-)
-def refresh_samples(name, num_tables=50, organization="default"):
-    """Refresh table samples by data source name."""
-    try:
-        org = models.Organization.get_by_slug(organization)
-        data_source = models.DataSource.query.filter(
-            models.DataSource.name == name, models.DataSource.org == org
-        ).one()
-        print(
-            "Refreshing samples for data source: {} (id={})".format(
-                name, data_source.id
-            )
-        )
-        tasks.refresh_samples(data_source.id, num_tables)
-    except NoResultFound:
-        print("Couldn't find data source named: {}".format(name))
-        exit(1)
 
 
 @manager.command()

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# This script only needs to run on the main Redash repo*
+# (modified for Mozilla fork)
+VERSION_TAG="$MOZILLA_VERSION"
+
+if [ "${GITHUB_REPOSITORY}" != "mozilla/redash" ]; then
+	echo "Skipping image build for Docker Hub, as this isn't the main Redash repository"
+	exit 0
+fi
+
+if [ "${GITHUB_REF_NAME}" != "master" ] && [ "${GITHUB_REF_NAME}" != "preview-image" ]; then
+	echo "Skipping image build for Docker Hub, as this isn't the 'master' nor 'preview-image' branch"
+	exit 0
+fi
+
+if [ "x${DOCKER_USER}" = "x" ] || [ "x${DOCKER_PASS}" = "x" ]; then
+	echo "Skipping image build for Docker Hub, as the login details aren't available"
+	exit 0
+fi
+
+set -e
+
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}"
+
+# Build the docker container
+docker build --build-arg install_groups="main,all_ds,dev" ${DOCKERHUB_REPO}:${VERSION_TAG} .
+
+# Push the container to the preview build locations
+docker push "${DOCKERHUB_REPO}:${VERSION_TAG}"
+
+echo "Built: ${VERSION_TAG}"
