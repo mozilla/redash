@@ -11,16 +11,8 @@ export const DataSource = PropTypes.shape({
   type_name: PropTypes.string,
 });
 
-export const DataSourceMetadata = PropTypes.shape({
-  key: PropTypes.number,
-  name: PropTypes.string,
-  type: PropTypes.string,
-  example: PropTypes.string,
-  description: PropTypes.string,
-});
-
 export const Table = PropTypes.shape({
-  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  columns: PropTypes.arrayOf(PropTypes.string).isRequired,
 });
 
 export const Schema = PropTypes.arrayOf(Table);
@@ -39,60 +31,6 @@ export const RefreshScheduleDefault = {
   until: null,
 };
 
-export const TableMetadata = PropTypes.shape({
-  key: PropTypes.number.isRequired,
-  name: PropTypes.string.isRequired,
-  description: PropTypes.string,
-  visible: PropTypes.bool.isRequired,
-});
-
-export const Field = PropTypes.shape({
-  name: PropTypes.string.isRequired,
-  title: PropTypes.string,
-  type: PropTypes.oneOf([
-    "ace",
-    "text",
-    "textarea",
-    "email",
-    "password",
-    "number",
-    "checkbox",
-    "file",
-    "select",
-    "content",
-  ]).isRequired,
-  initialValue: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.number,
-    PropTypes.bool,
-    PropTypes.arrayOf(PropTypes.string),
-    PropTypes.arrayOf(PropTypes.number),
-  ]),
-  content: PropTypes.node,
-  mode: PropTypes.string,
-  required: PropTypes.bool,
-  extra: PropTypes.bool,
-  readOnly: PropTypes.bool,
-  autoFocus: PropTypes.bool,
-  minLength: PropTypes.number,
-  placeholder: PropTypes.string,
-  contentAfter: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
-  loading: PropTypes.bool,
-  props: PropTypes.object, // eslint-disable-line react/forbid-prop-types
-});
-
-export const Action = PropTypes.shape({
-  name: PropTypes.string.isRequired,
-  callback: PropTypes.func.isRequired,
-  type: PropTypes.string,
-  pullRight: PropTypes.bool,
-  disabledWhenDirty: PropTypes.bool,
-});
-
-export const AntdForm = PropTypes.shape({
-  validateFieldsAndScroll: PropTypes.func,
-});
-
 export const UserProfile = PropTypes.shape({
   id: PropTypes.number.isRequired,
   name: PropTypes.string.isRequired,
@@ -110,10 +48,10 @@ export const Destination = PropTypes.shape({
 });
 
 export const Query = PropTypes.shape({
-  id: PropTypes.number.isRequired,
+  id: PropTypes.any.isRequired,
   name: PropTypes.string.isRequired,
   description: PropTypes.string,
-  data_source_id: PropTypes.number.isRequired,
+  data_source_id: PropTypes.any.isRequired,
   created_at: PropTypes.string.isRequired,
   updated_at: PropTypes.string,
   user: UserProfile,
@@ -127,6 +65,7 @@ export const Query = PropTypes.shape({
 
 export const AlertOptions = PropTypes.shape({
   column: PropTypes.string,
+  selector: PropTypes.oneOf(["first", "min", "max"]),
   op: PropTypes.oneOf([">", ">=", "<", "<=", "==", "!="]),
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   custom_subject: PropTypes.string,
@@ -134,7 +73,7 @@ export const AlertOptions = PropTypes.shape({
 });
 
 export const Alert = PropTypes.shape({
-  id: PropTypes.number,
+  id: PropTypes.any,
   name: PropTypes.string,
   created_at: PropTypes.string,
   last_triggered_at: PropTypes.string,
@@ -145,6 +84,7 @@ export const Alert = PropTypes.shape({
   query: Query,
   options: PropTypes.shape({
     column: PropTypes.string,
+    selector: PropTypes.string,
     op: PropTypes.string,
     value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
