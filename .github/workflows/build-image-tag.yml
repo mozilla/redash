@@ -1,0 +1,33 @@
+name: Build docker image tag
+
+on:
+  push:
+    branches-ignore:
+      - '**'
+    tags:
+      # GHA doesn't support regex here so less precise tag matching will have to do
+      - 'm[0-9]+*'
+
+jobs:
+  build-docker-image-tag:
+    docker:
+      - image: cimg/node:18.20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "export MOZILLA_VERSION=$CIRCLE_TAG" >> $BASH_ENV
+      - run: |
+          npm install --global --force yarn@$1.22.22
+          yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
+      - run: .ci/update_version
+      # Bundle extensions:
+      # - run: npm run bundle
+      - run: .ci/docker_build
+      # Create alias from tag to "latest":
+      - run: docker tag $DOCKERHUB_REPO:$CIRCLE_TAG $DOCKERHUB_REPO:latest
+      - run: docker push $DOCKERHUB_REPO:latest

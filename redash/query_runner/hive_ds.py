@@ -1,9 +1,17 @@
-import logging
-import sys
 import base64
+import logging
 
-from redash.query_runner import *
-from redash.utils import json_dumps
+from redash.query_runner import (
+    TYPE_BOOLEAN,
+    TYPE_DATE,
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseSQLQueryRunner,
+    JobTimeoutException,
+    register,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +58,6 @@ class Hive(BaseSQLQueryRunner):
                 "port": {"type": "number"},
                 "database": {"type": "string"},
                 "username": {"type": "string"},
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
-                },
             },
             "order": ["host", "port", "database", "username"],
             "required": ["host"],
@@ -77,27 +79,17 @@ class Hive(BaseSQLQueryRunner):
         columns_query = "show columns in %s.%s"
 
         for schema_name in [
-            a
-            for a in [
-                str(a["database_name"]) for a in self._run_query_internal(schemas_query)
-            ]
-            if len(a) > 0
+            a for a in [str(a["database_name"]) for a in self._run_query_internal(schemas_query)] if len(a) > 0
         ]:
             for table_name in [
                 a
-                for a in [
-                    str(a["tab_name"])
-                    for a in self._run_query_internal(tables_query % schema_name)
-                ]
+                for a in [str(a["tab_name"]) for a in self._run_query_internal(tables_query % schema_name)]
                 if len(a) > 0
             ]:
                 columns = [
                     a
                     for a in [
-                        str(a["field"])
-                        for a in self._run_query_internal(
-                            columns_query % (schema_name, table_name)
-                        )
+                        str(a["field"]) for a in self._run_query_internal(columns_query % (schema_name, table_name))
                     ]
                     if len(a) > 0
                 ]
@@ -117,6 +109,7 @@ class Hive(BaseSQLQueryRunner):
             database=self.configuration.get("database", "default"),
             username=self.configuration.get("username", None),
         )
+
         return connection
 
     def run_query(self, query, user):
@@ -145,7 +138,6 @@ class Hive(BaseSQLQueryRunner):
             rows = [dict(zip(column_names, row)) for row in cursor]
 
             data = {"columns": columns, "rows": rows}
-            json_data = json_dumps(data)
             error = None
         except (KeyboardInterrupt, JobTimeoutException):
             if connection:
@@ -156,12 +148,12 @@ class Hive(BaseSQLQueryRunner):
                 error = e.args[0].status.errorMessage
             except AttributeError:
                 error = str(e)
-            json_data = None
+            data = None
         finally:
             if connection:
                 connection.close()
 
-        return json_data, error
+        return data, error
 
 
 class HiveHttp(Hive):
