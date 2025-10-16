@@ -126,10 +126,10 @@ jobs:
       - run: |
           npm install --global --force yarn@$1.22.22
           yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
-      - run: .ci/update_version
+      - run: .circleci/update_version
       # Bundle extensions:
       # - run: npm run bundle
-      - run: .ci/docker_build
+      - run: .circleci/docker_build
   build-docker-image-tag:
     docker:
       - image: cimg/node:18.20
@@ -140,10 +140,10 @@ jobs:
       - run: |
           npm install --global --force yarn@$1.22.22
           yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
-      - run: .ci/update_version
+      - run: .circleci/update_version
       # Bundle extensions:
       # - run: npm run bundle
-      - run: .ci/docker_build
+      - run: .circleci/docker_build
       # Create alias from tag to "latest":
       - run: docker tag $DOCKERHUB_REPO:$CIRCLE_TAG $DOCKERHUB_REPO:latest
       - run: docker push $DOCKERHUB_REPO:latest
