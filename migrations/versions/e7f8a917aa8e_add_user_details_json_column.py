@@ -7,7 +7,7 @@ Create Date: 2018-11-08 16:12:17.023569
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "e7f8a917aa8e"
@@ -21,7 +21,7 @@ def upgrade():
         "users",
         sa.Column(
             "details",
-            JSON(astext_type=sa.Text()),
+            postgresql.JSON(astext_type=sa.Text()),
             server_default="{}",
             nullable=True,
         ),

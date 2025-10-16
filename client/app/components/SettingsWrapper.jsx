@@ -1,7 +1,6 @@
 import React from "react";
 import Menu from "antd/lib/menu";
 import PageHeader from "@/components/PageHeader";
-import Link from "@/components/Link";
 import location from "@/services/location";
 import settingsMenu from "@/services/settingsMenu";
 
@@ -18,9 +17,9 @@ function wrapSettingsTab(id, options, WrappedComponent) {
             <Menu selectedKeys={[activeItem && activeItem.title]} selectable={false} mode="horizontal">
               {settingsMenu.getAvailableItems().map(item => (
                 <Menu.Item key={item.title}>
-                  <Link href={item.path} data-test="SettingsScreenItem">
+                  <a href={item.path} data-test="SettingsScreenItem">
                     {item.title}
-                  </Link>
+                  </a>
                 </Menu.Item>
               ))}
             </Menu>
