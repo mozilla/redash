@@ -1,13 +1,14 @@
 /* global cy */
 
+import { createDashboard, createQuery } from "../../support/redash-api";
 import { createQueryAndAddWidget, editDashboard, resizeBy } from "../../support/dashboard";
 
 describe("Widget", () => {
   beforeEach(function() {
     cy.login();
-    cy.createDashboard("Foo Bar").then(({ id }) => {
+    createDashboard("Foo Bar").then(({ slug, id }) => {
       this.dashboardId = id;
-      this.dashboardUrl = `/dashboards/${id}`;
+      this.dashboardUrl = `/dashboard/${slug}`;
     });
   });
 
@@ -18,7 +19,7 @@ describe("Widget", () => {
   };
 
   it("adds widget", function() {
-    cy.createQuery().then(({ id: queryId }) => {
+    createQuery().then(({ id: queryId }) => {
       cy.visit(this.dashboardUrl);
       editDashboard();
       cy.getByTestId("AddWidgetButton").click();
@@ -103,7 +104,7 @@ describe("Widget", () => {
       it("grows when dynamically adding table rows", () => {
         // listen to results
         cy.server();
-        cy.route("GET", "**/api/query_results/*").as("FreshResults");
+        cy.route("GET", "api/query_results/*").as("FreshResults");
 
         // start with 1 table row
         cy.get("@paramInput")
@@ -131,7 +132,7 @@ describe("Widget", () => {
       it("revokes auto height after manual height adjustment", () => {
         // listen to results
         cy.server();
-        cy.route("GET", "**/api/query_results/*").as("FreshResults");
+        cy.route("GET", "api/query_results/*").as("FreshResults");
 
         editDashboard();
 
@@ -177,7 +178,7 @@ describe("Widget", () => {
       cy.visit(this.dashboardUrl);
       cy.getByTestId("TableVisualization")
         .its("0.offsetHeight")
-        .should("be.oneOf", [380, 381]);
+        .should("eq", 381);
       cy.percySnapshot("Shows correct height of table visualization");
     });
   });

@@ -5,13 +5,9 @@ try:
 except ImportError:
     enabled = False
 
-from redash.query_runner import (
-    TYPE_BOOLEAN,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    register,
-)
+from redash.query_runner import BaseQueryRunner, register
+from redash.query_runner import TYPE_STRING, TYPE_INTEGER, TYPE_BOOLEAN
+from redash.utils import json_dumps, json_loads
 
 TYPES_MAP = {1: TYPE_STRING, 2: TYPE_INTEGER, 3: TYPE_BOOLEAN}
 
@@ -53,15 +49,21 @@ class Druid(BaseQueryRunner):
 
         try:
             cursor.execute(query)
-            columns = self.fetch_columns([(i[0], TYPES_MAP.get(i[1], None)) for i in cursor.description])
-            rows = [dict(zip((column["name"] for column in columns), row)) for row in cursor]
+            columns = self.fetch_columns(
+                [(i[0], TYPES_MAP.get(i[1], None)) for i in cursor.description]
+            )
+            rows = [
+                dict(zip((column["name"] for column in columns), row)) for row in cursor
+            ]
 
             data = {"columns": columns, "rows": rows}
             error = None
+            json_data = json_dumps(data)
+            print(json_data)
         finally:
             connection.close()
 
-        return data, error
+        return json_data, error
 
     def get_schema(self, get_stats=False):
         query = """
@@ -75,9 +77,10 @@ class Druid(BaseQueryRunner):
         results, error = self.run_query(query, None)
 
         if error is not None:
-            self._handle_run_query_error(error)
+            raise Exception("Failed getting schema.")
 
         schema = {}
+        results = json_loads(results)
 
         for row in results["rows"]:
             table_name = "{}.{}".format(row["TABLE_SCHEMA"], row["TABLE_NAME"])

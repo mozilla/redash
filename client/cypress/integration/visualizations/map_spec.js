@@ -1,5 +1,7 @@
 /* global cy */
 
+import { createQuery, createVisualization } from "../../support/redash-api";
+
 const SQL = `
   SELECT 'Israel' AS country, 32.0808800 AS lat, 34.7805700 AS lng UNION ALL
   SELECT 'Israel' AS country, 31.7690400 AS lat, 35.2163300 AS lng UNION ALL
@@ -20,8 +22,8 @@ describe("Map (Markers)", () => {
 
     const mapTileUrl = "/static/images/fixtures/map-tile.png";
 
-    cy.createQuery({ query: SQL })
-      .then(({ id }) => cy.createVisualization(id, "MAP", "Map (Markers)", { mapTileUrl }))
+    createQuery({ query: SQL })
+      .then(({ id }) => createVisualization(id, "MAP", "Map (Markers)", { mapTileUrl }))
       .then(({ id: visualizationId, query_id: queryId }) => {
         cy.visit(`queries/${queryId}/source#${visualizationId}`);
         cy.getByTestId("ExecuteButton").click();
