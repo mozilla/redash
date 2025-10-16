@@ -6,9 +6,9 @@ import { markdown } from "markdown";
 
 import Button from "antd/lib/button";
 import Dropdown from "antd/lib/dropdown";
+import Icon from "antd/lib/icon";
 import Menu from "antd/lib/menu";
-import Tooltip from "@/components/Tooltip";
-import Link from "@/components/Link";
+import Tooltip from "antd/lib/tooltip";
 import routeWithApiKeySession from "@/components/ApplicationArea/routeWithApiKeySession";
 import Parameters from "@/components/Parameters";
 import { Moment } from "@/components/proptypes";
@@ -17,9 +17,6 @@ import Timer from "@/components/Timer";
 import QueryResultsLink from "@/components/EditVisualizationButton/QueryResultsLink";
 import VisualizationName from "@/components/visualizations/VisualizationName";
 import VisualizationRenderer from "@/components/visualizations/VisualizationRenderer";
-
-import FileOutlinedIcon from "@ant-design/icons/FileOutlined";
-import FileExcelOutlinedIcon from "@ant-design/icons/FileExcelOutlined";
 
 import { VisualizationType } from "@redash/viz/lib";
 import HtmlContent from "@redash/viz/lib/components/HtmlContent";
@@ -75,7 +72,7 @@ function VisualizationEmbedFooter({
           apiKey={apiKey}
           disabled={!queryResults || !queryResults.getData || !queryResults.getData()}
           embed>
-          <FileOutlinedIcon /> Download as CSV File
+          <Icon type="file" /> Download as CSV File
         </QueryResultsLink>
       </Menu.Item>
       <Menu.Item>
@@ -86,7 +83,7 @@ function VisualizationEmbedFooter({
           apiKey={apiKey}
           disabled={!queryResults || !queryResults.getData || !queryResults.getData()}
           embed>
-          <FileOutlinedIcon /> Download as TSV File
+          <Icon type="file" /> Download as TSV File
         </QueryResultsLink>
       </Menu.Item>
       <Menu.Item>
@@ -97,7 +94,7 @@ function VisualizationEmbedFooter({
           apiKey={apiKey}
           disabled={!queryResults || !queryResults.getData || !queryResults.getData()}
           embed>
-          <FileExcelOutlinedIcon /> Download as Excel File
+          <Icon type="file-excel" /> Download as Excel File
         </QueryResultsLink>
       </Menu.Item>
     </Menu>
@@ -107,28 +104,27 @@ function VisualizationEmbedFooter({
     <div className="tile__bottom-control">
       {!hideTimestamp && (
         <span>
-          <span className="small hidden-print">
-            <i className="zmdi zmdi-time-restore" aria-hidden="true" />{" "}
+          <a className="small hidden-print">
+            <i className="zmdi zmdi-time-restore" />{" "}
             {refreshStartedAt ? <Timer from={refreshStartedAt} /> : <TimeAgo date={updatedAt} />}
-          </span>
+          </a>
           <span className="small visible-print">
-            <i className="zmdi zmdi-time-restore" aria-hidden="true" /> {formatDateTime(updatedAt)}
+            <i className="zmdi zmdi-time-restore" /> {formatDateTime(updatedAt)}
           </span>
         </span>
       )}
       {queryUrl && (
         <span className="hidden-print">
           <Tooltip title="Open in Redash">
-            <Link.Button className="icon-button" href={queryUrl} target="_blank">
-              <i className="fa fa-external-link" aria-hidden="true" />
-              <span className="sr-only">Open in Redash</span>
-            </Link.Button>
+            <Button className="icon-button" href={queryUrl} target="_blank">
+              <i className="fa fa-external-link" />
+            </Button>
           </Tooltip>
           {!query.hasParameters() && (
             <Dropdown overlay={downloadMenu} disabled={!queryResults} trigger={["click"]} placement="topLeft">
               <Button loading={!queryResults && !!refreshStartedAt} className="m-l-5">
                 Download Dataset
-                <i className="fa fa-caret-up m-l-5" aria-hidden="true" />
+                <i className="fa fa-caret-up m-l-5" />
               </Button>
             </Dropdown>
           )}
@@ -244,8 +240,7 @@ function VisualizationEmbed({ queryId, visualizationId, apiKey, onError }) {
         {!queryResults && refreshStartedAt && (
           <div className="d-flex justify-content-center">
             <div className="spinner">
-              <i className="zmdi zmdi-refresh zmdi-hc-spin zmdi-hc-5x" aria-hidden="true" />
-              <span className="sr-only">Refreshing...</span>
+              <i className="zmdi zmdi-refresh zmdi-hc-spin zmdi-hc-5x" />
             </div>
           </div>
         )}

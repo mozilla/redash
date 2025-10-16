@@ -155,7 +155,7 @@ class GroupMembers extends React.Component {
                 <p>There are no members in this group yet.</p>
                 {currentUser.isAdmin && (
                   <Button type="primary" onClick={this.addMembers}>
-                    <i className="fa fa-plus m-r-5" aria-hidden="true" />
+                    <i className="fa fa-plus m-r-5" />
                     Add Members
                   </Button>
                 )}
@@ -173,10 +173,8 @@ class GroupMembers extends React.Component {
                   toggleSorting={controller.toggleSorting}
                 />
                 <Paginator
-                  showPageSizeSelect
                   totalCount={controller.totalItemsCount}
-                  pageSize={controller.itemsPerPage}
-                  onPageSizeChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+                  itemsPerPage={controller.itemsPerPage}
                   page={controller.page}
                   onChange={page => controller.updatePagination({ page })}
                 />

@@ -1,38 +1,19 @@
 import React from "react";
 import PropTypes from "prop-types";
-import Tooltip from "@/components/Tooltip";
+import Tooltip from "antd/lib/tooltip";
 
 export default function ListItemAddon({ isSelected, isStaged, alreadyInGroup, deselectedIcon }) {
   if (isStaged) {
-    return (
-      <>
-        <i className="fa fa-remove" aria-hidden="true" />
-        <span className="sr-only">Remove</span>
-      </>
-    );
+    return <i className="fa fa-remove" />;
   }
   if (alreadyInGroup) {
     return (
       <Tooltip title="Already selected">
-        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-        <span tabIndex={0}>
-          <i className="fa fa-check" aria-hidden="true" />
-          <span className="sr-only">Already selected</span>
-        </span>
+        <i className="fa fa-check" />
       </Tooltip>
     );
   }
-  return isSelected ? (
-    <>
-      <i className="fa fa-check" aria-hidden="true" />
-      <span className="sr-only">Selected</span>
-    </>
-  ) : (
-    <>
-      <i className={`fa ${deselectedIcon}`} aria-hidden="true" />
-      <span className="sr-only">Select</span>
-    </>
-  );
+  return isSelected ? <i className="fa fa-check" /> : <i className={`fa ${deselectedIcon}`} />;
 }
 
 ListItemAddon.propTypes = {
