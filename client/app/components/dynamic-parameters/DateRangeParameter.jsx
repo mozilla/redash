@@ -1,8 +1,14 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { includes } from "lodash";
-import { getDynamicDateRangeFromString } from "@/services/parameters/DateRangeParameter";
-import DynamicDateRangePicker from "@/components/dynamic-parameters/DynamicDateRangePicker";
+import classNames from "classnames";
+import moment from "moment";
+import { includes, isArray, isObject } from "lodash";
+import { isDynamicDateRange, getDynamicDateRangeFromString } from "@/services/parameters/DateRangeParameter";
+import DateRangeInput from "@/components/DateRangeInput";
+import DateTimeRangeInput from "@/components/DateTimeRangeInput";
+import DynamicButton from "@/components/dynamic-parameters/DynamicButton";
+
+import "./DynamicParameters.less";
 
 const DYNAMIC_DATE_OPTIONS = [
   {
@@ -128,25 +134,97 @@ const DYNAMIC_DATETIME_OPTIONS = [
   ...DYNAMIC_DATE_OPTIONS,
 ];
 
-function DateRangeParameter(props) {
-  const options = includes(props.type, "datetime-range") ? DYNAMIC_DATETIME_OPTIONS : DYNAMIC_DATE_OPTIONS;
-  return <DynamicDateRangePicker {...props} dynamicButtonOptions={{ options }} />;
+const widthByType = {
+  "date-range": 294,
+  "datetime-range": 352,
+  "datetime-range-with-seconds": 382,
+};
+
+function isValidDateRangeValue(value) {
+  return isArray(value) && value.length === 2 && moment.isMoment(value[0]) && moment.isMoment(value[1]);
 }
 
-DateRangeParameter.propTypes = {
-  type: PropTypes.string,
-  className: PropTypes.string,
-  value: PropTypes.any, // eslint-disable-line react/forbid-prop-types
-  parameter: PropTypes.any, // eslint-disable-line react/forbid-prop-types
-  onSelect: PropTypes.func,
-};
+class DateRangeParameter extends React.Component {
+  static propTypes = {
+    type: PropTypes.string,
+    className: PropTypes.string,
+    value: PropTypes.any, // eslint-disable-line react/forbid-prop-types
+    parameter: PropTypes.any, // eslint-disable-line react/forbid-prop-types
+    onSelect: PropTypes.func,
+  };
 
-DateRangeParameter.defaultProps = {
-  type: "",
-  className: "",
-  value: null,
-  parameter: null,
-  onSelect: () => {},
-};
+  static defaultProps = {
+    type: "",
+    className: "",
+    value: null,
+    parameter: null,
+    onSelect: () => {},
+  };
+
+  constructor(props) {
+    super(props);
+    this.dateRangeComponentRef = React.createRef();
+  }
+
+  onDynamicValueSelect = dynamicValue => {
+    const { onSelect, parameter } = this.props;
+    if (dynamicValue === "static") {
+      const parameterValue = parameter.getExecutionValue();
+      if (isObject(parameterValue) && parameterValue.start && parameterValue.end) {
+        onSelect([moment(parameterValue.start), moment(parameterValue.end)]);
+      } else {
+        onSelect(null);
+      }
+    } else {
+      onSelect(dynamicValue.value);
+    }
+    // give focus to the DatePicker to get keyboard shortcuts to work
+    this.dateRangeComponentRef.current.focus();
+  };
+
+  render() {
+    const { type, value, onSelect, className } = this.props;
+    const isDateTimeRange = includes(type, "datetime-range");
+    const hasDynamicValue = isDynamicDateRange(value);
+    const options = isDateTimeRange ? DYNAMIC_DATETIME_OPTIONS : DYNAMIC_DATE_OPTIONS;
+
+    const additionalAttributes = {};
+
+    let DateRangeComponent = DateRangeInput;
+    if (isDateTimeRange) {
+      DateRangeComponent = DateTimeRangeInput;
+      if (includes(type, "with-seconds")) {
+        additionalAttributes.withSeconds = true;
+      }
+    }
+
+    if (isValidDateRangeValue(value) || value === null) {
+      additionalAttributes.value = value;
+    }
+
+    if (hasDynamicValue) {
+      additionalAttributes.placeholder = [value && value.name];
+      additionalAttributes.value = null;
+    }
+
+    return (
+      <DateRangeComponent
+        ref={this.dateRangeComponentRef}
+        className={classNames("redash-datepicker date-range-input", { "dynamic-value": hasDynamicValue }, className)}
+        onSelect={onSelect}
+        style={{ width: hasDynamicValue ? 195 : widthByType[type] }}
+        suffixIcon={
+          <DynamicButton
+            options={options}
+            selectedDynamicValue={hasDynamicValue ? value : null}
+            enabled={hasDynamicValue}
+            onSelect={this.onDynamicValueSelect}
+          />
+        }
+        {...additionalAttributes}
+      />
+    );
+  }
+}
 
 export default DateRangeParameter;

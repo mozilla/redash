@@ -1,13 +1,14 @@
+import { createAlert, createQuery, createUser, addDestinationSubscription } from "../../support/redash-api";
+
 describe("View Alert", () => {
   beforeEach(function() {
-    cy.login().then(() => {
-      cy.createQuery({ query: "select 1 as col_name" })
-        .then(({ id: queryId }) => cy.createAlert(queryId, { column: "col_name" }))
-        .then(({ id: alertId }) => {
-          this.alertId = alertId;
-          this.alertUrl = `/alerts/${alertId}`;
-        });
-    });
+    cy.login();
+    createQuery({ query: "select 1 as col_name" })
+      .then(({ id: queryId }) => createAlert(queryId, { column: "col_name" }))
+      .then(({ id: alertId }) => {
+        this.alertId = alertId;
+        this.alertUrl = `/alerts/${alertId}`;
+      });
   });
 
   it("renders the page and takes a screenshot", function() {
@@ -23,8 +24,8 @@ describe("View Alert", () => {
       .should("not.exist");
 
     cy.server();
-    cy.route("GET", "**/api/destinations").as("Destinations");
-    cy.route("GET", "**/api/alerts/*/subscriptions").as("Subscriptions");
+    cy.route("GET", "api/destinations").as("Destinations");
+    cy.route("GET", "api/alerts/*/subscriptions").as("Subscriptions");
 
     cy.visit(this.alertUrl);
 
@@ -41,7 +42,7 @@ describe("View Alert", () => {
   describe("Alert Destination permissions", () => {
     before(() => {
       cy.login();
-      cy.createUser({
+      createUser({
         name: "Example User",
         email: "user@redash.io",
         password: "password",
@@ -50,11 +51,11 @@ describe("View Alert", () => {
 
     it("hides remove button from non-author", function() {
       cy.server();
-      cy.route("GET", "**/api/alerts/*/subscriptions").as("Subscriptions");
+      cy.route("GET", "api/alerts/*/subscriptions").as("Subscriptions");
 
       cy.logout()
         .then(() => cy.login()) // as admin
-        .then(() => cy.addDestinationSubscription(this.alertId, "Test Email Destination"))
+        .then(() => addDestinationSubscription(this.alertId, "Test Email Destination"))
         .then(() => {
           cy.visit(this.alertUrl);
 
@@ -82,11 +83,11 @@ describe("View Alert", () => {
 
     it("shows remove button for non-author admin", function() {
       cy.server();
-      cy.route("GET", "**/api/alerts/*/subscriptions").as("Subscriptions");
+      cy.route("GET", "api/alerts/*/subscriptions").as("Subscriptions");
 
       cy.logout()
         .then(() => cy.login("user@redash.io", "password"))
-        .then(() => cy.addDestinationSubscription(this.alertId, "Test Email Destination"))
+        .then(() => addDestinationSubscription(this.alertId, "Test Email Destination"))
         .then(() => {
           cy.visit(this.alertUrl);
 
