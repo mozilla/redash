@@ -1,15 +1,13 @@
+import yaml
 import datetime
 import time
 
-import yaml
-
 from redash.query_runner import BaseQueryRunner, register
-from redash.utils import parse_human_time
+from redash.utils import json_dumps, parse_human_time
 
 try:
     import boto3
-    from botocore.exceptions import ParamValidationError  # noqa: F401
-
+    from botocore.exceptions import ParamValidationError
     enabled = True
 except ImportError:
     enabled = False
@@ -120,7 +118,9 @@ class CloudWatchInsights(BaseQueryRunner):
                 log_groups.append(
                     {
                         "name": group_name,
-                        "columns": [field["name"] for field in fields["logGroupFields"]],
+                        "columns": [
+                            field["name"] for field in fields["logGroupFields"]
+                        ],
                     }
                 )
 
@@ -139,14 +139,18 @@ class CloudWatchInsights(BaseQueryRunner):
                 data = parse_response(result)
                 break
             if result["status"] in ("Failed", "Timeout", "Unknown", "Cancelled"):
-                raise Exception("CloudWatch Insights Query Execution Status: {}".format(result["status"]))
+                raise Exception(
+                    "CloudWatch Insights Query Execution Status: {}".format(
+                        result["status"]
+                    )
+                )
             elif elapsed > TIMEOUT:
                 raise Exception("Request exceeded timeout.")
             else:
                 time.sleep(POLL_INTERVAL)
                 elapsed += POLL_INTERVAL
 
-        return data, None
+        return json_dumps(data), None
 
 
 register(CloudWatchInsights)

@@ -1,19 +1,6 @@
-import { noop, extend, pick } from "lodash";
+import { noop } from "lodash";
 import { useCallback, useState } from "react";
-import url from "url";
-import qs from "query-string";
 import { Query } from "@/services/query";
-
-function keepCurrentUrlParams(targetUrl) {
-  const currentUrlParams = qs.parse(window.location.search);
-  targetUrl = url.parse(targetUrl);
-  const targetUrlParams = qs.parse(targetUrl.search);
-  return url.format(
-    extend(pick(targetUrl, ["protocol", "auth", "host", "pathname", "hash"]), {
-      search: qs.stringify(extend(currentUrlParams, targetUrlParams)),
-    })
-  );
-}
 
 export default function useDuplicateQuery(query) {
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -29,7 +16,7 @@ export default function useDuplicateQuery(query) {
     setIsDuplicating(true);
     Query.fork({ id: query.id })
       .then(newQuery => {
-        tab.location = keepCurrentUrlParams(newQuery.getUrl(true));
+        tab.location = newQuery.getUrl(true);
       })
       .finally(() => {
         setIsDuplicating(false);

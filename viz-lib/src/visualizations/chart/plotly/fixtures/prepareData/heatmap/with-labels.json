@@ -2,7 +2,7 @@
   "input": {
     "options": {
       "globalSeriesType": "heatmap",
-      "colorScheme": "Greys",
+      "colorScheme": "Bluered",
       "seriesOptions": {},
       "showDataLabels": true
     },
@@ -26,10 +26,7 @@
         "z": [[3, 1], [4, 2]],
         "type": "heatmap",
         "name": "",
-        "colorscale": [
-          [ 0, "rgb(0,0,0)" ],
-          [ 1, "rgb(255,255,255)" ]
-        ]
+        "colorscale": "Bluered"
       },
       {
         "x": [12, 11, 12, 11],
@@ -39,7 +36,7 @@
         "showlegend": false,
         "text": ["3", "1", "4", "2"],
         "textfont": {
-          "color": ["#333333", "#ffffff", "#333333", "#ffffff"]
+          "color": ["black", "black", "black", "black"]
         }
       }
     ]

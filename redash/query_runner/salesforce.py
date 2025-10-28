@@ -1,27 +1,25 @@
-import logging
 import re
+import logging
 from collections import OrderedDict
-
+from redash.query_runner import BaseQueryRunner, register
 from redash.query_runner import (
-    TYPE_BOOLEAN,
+    TYPE_STRING,
     TYPE_DATE,
     TYPE_DATETIME,
-    TYPE_FLOAT,
     TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    register,
+    TYPE_FLOAT,
+    TYPE_BOOLEAN,
 )
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
 try:
-    from simple_salesforce import Salesforce as SimpleSalesforce
-    from simple_salesforce import SalesforceError
+    from simple_salesforce import Salesforce as SimpleSalesforce, SalesforceError
     from simple_salesforce.api import DEFAULT_API_VERSION
 
     enabled = True
-except ImportError:
+except ImportError as e:
     enabled = False
 
 # See https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/field_types.htm
@@ -79,8 +77,14 @@ class Salesforce(BaseQueryRunner):
                     "title": "Salesforce API Version",
                     "default": DEFAULT_API_VERSION,
                 },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
-            "required": ["username", "password"],
+            "required": ["username", "password", "token"],
             "secret": ["password", "token"],
         }
 
@@ -165,10 +169,11 @@ class Salesforce(BaseQueryRunner):
                 columns = self.fetch_columns(cols)
             error = None
             data = {"columns": columns, "rows": rows}
+            json_data = json_dumps(data)
         except SalesforceError as err:
             error = err.content
-            data = None
-        return data, error
+            json_data = None
+        return json_data, error
 
     def get_schema(self, get_stats=False):
         sf = self._get_sf()

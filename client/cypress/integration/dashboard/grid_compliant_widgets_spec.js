@@ -1,5 +1,6 @@
 /* global cy */
 
+import { createDashboard, addTextbox } from "../../support/redash-api";
 import { getWidgetTestId, editDashboard, resizeBy } from "../../support/dashboard";
 
 const menuWidth = 80;
@@ -8,10 +9,10 @@ describe("Grid compliant widgets", () => {
   beforeEach(function() {
     cy.login();
     cy.viewport(1215 + menuWidth, 800);
-    cy.createDashboard("Foo Bar")
-      .then(({ id }) => {
-        this.dashboardUrl = `/dashboards/${id}`;
-        return cy.addTextbox(id, "Hello World!").then(getWidgetTestId);
+    createDashboard("Foo Bar")
+      .then(({ slug, id }) => {
+        this.dashboardUrl = `/dashboard/${slug}`;
+        return addTextbox(id, "Hello World!").then(getWidgetTestId);
       })
       .then(elTestId => {
         cy.visit(this.dashboardUrl);
@@ -49,7 +50,7 @@ describe("Grid compliant widgets", () => {
 
     it("auto saves after drag", () => {
       cy.server();
-      cy.route("POST", "**/api/widgets/*").as("WidgetSave");
+      cy.route("POST", "api/widgets/*").as("WidgetSave");
 
       editDashboard();
       cy.get("@textboxEl").dragBy(330);
@@ -117,7 +118,7 @@ describe("Grid compliant widgets", () => {
 
     it("auto saves after resize", () => {
       cy.server();
-      cy.route("POST", "**/api/widgets/*").as("WidgetSave");
+      cy.route("POST", "api/widgets/*").as("WidgetSave");
 
       editDashboard();
       resizeBy(cy.get("@textboxEl"), 200);

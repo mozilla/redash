@@ -1,5 +1,6 @@
-from redash.models import Change, ChangeTrackingMixin, Query, db
 from tests import BaseTestCase
+
+from redash.models import db, Query, Change, ChangeTrackingMixin
 
 
 def create_object(factory):

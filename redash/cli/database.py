@@ -1,17 +1,14 @@
-import logging
 import time
 
-import sqlalchemy
 from click import argument, option
-from cryptography.fernet import InvalidToken
 from flask.cli import AppGroup
 from flask_migrate import stamp
+import sqlalchemy
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import select
 from sqlalchemy_utils.types.encrypted.encrypted_type import FernetEngine
 
-from redash import settings
-from redash.models.base import Column, key_type
+from redash.models.base import Column
 from redash.models.types import EncryptedConfiguration
 from redash.utils.configuration import ConfigurationContainer
 
@@ -30,40 +27,21 @@ def _wait_for_db_connection(db):
         retried = True
 
 
-def is_db_empty():
-    from redash.models import db
-
-    table_names = sqlalchemy.inspect(db.get_engine()).get_table_names()
-    return len(table_names) == 0
-
-
-def load_extensions(db):
-    with db.engine.connect() as connection:
-        for extension in settings.dynamic_settings.database_extensions:
-            connection.execute(f'CREATE EXTENSION IF NOT EXISTS "{extension}";')
-
-
-@manager.command(name="create_tables")
+@manager.command()
 def create_tables():
     """Create the database tables."""
     from redash.models import db
 
     _wait_for_db_connection(db)
+    # To create triggers for searchable models, we need to call configure_mappers().
+    sqlalchemy.orm.configure_mappers()
+    db.create_all()
 
-    # We need to make sure we run this only if the DB is empty, because otherwise calling
-    # stamp() will stamp it with the latest migration value and migrations won't run.
-    if is_db_empty():
-        load_extensions(db)
-
-        # To create triggers for searchable models, we need to call configure_mappers().
-        sqlalchemy.orm.configure_mappers()
-        db.create_all()
-
-        # Need to mark current DB as up to date
-        stamp()
+    # Need to mark current DB as up to date
+    stamp()
 
 
-@manager.command(name="drop_tables")
+@manager.command()
 def drop_tables():
     """Drop the database tables."""
     from redash.models import db
@@ -83,43 +61,41 @@ def reencrypt(old_secret, new_secret, show_sql):
     _wait_for_db_connection(db)
 
     if show_sql:
+        import logging
+
         logging.basicConfig()
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
-    def _reencrypt_for_table(table_name, orm_name):
-        table_for_select = sqlalchemy.Table(
-            table_name,
-            sqlalchemy.MetaData(),
-            Column("id", key_type(orm_name), primary_key=True),
-            Column(
-                "encrypted_options",
-                ConfigurationContainer.as_mutable(EncryptedConfiguration(db.Text, old_secret, FernetEngine)),
+    table_for_select = sqlalchemy.Table(
+        "data_sources",
+        sqlalchemy.MetaData(),
+        Column("id", db.Integer, primary_key=True),
+        Column(
+            "encrypted_options",
+            ConfigurationContainer.as_mutable(
+                EncryptedConfiguration(db.Text, old_secret, FernetEngine)
             ),
-        )
-        table_for_update = sqlalchemy.Table(
-            table_name,
-            sqlalchemy.MetaData(),
-            Column("id", key_type(orm_name), primary_key=True),
-            Column(
-                "encrypted_options",
-                ConfigurationContainer.as_mutable(EncryptedConfiguration(db.Text, new_secret, FernetEngine)),
+        ),
+    )
+    table_for_update = sqlalchemy.Table(
+        "data_sources",
+        sqlalchemy.MetaData(),
+        Column("id", db.Integer, primary_key=True),
+        Column(
+            "encrypted_options",
+            ConfigurationContainer.as_mutable(
+                EncryptedConfiguration(db.Text, new_secret, FernetEngine)
             ),
+        ),
+    )
+
+    update = table_for_update.update()
+    data_sources = db.session.execute(select([table_for_select]))
+    for ds in data_sources:
+        stmt = update.where(table_for_update.c.id == ds["id"]).values(
+            encrypted_options=ds["encrypted_options"]
         )
+        db.session.execute(stmt)
 
-        update = table_for_update.update()
-        selected_items = db.session.execute(select([table_for_select]))
-        for item in selected_items:
-            try:
-                stmt = update.where(table_for_update.c.id == item["id"]).values(
-                    encrypted_options=item["encrypted_options"]
-                )
-            except InvalidToken:
-                logging.error(f'Invalid Decryption Key for id {item["id"]} in table {table_for_select}')
-            else:
-                db.session.execute(stmt)
-
-        selected_items.close()
-        db.session.commit()
-
-    _reencrypt_for_table("data_sources", "DataSource")
-    _reencrypt_for_table("notification_destinations", "NotificationDestination")
+    data_sources.close()
+    db.session.commit()
