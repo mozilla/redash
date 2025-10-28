@@ -1,5 +1,7 @@
 /* global cy, Cypress */
 
+import { createQuery } from "../../support/redash-api";
+
 const SQL = `
   SELECT 'a.01' AS a, 1.758831600227 AS b UNION ALL
   SELECT 'a.02' AS a, 613.4456936572 AS b UNION ALL
@@ -23,7 +25,7 @@ describe("Funnel", () => {
 
   beforeEach(() => {
     cy.login();
-    cy.createQuery({ query: SQL }).then(({ id }) => {
+    createQuery({ query: SQL }).then(({ id }) => {
       cy.visit(`queries/${id}/source`);
       cy.getByTestId("ExecuteButton").click();
     });
@@ -32,8 +34,10 @@ describe("Funnel", () => {
   it("creates visualization", () => {
     cy.clickThrough(`
       NewVisualization
+      VisualizationType
+      VisualizationType.FUNNEL
     `);
-    cy.getByTestId("VisualizationType").selectAntdOption("VisualizationType.FUNNEL");
+
     cy.clickThrough(`
       VisualizationEditor.Tabs.General
 

@@ -1,12 +1,11 @@
-from unittest import TestCase
-
-from mock import MagicMock
 from werkzeug.exceptions import BadRequest
 
 from redash.handlers.base import paginate
+from unittest import TestCase
+from mock import MagicMock
 
 
-class DummyResults:
+class DummyResults(object):
     items = [i for i in range(25)]
 
 
@@ -27,9 +26,17 @@ class TestPaginate(TestCase):
         self.assertEqual(page["results"], dummy_results.items)
 
     def test_raises_error_for_bad_page(self):
-        self.assertRaises(BadRequest, lambda: paginate(self.query_set, -1, 25, lambda x: x))
-        self.assertRaises(BadRequest, lambda: paginate(self.query_set, 6, 25, lambda x: x))
+        self.assertRaises(
+            BadRequest, lambda: paginate(self.query_set, -1, 25, lambda x: x)
+        )
+        self.assertRaises(
+            BadRequest, lambda: paginate(self.query_set, 6, 25, lambda x: x)
+        )
 
     def test_raises_error_for_bad_page_size(self):
-        self.assertRaises(BadRequest, lambda: paginate(self.query_set, 1, 251, lambda x: x))
-        self.assertRaises(BadRequest, lambda: paginate(self.query_set, 1, -1, lambda x: x))
+        self.assertRaises(
+            BadRequest, lambda: paginate(self.query_set, 1, 251, lambda x: x)
+        )
+        self.assertRaises(
+            BadRequest, lambda: paginate(self.query_set, 1, -1, lambda x: x)
+        )

@@ -7,12 +7,11 @@ import List from "antd/lib/list";
 import Modal from "antd/lib/modal";
 import Select from "antd/lib/select";
 import Tag from "antd/lib/tag";
-import Tooltip from "@/components/Tooltip";
+import Tooltip from "antd/lib/tooltip";
 import { wrap as wrapDialog, DialogPropType } from "@/components/DialogWrapper";
 import { toHuman } from "@/lib/utils";
 import HelpTrigger from "@/components/HelpTrigger";
 import { UserPreviewCard } from "@/components/PreviewCard";
-import PlainButton from "@/components/PlainButton";
 import notification from "@/services/notification";
 import User from "@/services/user";
 
@@ -103,16 +102,7 @@ function UserSelect({ onSelect, shouldShowUser }) {
       placeholder="Add users..."
       showSearch
       onSearch={setSearchTerm}
-      suffixIcon={
-        loadingUsers ? (
-          <span role="status" aria-live="polite" aria-relevant="additions removals">
-            <i className="fa fa-spinner fa-pulse" aria-hidden="true" />
-            <span className="sr-only">Loading...</span>
-          </span>
-        ) : (
-          <i className="fa fa-search" aria-hidden="true" />
-        )
-      }
+      suffixIcon={loadingUsers ? <i className="fa fa-spinner fa-pulse" /> : <i className="fa fa-search" />}
       filterOption={false}
       notFoundContent={null}
       value={undefined}
@@ -166,12 +156,7 @@ function PermissionsEditorDialog({ dialog, author, context, aclUrl }) {
       />
       <div className="d-flex align-items-center m-t-5">
         <h5 className="flex-fill">Users with permissions</h5>
-        {loadingGrantees && (
-          <span role="status" aria-live="polite" aria-relevant="additions removals">
-            <i className="fa fa-spinner fa-pulse" aria-hidden="true" />
-            <span className="sr-only">Loading...</span>
-          </span>
-        )}
+        {loadingGrantees && <i className="fa fa-spinner fa-pulse" />}
       </div>
       <div className="scrollbox p-5" style={{ maxHeight: "40vh" }}>
         <List
@@ -184,11 +169,10 @@ function PermissionsEditorDialog({ dialog, author, context, aclUrl }) {
                   <Tag className="m-0">Author</Tag>
                 ) : (
                   <Tooltip title="Remove user permissions">
-                    <PlainButton
-                      aria-label="Remove permissions"
-                      onClick={() => removePermission(user.id).then(loadUsersWithPermissions)}>
-                      <i className="fa fa-remove clickable" aria-hidden="true" />
-                    </PlainButton>
+                    <i
+                      className="fa fa-remove clickable"
+                      onClick={() => removePermission(user.id).then(loadUsersWithPermissions)}
+                    />
                   </Tooltip>
                 )}
               </UserPreviewCard>
