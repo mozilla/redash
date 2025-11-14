@@ -1,15 +1,8 @@
 import logging
+import sys
 
-from redash.query_runner import (
-    TYPE_BOOLEAN,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseSQLQueryRunner,
-    JobTimeoutException,
-    register,
-)
+from redash.query_runner import *
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +50,12 @@ class MemSQL(BaseSQLQueryRunner):
                 "port": {"type": "number"},
                 "user": {"type": "string"},
                 "password": {"type": "string"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
             "required": ["host", "port"],
             "secret": ["password"],
@@ -78,19 +77,27 @@ class MemSQL(BaseSQLQueryRunner):
         columns_query = "show columns in %s"
 
         for schema_name in [
-            a for a in [str(a["Database"]) for a in self._run_query_internal(schemas_query)] if len(a) > 0
+            a
+            for a in [
+                str(a["Database"]) for a in self._run_query_internal(schemas_query)
+            ]
+            if len(a) > 0
         ]:
             for table_name in [
                 a
                 for a in [
-                    str(a["Tables_in_%s" % schema_name]) for a in self._run_query_internal(tables_query % schema_name)
+                    str(a["Tables_in_%s" % schema_name])
+                    for a in self._run_query_internal(tables_query % schema_name)
                 ]
                 if len(a) > 0
             ]:
                 table_name = ".".join((schema_name, table_name))
                 columns = [
                     a
-                    for a in [str(a["Field"]) for a in self._run_query_internal(columns_query % table_name)]
+                    for a in [
+                        str(a["Field"])
+                        for a in self._run_query_internal(columns_query % table_name)
+                    ]
                     if len(a) > 0
                 ]
 
@@ -98,6 +105,7 @@ class MemSQL(BaseSQLQueryRunner):
         return list(schema.values())
 
     def run_query(self, query, user):
+
         cursor = None
         try:
             cursor = database.connect(**self.configuration.to_dict())
@@ -126,9 +134,12 @@ class MemSQL(BaseSQLQueryRunner):
 
             if column_names:
                 for column in column_names:
-                    columns.append({"name": column, "friendly_name": column, "type": TYPE_STRING})
+                    columns.append(
+                        {"name": column, "friendly_name": column, "type": TYPE_STRING}
+                    )
 
             data = {"columns": columns, "rows": rows}
+            json_data = json_dumps(data)
             error = None
         except (KeyboardInterrupt, JobTimeoutException):
             cursor.close()
@@ -137,7 +148,7 @@ class MemSQL(BaseSQLQueryRunner):
             if cursor:
                 cursor.close()
 
-        return data, error
+        return json_data, error
 
 
 register(MemSQL)

@@ -1,20 +1,13 @@
-import logging
+from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
 
-from redash.query_runner import (
-    TYPE_BOOLEAN,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    register,
-)
+import logging
 
 logger = logging.getLogger(__name__)
 
 try:
     import phoenixdb
-    from phoenixdb.errors import Error
+    from phoenixdb.errors import *
 
     enabled = True
 
@@ -79,7 +72,9 @@ class Phoenix(BaseQueryRunner):
         results, error = self.run_query(query, None)
 
         if error is not None:
-            self._handle_run_query_error(error)
+            raise Exception("Failed getting schema.")
+
+        results = json_loads(results)
 
         for row in results["rows"]:
             table_name = "{}.{}".format(row["TABLE_SCHEM"], row["TABLE_NAME"])
@@ -92,26 +87,36 @@ class Phoenix(BaseQueryRunner):
         return list(schema.values())
 
     def run_query(self, query, user):
-        connection = phoenixdb.connect(url=self.configuration.get("url", ""), autocommit=True)
+        connection = phoenixdb.connect(
+            url=self.configuration.get("url", ""), autocommit=True
+        )
 
         cursor = connection.cursor()
 
         try:
             cursor.execute(query)
-            column_tuples = [(i[0], TYPES_MAPPING.get(i[1], None)) for i in cursor.description]
+            column_tuples = [
+                (i[0], TYPES_MAPPING.get(i[1], None)) for i in cursor.description
+            ]
             columns = self.fetch_columns(column_tuples)
-            rows = [dict(zip(([column["name"] for column in columns]), r)) for i, r in enumerate(cursor.fetchall())]
+            rows = [
+                dict(zip(([column["name"] for column in columns]), r))
+                for i, r in enumerate(cursor.fetchall())
+            ]
             data = {"columns": columns, "rows": rows}
+            json_data = json_dumps(data)
             error = None
             cursor.close()
         except Error as e:
-            data = None
-            error = "code: {}, sql state:{}, message: {}".format(e.code, e.sqlstate, str(e))
+            json_data = None
+            error = "code: {}, sql state:{}, message: {}".format(
+                e.code, e.sqlstate, str(e)
+            )
         finally:
             if connection:
                 connection.close()
 
-        return data, error
+        return json_data, error
 
 
 register(Phoenix)
