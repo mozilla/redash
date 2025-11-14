@@ -1,9 +1,11 @@
 /* global cy */
 
+import { createQuery } from "../../support/redash-api";
+
 describe("Edit visualization dialog", () => {
   beforeEach(() => {
     cy.login();
-    cy.createQuery().then(({ id }) => {
+    createQuery().then(({ id }) => {
       cy.visit(`queries/${id}/source`);
       cy.getByTestId("ExecuteButton").click();
     });
