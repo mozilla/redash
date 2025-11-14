@@ -1,4 +1,5 @@
 from unittest import TestCase
+
 from redash.query_runner.pg import build_schema
 
 
@@ -10,20 +11,9 @@ class TestBuildSchema(TestCase):
                     "table_schema": "public",
                     "table_name": "main.users",
                     "column_name": "id",
-                    "column_type": "character varying",
                 },
-                {
-                    "table_schema": "main",
-                    "table_name": "users",
-                    "column_name": "id",
-                    "column_type": "character varying",
-                },
-                {
-                    "table_schema": "main",
-                    "table_name": "users",
-                    "column_name": "name",
-                    "column_type": "character varying",
-                },
+                {"table_schema": "main", "table_name": "users", "column_name": "id"},
+                {"table_schema": "main", "table_name": "users", "column_name": "name"},
             ]
         }
 
@@ -35,3 +25,19 @@ class TestBuildSchema(TestCase):
         self.assertListEqual(schema["main.users"]["columns"], ["id", "name"])
         self.assertIn('public."main.users"', schema.keys())
         self.assertListEqual(schema['public."main.users"']["columns"], ["id"])
+
+    def test_build_schema_with_data_types(self):
+        results = {
+            "rows": [
+                {"table_schema": "main", "table_name": "users", "column_name": "id", "data_type": "integer"},
+                {"table_schema": "main", "table_name": "users", "column_name": "name", "data_type": "varchar"},
+            ]
+        }
+
+        schema = {}
+
+        build_schema(results, schema)
+
+        self.assertListEqual(
+            schema["main.users"]["columns"], [{"name": "id", "type": "integer"}, {"name": "name", "type": "varchar"}]
+        )

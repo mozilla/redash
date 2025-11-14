@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { isEmpty, includes, compact, map, has, pick, keys, extend, every, get } from "lodash";
 import notification from "@/services/notification";
 import location from "@/services/location";
+import url from "@/services/url";
 import { Dashboard, collectDashboardFilters } from "@/services/dashboard";
 import { currentUser } from "@/services/auth";
 import recordEvent from "@/services/recordEvent";
@@ -14,6 +15,8 @@ import ShareDashboardDialog from "../components/ShareDashboardDialog";
 import useFullscreenHandler from "../../../lib/hooks/useFullscreenHandler";
 import useRefreshRateHandler from "./useRefreshRateHandler";
 import useEditModeHandler from "./useEditModeHandler";
+import useDuplicateDashboard from "./useDuplicateDashboard";
+import { policy } from "@/services/policy";
 
 export { DashboardStatusEnum } from "./useEditModeHandler";
 
@@ -38,18 +41,20 @@ function useDashboard(dashboardData) {
   const [refreshing, setRefreshing] = useState(false);
   const [gridDisabled, setGridDisabled] = useState(false);
   const globalParameters = useMemo(() => dashboard.getParametersDefs(), [dashboard]);
-  const canEditDashboard = !dashboard.is_archived && dashboard.can_edit;
+  const canEditDashboard = !dashboard.is_archived && policy.canEdit(dashboard);
   const isDashboardOwnerOrAdmin = useMemo(
     () =>
       !dashboard.is_archived &&
       has(dashboard, "user.id") &&
-      (currentUser.id === dashboard.user.id || currentUser.hasPermission("admin")),
+      (currentUser.id === dashboard.user.id || currentUser.isAdmin),
     [dashboard]
   );
   const hasOnlySafeQueries = useMemo(
     () => every(dashboard.widgets, w => (w.getQuery() ? w.getQuery().is_safe : true)),
     [dashboard]
   );
+
+  const [isDuplicating, duplicateDashboard] = useDuplicateDashboard(dashboard);
 
   const managePermissions = useCallback(() => {
     const aclUrl = `api/dashboards/${dashboard.id}/acl`;
@@ -63,15 +68,17 @@ function useDashboard(dashboardData) {
   const updateDashboard = useCallback(
     (data, includeVersion = true) => {
       setDashboard(currentDashboard => extend({}, currentDashboard, data));
-      // for some reason the request uses the id as slug
-      data = { ...data, slug: dashboard.id };
+      data = { ...data, id: dashboard.id };
       if (includeVersion) {
         data = { ...data, version: dashboard.version };
       }
       return Dashboard.save(data)
-        .then(updatedDashboard =>
-          setDashboard(currentDashboard => extend({}, currentDashboard, pick(updatedDashboard, keys(data))))
-        )
+        .then(updatedDashboard => {
+          setDashboard(currentDashboard => extend({}, currentDashboard, pick(updatedDashboard, keys(data))));
+          if (has(data, "name")) {
+            location.setPath(url.parse(updatedDashboard.url).pathname, true);
+          }
+        })
         .catch(error => {
           const status = get(error, "response.status");
           if (status === 403) {
@@ -239,6 +246,8 @@ function useDashboard(dashboardData) {
     showAddTextboxDialog,
     showAddWidgetDialog,
     managePermissions,
+    isDuplicating,
+    duplicateDashboard,
   };
 }
 

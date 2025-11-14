@@ -3,19 +3,16 @@ This will eventually replace all the `to_dict` methods of the different model
 classes we have. This will ensure cleaner code and better
 separation of concerns.
 """
-from funcy import project
 
 from flask_login import current_user
+from funcy import project
 from rq.job import JobStatus
 from rq.timeouts import JobTimeoutException
 
 from redash import models
-from redash.permissions import has_access, view_only
-from redash.utils import json_loads
 from redash.models.parameterized_query import ParameterizedQuery
-
-
-from .query_result import (
+from redash.permissions import has_access, view_only
+from redash.serializers.query_result import (
     serialize_query_result,
     serialize_query_result_to_dsv,
     serialize_query_result_to_xlsx,
@@ -26,7 +23,7 @@ def public_widget(widget):
     res = {
         "id": widget.id,
         "width": widget.width,
-        "options": json_loads(widget.options),
+        "options": widget.options,
         "text": widget.text,
         "updated_at": widget.updated_at,
         "created_at": widget.created_at,
@@ -38,7 +35,7 @@ def public_widget(widget):
             "type": v.type,
             "name": v.name,
             "description": v.description,
-            "options": json_loads(v.options),
+            "options": v.options,
             "updated_at": v.updated_at,
             "created_at": v.created_at,
             "query": {
@@ -55,7 +52,7 @@ def public_widget(widget):
 def public_dashboard(dashboard):
     dashboard_dict = project(
         serialize_dashboard(dashboard, with_favorite_state=False),
-        ("name", "layout", "dashboard_filters_enabled", "updated_at", "created_at"),
+        ("name", "layout", "dashboard_filters_enabled", "updated_at", "created_at", "options"),
     )
 
     widget_list = (
@@ -68,109 +65,28 @@ def public_dashboard(dashboard):
     return dashboard_dict
 
 
-class Serializer(object):
+class Serializer:
     pass
 
 
 class QuerySerializer(Serializer):
     def __init__(self, object_or_list, **kwargs):
         self.object_or_list = object_or_list
-        self.with_favorite_state = kwargs.pop("with_favorite_state", True)
         self.options = kwargs
 
     def serialize(self):
         if isinstance(self.object_or_list, models.Query):
             result = serialize_query(self.object_or_list, **self.options)
-            if self.with_favorite_state and not current_user.is_api_user():
-                result["is_favorite"] = models.Favorite.is_favorite(
-                    current_user.id, self.object_or_list
-                )
+            if self.options.get("with_favorite_state", True) and not current_user.is_api_user():
+                result["is_favorite"] = models.Favorite.is_favorite(current_user.id, self.object_or_list)
         else:
-            result = [
-                serialize_query(query, **self.options) for query in self.object_or_list
-            ]
-            if self.with_favorite_state:
-                favorite_ids = models.Favorite.are_favorites(
-                    current_user.id, self.object_or_list
-                )
+            result = [serialize_query(query, **self.options) for query in self.object_or_list]
+            if self.options.get("with_favorite_state", True):
+                favorite_ids = models.Favorite.are_favorites(current_user.id, self.object_or_list)
                 for query in result:
                     query["is_favorite"] = query["id"] in favorite_ids
 
         return result
-
-
-class ColumnMetadataSerializer(Serializer):
-    def __init__(self, object_or_list):
-        self.object_or_list = object_or_list
-
-    def serialize(self):
-        if isinstance(self.object_or_list, models.ColumnMetadata):
-            result = serialize_column_metadata(self.object_or_list)
-        else:
-            result = [
-                serialize_column_metadata(column_metadata)
-                for column_metadata in self.object_or_list
-            ]
-        return result
-
-
-class TableMetadataSerializer(Serializer):
-    def __init__(self, object_or_list, **kwargs):
-        self.object_or_list = object_or_list
-        self.options = kwargs
-
-    def serialize(self):
-        if isinstance(self.object_or_list, models.TableMetadata):
-            result = serialize_table_metadata(self.object_or_list, self.options)
-        else:
-            result = [
-                serialize_table_metadata(column_metadata, self.options)
-                for column_metadata in self.object_or_list
-            ]
-        return result
-
-
-def serialize_table_metadata(table_metadata, options, include_columns=True):
-    sample_queries_dict = dict(
-        [
-            (v["id"], v)
-            for v in QuerySerializer(
-                table_metadata.sample_queries, **options
-            ).serialize()
-        ]
-    )
-    d = {
-        "id": table_metadata.id,
-        "org_id": table_metadata.org_id,
-        "data_source_id": table_metadata.data_source_id,
-        "exists": table_metadata.exists,
-        "visible": table_metadata.visible,
-        "name": table_metadata.name,
-        "description": table_metadata.description,
-        "column_metadata": table_metadata.column_metadata,
-        "sample_updated_at": table_metadata.sample_updated_at,
-        "sample_queries": sample_queries_dict,
-    }
-    if include_columns:
-        d["columns"] = [
-            ColumnMetadataSerializer(column).serialize()
-            for column in table_metadata.existing_columns
-        ]
-    return d
-
-
-def serialize_column_metadata(column_metadata):
-    d = {
-        "id": column_metadata.id,
-        "org_id": column_metadata.org_id,
-        "table_id": column_metadata.table_id,
-        "name": column_metadata.name,
-        "type": column_metadata.type,
-        "example": column_metadata.example,
-        "exists": column_metadata.exists,
-        "description": column_metadata.description,
-    }
-    return d
 
 
 def serialize_query(
@@ -206,11 +122,7 @@ def serialize_query(
         d["user_id"] = query.user_id
 
     if with_last_modified_by:
-        d["last_modified_by"] = (
-            query.last_modified_by.to_dict()
-            if query.last_modified_by is not None
-            else None
-        )
+        d["last_modified_by"] = query.last_modified_by.to_dict() if query.last_modified_by is not None else None
     else:
         d["last_modified_by_id"] = query.last_modified_by_id
 
@@ -223,10 +135,7 @@ def serialize_query(
             d["runtime"] = None
 
     if with_visualizations:
-        d["visualizations"] = [
-            serialize_visualization(vis, with_query=False)
-            for vis in query.visualizations
-        ]
+        d["visualizations"] = [serialize_visualization(vis, with_query=False) for vis in query.visualizations]
 
     return d
 
@@ -237,7 +146,7 @@ def serialize_visualization(object, with_query=True):
         "type": object.type,
         "name": object.name,
         "description": object.description,
-        "options": json_loads(object.options),
+        "options": object.options,
         "updated_at": object.updated_at,
         "created_at": object.created_at,
     }
@@ -252,7 +161,7 @@ def serialize_widget(object):
     d = {
         "id": object.id,
         "width": object.width,
-        "options": json_loads(object.options),
+        "options": object.options,
         "dashboard_id": object.dashboard_id,
         "text": object.text,
         "updated_at": object.updated_at,
@@ -288,7 +197,7 @@ def serialize_alert(alert, full=True):
 
 
 def serialize_dashboard(obj, with_widgets=False, user=None, with_favorite_state=True):
-    layout = json_loads(obj.layout)
+    layout = obj.layout
 
     widgets = []
 
@@ -317,7 +226,7 @@ def serialize_dashboard(obj, with_widgets=False, user=None, with_favorite_state=
 
     d = {
         "id": obj.id,
-        "slug": obj.slug,
+        "slug": obj.name_as_slug,
         "name": obj.name,
         "user_id": obj.user_id,
         "user": {
@@ -329,6 +238,7 @@ def serialize_dashboard(obj, with_widgets=False, user=None, with_favorite_state=
         "layout": layout,
         "dashboard_filters_enabled": obj.dashboard_filters_enabled,
         "widgets": widgets,
+        "options": obj.options,
         "is_archived": obj.is_archived,
         "is_draft": obj.is_draft,
         "tags": obj.tags or [],
@@ -348,21 +258,12 @@ class DashboardSerializer(Serializer):
     def serialize(self):
         if isinstance(self.object_or_list, models.Dashboard):
             result = serialize_dashboard(self.object_or_list, **self.options)
-            if (
-                self.options.get("with_favorite_state", True)
-                and not current_user.is_api_user()
-            ):
-                result["is_favorite"] = models.Favorite.is_favorite(
-                    current_user.id, self.object_or_list
-                )
+            if self.options.get("with_favorite_state", True) and not current_user.is_api_user():
+                result["is_favorite"] = models.Favorite.is_favorite(current_user.id, self.object_or_list)
         else:
-            result = [
-                serialize_dashboard(obj, **self.options) for obj in self.object_or_list
-            ]
+            result = [serialize_dashboard(obj, **self.options) for obj in self.object_or_list]
             if self.options.get("with_favorite_state", True):
-                favorite_ids = models.Favorite.are_favorites(
-                    current_user.id, self.object_or_list
-                )
+                favorite_ids = models.Favorite.are_favorites(current_user.id, self.object_or_list)
                 for obj in result:
                     obj["is_favorite"] = obj["id"] in favorite_ids
 
@@ -376,6 +277,9 @@ def serialize_job(job):
         JobStatus.STARTED: 2,
         JobStatus.FINISHED: 3,
         JobStatus.FAILED: 4,
+        JobStatus.CANCELED: 5,
+        JobStatus.DEFERRED: 6,
+        JobStatus.SCHEDULED: 7,
     }
 
     job_status = job.get_status()

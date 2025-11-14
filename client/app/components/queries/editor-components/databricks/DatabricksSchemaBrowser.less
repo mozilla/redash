@@ -1,9 +1,11 @@
+@import (reference, less) "~@/assets/less/ant";
+
 .databricks-schema-browser {
   .schema-control {
     .database-select-open .ant-input-group-addon {
       background-color: #fff;
 
-      .ant-select-selection-selected-value {
+      .ant-select-selection-item {
         visibility: hidden;
       }
     }
@@ -19,7 +21,11 @@
         .ant-select {
           width: 100%;
 
-          &.ant-select-focused .ant-select-selection {
+          .ant-select-selection-item {
+            text-align: left;
+          }
+
+          &.ant-select-focused .ant-select-selector {
             color: inherit;
           }
         }
@@ -32,15 +38,29 @@
   }
 
   .schema-list-wrapper {
+    position: relative;
     height: 100%;
     border: 1px solid #eaeaea;
     border-top: 0;
     border-radius: 0 0 4px 4px;
     margin-bottom: 20px;
+    padding-bottom: 32px;
+
+    .load-button {
+      display: flex;
+      justify-content: center;
+      position: absolute;
+      width: 100%;
+      bottom: 0;
+
+      .ant-btn {
+        color: @text-color;
+        padding: 0 10px;
+      }
+    }
   }
 }
 
 .databricks-schema-browser-db-dropdown {
-  width: auto !important;
-  max-width: 50vw;
+  width: 50vw !important;
 }
