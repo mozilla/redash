@@ -3,7 +3,7 @@ import React from "react";
 import Button from "antd/lib/button";
 import Dropdown from "antd/lib/dropdown";
 import Menu from "antd/lib/menu";
-import DownOutlinedIcon from "@ant-design/icons/DownOutlined";
+import Icon from "antd/lib/icon";
 
 import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
 import navigateTo from "@/components/ApplicationArea/navigateTo";
@@ -72,9 +72,9 @@ class GroupDataSources extends React.Component {
 
         return (
           <Dropdown trigger={["click"]} overlay={menu}>
-            <Button className="w-100" aria-label="Permissions">
+            <Button className="w-100">
               {datasource.view_only ? "View Only" : "Full Access"}
-              <DownOutlinedIcon aria-hidden="true" />
+              <Icon type="down" />
             </Button>
           </Dropdown>
         );
@@ -192,7 +192,7 @@ class GroupDataSources extends React.Component {
                 <p>There are no data sources in this group yet.</p>
                 {currentUser.isAdmin && (
                   <Button type="primary" onClick={this.addDataSources}>
-                    <i className="fa fa-plus m-r-5" aria-hidden="true" />
+                    <i className="fa fa-plus m-r-5" />
                     Add Data Sources
                   </Button>
                 )}
@@ -210,10 +210,8 @@ class GroupDataSources extends React.Component {
                   toggleSorting={controller.toggleSorting}
                 />
                 <Paginator
-                  showPageSizeSelect
                   totalCount={controller.totalItemsCount}
-                  pageSize={controller.itemsPerPage}
-                  onPageSizeChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+                  itemsPerPage={controller.itemsPerPage}
                   page={controller.page}
                   onChange={page => controller.updatePagination({ page })}
                 />

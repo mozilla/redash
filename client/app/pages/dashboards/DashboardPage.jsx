@@ -1,4 +1,4 @@
-import { isEmpty, map } from "lodash";
+import { isEmpty } from "lodash";
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -6,7 +6,6 @@ import cx from "classnames";
 import Button from "antd/lib/button";
 import Checkbox from "antd/lib/checkbox";
 import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
-import DynamicComponent from "@/components/DynamicComponent";
 import DashboardGrid from "@/components/dashboards/DashboardGrid";
 import Parameters from "@/components/Parameters";
 import Filters from "@/components/Filters";
@@ -15,8 +14,6 @@ import { Dashboard } from "@/services/dashboard";
 import recordEvent from "@/services/recordEvent";
 import resizeObserver from "@/services/resizeObserver";
 import routes from "@/services/routes";
-import location from "@/services/location";
-import url from "@/services/url";
 import useImmutableCallback from "@/lib/hooks/useImmutableCallback";
 
 import useDashboard from "./hooks/useDashboard";
@@ -24,8 +21,8 @@ import DashboardHeader from "./components/DashboardHeader";
 
 import "./DashboardPage.less";
 
-function DashboardSettings({ dashboardConfiguration }) {
-  const { dashboard, updateDashboard } = dashboardConfiguration;
+function DashboardSettings({ dashboardOptions }) {
+  const { dashboard, updateDashboard } = dashboardOptions;
   return (
     <div className="m-b-10 p-15 bg-white tiled">
       <Checkbox
@@ -39,15 +36,15 @@ function DashboardSettings({ dashboardConfiguration }) {
 }
 
 DashboardSettings.propTypes = {
-  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
 };
 
-function AddWidgetContainer({ dashboardConfiguration, className, ...props }) {
-  const { showAddTextboxDialog, showAddWidgetDialog } = dashboardConfiguration;
+function AddWidgetContainer({ dashboardOptions, className, ...props }) {
+  const { showAddTextboxDialog, showAddWidgetDialog } = dashboardOptions;
   return (
     <div className={cx("add-widget-container", className)} {...props}>
       <h2>
-        <i className="zmdi zmdi-widgets" aria-hidden="true" />
+        <i className="zmdi zmdi-widgets" />
         <span className="hidden-xs hidden-sm">
           Widgets are individual query visualizations or text boxes you can place on your dashboard in various
           arrangements.
@@ -66,12 +63,12 @@ function AddWidgetContainer({ dashboardConfiguration, className, ...props }) {
 }
 
 AddWidgetContainer.propTypes = {
-  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
   className: PropTypes.string,
 };
 
 function DashboardComponent(props) {
-  const dashboardConfiguration = useDashboard(props.dashboard);
+  const dashboardOptions = useDashboard(props.dashboard);
   const {
     dashboard,
     filters,
@@ -81,19 +78,14 @@ function DashboardComponent(props) {
     removeWidget,
     saveDashboardLayout,
     globalParameters,
-    updateDashboard,
     refreshDashboard,
     refreshWidget,
     editingLayout,
     setGridDisabled,
-  } = dashboardConfiguration;
+  } = dashboardOptions;
 
   const [pageContainer, setPageContainer] = useState(null);
   const [bottomPanelStyles, setBottomPanelStyles] = useState({});
-  const onParametersEdit = parameters => {
-    const paramOrder = map(parameters, "name");
-    updateDashboard({ options: { globalParamOrder: paramOrder } });
-  };
 
   useEffect(() => {
     if (pageContainer) {
@@ -117,25 +109,11 @@ function DashboardComponent(props) {
   }, [pageContainer, editingLayout]);
 
   return (
-    <div className="container" ref={setPageContainer} data-test={`DashboardId${dashboard.id}Container`}>
-      <DashboardHeader
-        dashboardConfiguration={dashboardConfiguration}
-        headerExtra={
-          <DynamicComponent
-            name="Dashboard.HeaderExtra"
-            dashboard={dashboard}
-            dashboardConfiguration={dashboardConfiguration}
-          />
-        }
-      />
+    <div className="container" ref={setPageContainer}>
+      <DashboardHeader dashboardOptions={dashboardOptions} />
       {!isEmpty(globalParameters) && (
         <div className="dashboard-parameters m-b-10 p-15 bg-white tiled" data-test="DashboardParameters">
-          <Parameters
-            parameters={globalParameters}
-            onValuesChange={refreshDashboard}
-            sortable={editingLayout}
-            onParametersEdit={onParametersEdit}
-          />
+          <Parameters parameters={globalParameters} onValuesChange={refreshDashboard} />
         </div>
       )}
       {!isEmpty(filters) && (
@@ -143,7 +121,7 @@ function DashboardComponent(props) {
           <Filters filters={filters} onChange={setFilters} />
         </div>
       )}
-      {editingLayout && <DashboardSettings dashboardConfiguration={dashboardConfiguration} />}
+      {editingLayout && <DashboardSettings dashboardOptions={dashboardOptions} />}
       <div id="dashboard-container">
         <DashboardGrid
           dashboard={dashboard}
@@ -158,9 +136,7 @@ function DashboardComponent(props) {
           onParameterMappingsChange={loadDashboard}
         />
       </div>
-      {editingLayout && (
-        <AddWidgetContainer dashboardConfiguration={dashboardConfiguration} style={bottomPanelStyles} />
-      )}
+      {editingLayout && <AddWidgetContainer dashboardOptions={dashboardOptions} style={bottomPanelStyles} />}
     </div>
   );
 }
@@ -169,52 +145,35 @@ DashboardComponent.propTypes = {
   dashboard: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
 };
 
-function DashboardPage({ dashboardSlug, dashboardId, onError }) {
+function DashboardPage({ dashboardSlug, onError }) {
   const [dashboard, setDashboard] = useState(null);
   const handleError = useImmutableCallback(onError);
 
   useEffect(() => {
-    Dashboard.get({ id: dashboardId, slug: dashboardSlug })
+    Dashboard.get({ slug: dashboardSlug })
       .then(dashboardData => {
         recordEvent("view", "dashboard", dashboardData.id);
         setDashboard(dashboardData);
-
-        // if loaded by slug, update location url to use the id
-        if (!dashboardId) {
-          location.setPath(url.parse(dashboardData.url).pathname, true);
-        }
       })
       .catch(handleError);
-  }, [dashboardId, dashboardSlug, handleError]);
+  }, [dashboardSlug, handleError]);
 
   return <div className="dashboard-page">{dashboard && <DashboardComponent dashboard={dashboard} />}</div>;
 }
 
 DashboardPage.propTypes = {
-  dashboardSlug: PropTypes.string,
-  dashboardId: PropTypes.string,
+  dashboardSlug: PropTypes.string.isRequired,
   onError: PropTypes.func,
 };
 
 DashboardPage.defaultProps = {
-  dashboardSlug: null,
-  dashboardId: null,
   onError: PropTypes.func,
 };
-
-// route kept for backward compatibility
-routes.register(
-  "Dashboards.LegacyViewOrEdit",
-  routeWithUserSession({
-    path: "/dashboard/:dashboardSlug",
-    render: pageProps => <DashboardPage {...pageProps} />,
-  })
-);
 
 routes.register(
   "Dashboards.ViewOrEdit",
   routeWithUserSession({
-    path: "/dashboards/:dashboardId([^-]+)(-.*)?",
+    path: "/dashboard/:dashboardSlug",
     render: pageProps => <DashboardPage {...pageProps} />,
   })
 );

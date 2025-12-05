@@ -1,15 +1,7 @@
 import logging
 
-from redash.query_runner import (
-    TYPE_BOOLEAN,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseSQLQueryRunner,
-    JobTimeoutException,
-    register,
-)
+from redash.query_runner import *
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +10,7 @@ try:
     from impala.error import DatabaseError, RPCError
 
     enabled = True
-except ImportError:
+except ImportError as e:
     enabled = False
 
 COLUMN_NAME = 0
@@ -61,10 +53,15 @@ class Impala(BaseSQLQueryRunner):
                 },
                 "database": {"type": "string"},
                 "use_ldap": {"type": "boolean"},
-                "use_ssl": {"type": "boolean"},
                 "ldap_user": {"type": "string"},
                 "ldap_password": {"type": "string"},
                 "timeout": {"type": "number"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
             "required": ["host"],
             "secret": ["ldap_password"],
@@ -76,13 +73,21 @@ class Impala(BaseSQLQueryRunner):
 
     def _get_tables(self, schema_dict):
         schemas_query = "show schemas;"
-        tables_query = "show tables in `%s`;"
-        columns_query = "show column stats `%s`.`%s`;"
+        tables_query = "show tables in %s;"
+        columns_query = "show column stats %s.%s;"
 
-        for schema_name in [str(a["name"]) for a in self._run_query_internal(schemas_query)]:
-            for table_name in [str(a["name"]) for a in self._run_query_internal(tables_query % schema_name)]:
+        for schema_name in [
+            str(a["name"]) for a in self._run_query_internal(schemas_query)
+        ]:
+            for table_name in [
+                str(a["name"])
+                for a in self._run_query_internal(tables_query % schema_name)
+            ]:
                 columns = [
-                    str(a["Column"]) for a in self._run_query_internal(columns_query % (schema_name, table_name))
+                    str(a["Column"])
+                    for a in self._run_query_internal(
+                        columns_query % (schema_name, table_name)
+                    )
                 ]
 
                 if schema_name != "default":
@@ -93,6 +98,7 @@ class Impala(BaseSQLQueryRunner):
         return list(schema_dict.values())
 
     def run_query(self, query, user):
+
         connection = None
         try:
             connection = connect(**self.configuration.to_dict())
@@ -119,13 +125,14 @@ class Impala(BaseSQLQueryRunner):
             rows = [dict(zip(column_names, row)) for row in cursor]
 
             data = {"columns": columns, "rows": rows}
+            json_data = json_dumps(data)
             error = None
             cursor.close()
         except DatabaseError as e:
-            data = None
+            json_data = None
             error = str(e)
         except RPCError as e:
-            data = None
+            json_data = None
             error = "Metastore Error [%s]" % str(e)
         except (KeyboardInterrupt, JobTimeoutException):
             connection.cancel()
@@ -134,7 +141,7 @@ class Impala(BaseSQLQueryRunner):
             if connection:
                 connection.close()
 
-        return data, error
+        return json_data, error
 
 
 register(Impala)
