@@ -61,7 +61,7 @@ class DateParameter extends Parameter {
       return value;
     }
 
-    const normalizedValue = moment(value, moment.ISO_8601, true);
+    const normalizedValue = moment(value);
     return normalizedValue.isValid() ? normalizedValue : null;
   }
 

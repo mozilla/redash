@@ -1,5 +1,6 @@
 /* global cy */
 
+import { createQuery, createDashboard, createVisualization, addWidget } from "../../support/redash-api";
 import { getWidgetTestId } from "../../support/dashboard";
 
 const SQL = `
@@ -23,17 +24,18 @@ describe("Sankey and Sunburst", () => {
 
   describe("Creation through UI", () => {
     beforeEach(() => {
-      cy.createQuery({ query: SQL }).then(({ id }) => {
+      createQuery({ query: SQL }).then(({ id }) => {
         cy.visit(`queries/${id}/source`);
         cy.getByTestId("ExecuteButton").click();
-        cy.getByTestId("NewVisualization").click();
-        cy.getByTestId("VisualizationType").selectAntdOption("VisualizationType.SUNBURST_SEQUENCE");
       });
     });
 
     it("creates Sunburst", () => {
       const visualizationName = "Sunburst";
 
+      cy.getByTestId("NewVisualization").click();
+      cy.getByTestId("VisualizationType").click();
+      cy.getByTestId("VisualizationType.SUNBURST_SEQUENCE").click();
       cy.getByTestId("VisualizationName")
         .clear()
         .type(visualizationName);
@@ -52,6 +54,9 @@ describe("Sankey and Sunburst", () => {
     it("creates Sankey", () => {
       const visualizationName = "Sankey";
 
+      cy.getByTestId("NewVisualization").click();
+      cy.getByTestId("VisualizationType").click();
+      cy.getByTestId("VisualizationType.SANKEY").click();
       cy.getByTestId("VisualizationName")
         .clear()
         .type(visualizationName);
@@ -93,15 +98,14 @@ describe("Sankey and Sunburst", () => {
   ];
 
   it("takes a snapshot with Sunburst (1 - 5 stages)", function() {
-    cy.createDashboard("Sunburst Visualization").then(dashboard => {
-      this.dashboardUrl = `/dashboards/${dashboard.id}`;
+    createDashboard("Sunburst Visualization").then(dashboard => {
+      this.dashboardUrl = `/dashboard/${dashboard.slug}`;
       return cy
         .all(
           STAGES_WIDGETS.map(sunburst => () =>
-            cy
-              .createQuery({ name: `Sunburst with ${sunburst.name}`, query: sunburst.query })
-              .then(queryData => cy.createVisualization(queryData.id, "SUNBURST_SEQUENCE", "Sunburst", {}))
-              .then(visualization => cy.addWidget(dashboard.id, visualization.id, { position: sunburst.position }))
+            createQuery({ name: `Sunburst with ${sunburst.name}`, query: sunburst.query })
+              .then(queryData => createVisualization(queryData.id, "SUNBURST_SEQUENCE", "Sunburst", {}))
+              .then(visualization => addWidget(dashboard.id, visualization.id, { position: sunburst.position }))
           )
         )
         .then(widgets => {
@@ -118,15 +122,14 @@ describe("Sankey and Sunburst", () => {
   });
 
   it("takes a snapshot with Sankey (1 - 5 stages)", function() {
-    cy.createDashboard("Sankey Visualization").then(dashboard => {
-      this.dashboardUrl = `/dashboards/${dashboard.id}`;
+    createDashboard("Sankey Visualization").then(dashboard => {
+      this.dashboardUrl = `/dashboard/${dashboard.slug}`;
       return cy
         .all(
           STAGES_WIDGETS.map(sankey => () =>
-            cy
-              .createQuery({ name: `Sankey with ${sankey.name}`, query: sankey.query })
-              .then(queryData => cy.createVisualization(queryData.id, "SANKEY", "Sankey", {}))
-              .then(visualization => cy.addWidget(dashboard.id, visualization.id, { position: sankey.position }))
+            createQuery({ name: `Sankey with ${sankey.name}`, query: sankey.query })
+              .then(queryData => createVisualization(queryData.id, "SANKEY", "Sankey", {}))
+              .then(visualization => addWidget(dashboard.id, visualization.id, { position: sankey.position }))
           )
         )
         .then(widgets => {

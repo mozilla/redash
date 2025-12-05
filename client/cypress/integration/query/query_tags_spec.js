@@ -1,3 +1,4 @@
+import { createQuery } from "../../support/redash-api";
 import { expectTagsToContain, typeInTagsSelectAndSave } from "../../support/tags";
 
 describe("Query Tags", () => {
@@ -9,12 +10,12 @@ describe("Query Tags", () => {
       query: "SELECT 1 as value",
     };
 
-    cy.createQuery(queryData, false).then(({ id }) => cy.visit(`/queries/${id}`));
+    createQuery(queryData, false).then(({ id }) => cy.visit(`/queries/${id}`));
   });
 
   it("is possible to add and edit tags", () => {
     cy.server();
-    cy.route("POST", "**/api/queries/*").as("QuerySave");
+    cy.route("POST", "api/queries/*").as("QuerySave");
 
     cy.getByTestId("TagsControl").contains(".label", "Unpublished");
 
@@ -22,13 +23,13 @@ describe("Query Tags", () => {
       .should("contain", "Add tag")
       .click();
 
-    typeInTagsSelectAndSave("tag1{enter}tag2{enter}tag3{enter}");
+    typeInTagsSelectAndSave("tag1{enter}tag2{enter}tag3{enter}{esc}");
 
     cy.wait("@QuerySave");
     expectTagsToContain(["tag1", "tag2", "tag3"]);
 
     cy.getByTestId("EditTagsButton").click();
-    typeInTagsSelectAndSave("tag4{enter}");
+    typeInTagsSelectAndSave("tag4{enter}{esc}");
 
     cy.wait("@QuerySave");
     cy.reload();
