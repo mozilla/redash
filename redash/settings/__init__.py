@@ -347,6 +347,7 @@ enabled_query_runners = array_from_string(
 )
 additional_query_runners = array_from_string(os.environ.get("REDASH_ADDITIONAL_QUERY_RUNNERS", ""))
 disabled_query_runners = array_from_string(os.environ.get("REDASH_DISABLED_QUERY_RUNNERS", ""))
+disabled_query_runners.append("redash_stmo.query_runner.activedata")  # for testing
 
 QUERY_RUNNERS = remove(
     set(disabled_query_runners),
