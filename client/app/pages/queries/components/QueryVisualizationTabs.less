@@ -17,13 +17,12 @@
     }
   }
 
-  .ant-tabs-nav-wrap,
-  .ant-tabs-extra-content {
-    flex: initial !important;
-  }
+  .ant-tabs-bar {
+    display: flex;
 
-  .ant-tabs-nav-wrap {
-    z-index: 1;
+    .ant-tabs-extra-content {
+      order: 2;
+    }
   }
 
   .ant-tabs-tab {
@@ -48,22 +47,14 @@
 
     &.ant-tabs-tab-active {
       background: white !important;
+      z-index: 1;
       font-weight: normal;
       border-top: 2px solid #2196f3 !important;
-
-      .ant-tabs-tab-btn {
-        font-weight: normal;
-      }
-    }
-
-    // add internal bottom border to non-active tabs
-    &:not(.ant-tabs-tab-active) {
-      box-shadow: 0px -1px 0px #d9d9d9 inset;
     }
   }
 
-  .ant-tabs-content-holder {
-    margin-top: -17px;
+  .ant-tabs-content {
+    margin-top: -18px;
     border: 1px solid #d9d9d9;
     box-sizing: border-box;
     border-radius: 0px 4px 0px 0px;
@@ -81,31 +72,17 @@
   }
 
   .delete-visualization-button {
-    height: 1.5rem;
-    width: 1.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     margin-left: 5px;
+    cursor: pointer;
     color: #a09797;
     font-size: 11px;
-    border-radius: 100%;
-
-    &:hover,
-    &:focus {
+    padding: 0 4px 1px;
+    &:hover {
       color: white;
       background-color: #ff8080;
-    }
-
-    &:active {
-      filter: brightness(80%);
+      border-radius: 50%;
     }
   }
-}
-
-// hide delete button when it in the dropdown
-.ant-tabs-dropdown-menu-item .delete-visualization-button {
-  display: none;
 }
 
 .query-fixed-layout .query-visualization-tabs .visualization-renderer {

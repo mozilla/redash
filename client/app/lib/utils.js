@@ -8,19 +8,9 @@ export const IntervalEnum = {
   HOURS: "hour",
   DAYS: "day",
   WEEKS: "week",
-  MILLISECONDS: "millisecond",
 };
 
-export const AbbreviatedTimeUnits = {
-  SECONDS: "s",
-  MINUTES: "m",
-  HOURS: "h",
-  DAYS: "d",
-  WEEKS: "w",
-  MILLISECONDS: "ms",
-};
-
-function formatDateTimeValue(value, format) {
+export function formatDateTime(value) {
   if (!value) {
     return "";
   }
@@ -30,19 +20,20 @@ function formatDateTimeValue(value, format) {
     return "-";
   }
 
-  return parsed.format(format);
-}
-
-export function formatDateTime(value) {
-  return formatDateTimeValue(value, clientConfig.dateTimeFormat);
-}
-
-export function formatDateTimePrecise(value, withMilliseconds = false) {
-  return formatDateTimeValue(value, clientConfig.dateFormat + (withMilliseconds ? " HH:mm:ss.SSS" : " HH:mm:ss"));
+  return parsed.format(clientConfig.dateTimeFormat);
 }
 
 export function formatDate(value) {
-  return formatDateTimeValue(value, clientConfig.dateFormat);
+  if (!value) {
+    return "";
+  }
+
+  const parsed = moment(value);
+  if (!parsed.isValid()) {
+    return "-";
+  }
+
+  return parsed.format(clientConfig.dateFormat);
 }
 
 export function localizeTime(time) {
@@ -85,12 +76,12 @@ export function pluralize(text, count) {
   return text + (should ? "s" : "");
 }
 
-export function durationHumanize(durationInSeconds, options = {}) {
-  if (!durationInSeconds) {
+export function durationHumanize(duration, options = {}) {
+  if (!duration) {
     return "-";
   }
   let ret = "";
-  const { interval, count } = secondsToInterval(durationInSeconds);
+  const { interval, count } = secondsToInterval(duration);
   const rounded = Math.round(count);
   if (rounded !== 1 || !options.omitSingleValueNumber) {
     ret = `${rounded} `;
@@ -127,59 +118,21 @@ export function remove(items, item) {
   return filtered;
 }
 
-/**
- * Formats number to string
- * @param value {number}
- * @param [fractionDigits] {number}
- * @return {string}
- */
-export function formatNumber(value, fractionDigits = 3) {
-  return Math.round(value) !== value ? value.toFixed(fractionDigits) : value.toString();
-}
+const units = ["bytes", "KB", "MB", "GB", "TB", "PB"];
 
-/**
- * Formats any number using predefined units
- * @param value {string|number}
- * @param divisor {number}
- * @param [units] {Array<string>}
- * @param [fractionDigits] {number}
- * @return {{unit: string, value: string, divisor: number}}
- */
-export function prettyNumberWithUnit(value, divisor, units = [], fractionDigits) {
-  if (isNaN(parseFloat(value)) || !isFinite(value)) {
-    return {
-      value: "",
-      unit: "",
-      divisor: 1,
-    };
+export function prettySize(bytes) {
+  if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) {
+    return "?";
   }
 
   let unit = 0;
-  let greatestDivisor = 1;
 
-  while (value >= divisor && unit < units.length - 1) {
-    value /= divisor;
-    greatestDivisor *= divisor;
+  while (bytes >= 1024) {
+    bytes /= 1024;
     unit += 1;
   }
 
-  return {
-    value: formatNumber(value, fractionDigits),
-    unit: units[unit],
-    divisor: greatestDivisor,
-  };
-}
-
-export function prettySizeWithUnit(bytes, fractionDigits) {
-  return prettyNumberWithUnit(bytes, 1024, ["bytes", "KB", "MB", "GB", "TB", "PB"], fractionDigits);
-}
-
-export function prettySize(bytes) {
-  const { value, unit } = prettySizeWithUnit(bytes);
-  if (!value) {
-    return "?";
-  }
-  return value + " " + unit;
+  return bytes.toFixed(3) + " " + units[unit];
 }
 
 export function join(arr) {

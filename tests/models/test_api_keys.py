@@ -1,5 +1,5 @@
-from redash.models import ApiKey
 from tests import BaseTestCase
+from redash.models import ApiKey
 
 
 class TestApiKeyGetByObject(BaseTestCase):

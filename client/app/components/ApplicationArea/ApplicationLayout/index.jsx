@@ -13,21 +13,19 @@ export default function ApplicationLayout({ children }) {
 
   return (
     <React.Fragment>
-      <DynamicComponent name="ApplicationWrapper">
-        <div className="application-layout-side-menu">
-          <DynamicComponent name="ApplicationDesktopNavbar">
-            <DesktopNavbar />
+      <div className="application-layout-side-menu">
+        <DynamicComponent name="ApplicationDesktopNavbar">
+          <DesktopNavbar />
+        </DynamicComponent>
+      </div>
+      <div className="application-layout-content">
+        <nav className="application-layout-top-menu" ref={mobileNavbarContainerRef}>
+          <DynamicComponent name="ApplicationMobileNavbar" getPopupContainer={getMobileNavbarPopupContainer}>
+            <MobileNavbar getPopupContainer={getMobileNavbarPopupContainer} />
           </DynamicComponent>
-        </div>
-        <div className="application-layout-content">
-          <nav className="application-layout-top-menu" ref={mobileNavbarContainerRef}>
-            <DynamicComponent name="ApplicationMobileNavbar" getPopupContainer={getMobileNavbarPopupContainer}>
-              <MobileNavbar getPopupContainer={getMobileNavbarPopupContainer} />
-            </DynamicComponent>
-          </nav>
-          {children}
-        </div>
-      </DynamicComponent>
+        </nav>
+        {children}
+      </div>
     </React.Fragment>
   );
 }

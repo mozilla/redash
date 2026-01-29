@@ -1,8 +1,7 @@
-import { isEqual, map, find, fromPairs } from "lodash";
+import { map, find } from "lodash";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import useQueryResultData from "@/lib/useQueryResultData";
-import useImmutableCallback from "@/lib/hooks/useImmutableCallback";
 import Filters, { FiltersType, filterData } from "@/components/Filters";
 import { VisualizationType } from "@redash/viz/lib";
 import { Renderer } from "@/components/visualizations/visualizationComponents";
@@ -25,41 +24,23 @@ function combineFilters(localFilters, globalFilters) {
   });
 }
 
-function areFiltersEqual(a, b) {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  a = fromPairs(map(a, item => [item.name, item]));
-  b = fromPairs(map(b, item => [item.name, item]));
-
-  return isEqual(a, b);
-}
-
 export default function VisualizationRenderer(props) {
   const data = useQueryResultData(props.queryResult);
-  const [filters, setFilters] = useState(() => combineFilters(data.filters, props.filters)); // lazy initialization
+  const [filters, setFilters] = useState(data.filters);
   const filtersRef = useRef();
   filtersRef.current = filters;
 
-  const handleFiltersChange = useImmutableCallback(newFilters => {
-    if (!areFiltersEqual(newFilters, filters)) {
-      setFilters(newFilters);
-      props.onFiltersChange(newFilters);
-    }
-  });
-
   // Reset local filters when query results updated
   useEffect(() => {
-    handleFiltersChange(combineFilters(data.filters, props.filters));
-  }, [data.filters, props.filters, handleFiltersChange]);
+    setFilters(combineFilters(data.filters, props.filters));
+  }, [data.filters, props.filters]);
 
   // Update local filters when global filters changed.
   // For correct behavior need to watch only `props.filters` here,
   // therefore using ref to access current local filters
   useEffect(() => {
-    handleFiltersChange(combineFilters(filtersRef.current, props.filters));
-  }, [props.filters, handleFiltersChange]);
+    setFilters(combineFilters(filtersRef.current, props.filters));
+  }, [props.filters]);
 
   const filteredData = useMemo(
     () => ({
@@ -85,7 +66,7 @@ export default function VisualizationRenderer(props) {
       options={options}
       data={filteredData}
       visualizationName={visualization.name}
-      addonBefore={showFilters && <Filters filters={filters} onChange={handleFiltersChange} />}
+      addonBefore={showFilters && <Filters filters={filters} onChange={setFilters} />}
     />
   );
 }
@@ -93,14 +74,12 @@ export default function VisualizationRenderer(props) {
 VisualizationRenderer.propTypes = {
   visualization: VisualizationType.isRequired,
   queryResult: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
-  showFilters: PropTypes.bool,
   filters: FiltersType,
-  onFiltersChange: PropTypes.func,
+  showFilters: PropTypes.bool,
   context: PropTypes.oneOf(["query", "widget"]).isRequired,
 };
 
 VisualizationRenderer.defaultProps = {
-  showFilters: true,
   filters: [],
-  onFiltersChange: () => {},
+  showFilters: true,
 };

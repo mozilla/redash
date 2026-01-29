@@ -1,26 +1,18 @@
-import csv
+from io import StringIO
 import logging
+import sys
 import uuid
+import csv
 
-from redash.query_runner import (
-    TYPE_DATE,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    InterruptException,
-    JobTimeoutException,
-    register,
-)
-from redash.utils import json_loads
+from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
 
 logger = logging.getLogger(__name__)
 
 try:
     import atsd_client
     from atsd_client.exceptions import SQLException
-    from atsd_client.services import MetricsService, SQLService
+    from atsd_client.services import SQLService, MetricsService
 
     enabled = True
 except ImportError:
@@ -123,6 +115,12 @@ class AxibaseTSD(BaseQueryRunner):
                     "type": "boolean",
                     "title": "Trust SSL Certificate",
                 },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
             "required": ["username", "password", "hostname", "protocol", "port"],
             "secret": ["password"],
@@ -157,16 +155,17 @@ class AxibaseTSD(BaseQueryRunner):
             columns, rows = generate_rows_and_columns(data)
 
             data = {"columns": columns, "rows": rows}
+            json_data = json_dumps(data)
             error = None
 
         except SQLException as e:
-            data = None
+            json_data = None
             error = e.content
         except (KeyboardInterrupt, InterruptException, JobTimeoutException):
             sql.cancel_query(query_id)
             raise
 
-        return data, error
+        return json_data, error
 
     def get_schema(self, get_stats=False):
         connection = atsd_client.connect_url(

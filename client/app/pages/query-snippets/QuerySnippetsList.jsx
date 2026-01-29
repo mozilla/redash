@@ -15,7 +15,6 @@ import { StateStorage } from "@/components/items-list/classes/StateStorage";
 import LoadingState from "@/components/items-list/components/LoadingState";
 import ItemsTable, { Columns } from "@/components/items-list/components/ItemsTable";
 import wrapSettingsTab from "@/components/SettingsWrapper";
-import PlainButton from "@/components/PlainButton";
 
 import QuerySnippet from "@/services/query-snippet";
 import { currentUser } from "@/services/auth";
@@ -35,9 +34,11 @@ class QuerySnippetsList extends React.Component {
   listColumns = [
     Columns.custom.sortable(
       (text, querySnippet) => (
-        <PlainButton type="link" className="table-main-title" onClick={() => this.showSnippetDialog(querySnippet)}>
-          {querySnippet.trigger}
-        </PlainButton>
+        <div>
+          <a className="table-main-title clickable" onClick={() => this.showSnippetDialog(querySnippet)}>
+            {querySnippet.trigger}
+          </a>
+        </div>
       ),
       {
         title: "Trigger",
@@ -146,7 +147,7 @@ class QuerySnippetsList extends React.Component {
             type="primary"
             onClick={() => this.showSnippetDialog()}
             disabled={!policy.isCreateQuerySnippetEnabled()}>
-            <i className="fa fa-plus m-r-5" aria-hidden="true" />
+            <i className="fa fa-plus m-r-5" />
             New Query Snippet
           </Button>
         </div>
@@ -157,16 +158,16 @@ class QuerySnippetsList extends React.Component {
             There are no query snippets yet.
             {policy.isCreateQuerySnippetEnabled() && (
               <div className="m-t-5">
-                <PlainButton type="link" onClick={() => this.showSnippetDialog()}>
+                <a className="clickable" onClick={() => this.showSnippetDialog()}>
                   Click here
-                </PlainButton>{" "}
+                </a>{" "}
                 to add one.
               </div>
             )}
           </div>
         )}
         {controller.isLoaded && !controller.isEmpty && (
-          <div className="table-responsive query-snippets-table">
+          <div className="table-responsive">
             <ItemsTable
               items={controller.pageItems}
               columns={this.listColumns}
@@ -176,10 +177,8 @@ class QuerySnippetsList extends React.Component {
               toggleSorting={controller.toggleSorting}
             />
             <Paginator
-              showPageSizeSelect
               totalCount={controller.totalItemsCount}
-              pageSize={controller.itemsPerPage}
-              onPageSizeChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+              itemsPerPage={controller.itemsPerPage}
               page={controller.page}
               onChange={page => controller.updatePagination({ page })}
             />

@@ -3,10 +3,6 @@
   height: 35px;
 }
 
-
-/* same rule as for sidebar */
-@media (max-width: 990px) {
-  .page-queries-list .page-header-actions {
-    width: auto;
-  }
+.page-queries-list .page-header-actions {
+  min-width: 25%; /* same as sidebar */
 }

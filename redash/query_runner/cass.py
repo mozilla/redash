@@ -5,12 +5,13 @@ from base64 import b64decode
 from tempfile import NamedTemporaryFile
 
 from redash.query_runner import BaseQueryRunner, register
+from redash.utils import JSONEncoder, json_dumps, json_loads
 
 logger = logging.getLogger(__name__)
 
 try:
-    from cassandra.auth import PlainTextAuthProvider
     from cassandra.cluster import Cluster
+    from cassandra.auth import PlainTextAuthProvider
     from cassandra.util import sortedset
 
     enabled = True
@@ -19,11 +20,20 @@ except ImportError:
 
 
 def generate_ssl_options_dict(protocol, cert_path=None):
-    ssl_options = {"ssl_version": getattr(ssl, protocol)}
+    ssl_options = {
+        'ssl_version': getattr(ssl, protocol)
+    }
     if cert_path is not None:
-        ssl_options["ca_certs"] = cert_path
-        ssl_options["cert_reqs"] = ssl.CERT_REQUIRED
+        ssl_options['ca_certs'] = cert_path
+        ssl_options['cert_reqs'] = ssl.CERT_REQUIRED
     return ssl_options
+
+
+class CassandraJSONEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, sortedset):
+            return list(o)
+        return super(CassandraJSONEncoder, self).default(o)
 
 
 class Cassandra(BaseQueryRunner):
@@ -32,12 +42,6 @@ class Cassandra(BaseQueryRunner):
     @classmethod
     def enabled(cls):
         return enabled
-
-    @classmethod
-    def custom_json_encoder(cls, dec, o):
-        if isinstance(o, sortedset):
-            return list(o)
-        return None
 
     @classmethod
     def configuration_schema(cls):
@@ -56,7 +60,10 @@ class Cassandra(BaseQueryRunner):
                 },
                 "timeout": {"type": "number", "title": "Timeout", "default": 10},
                 "useSsl": {"type": "boolean", "title": "Use SSL", "default": False},
-                "sslCertificateFile": {"type": "string", "title": "SSL Certificate File"},
+                "sslCertificateFile": {
+                    "type": "string",
+                    "title": "SSL Certificate File"
+                },
                 "sslProtocol": {
                     "type": "string",
                     "title": "SSL Protocol",
@@ -69,6 +76,12 @@ class Cassandra(BaseQueryRunner):
                         "PROTOCOL_TLSv1_1",
                         "PROTOCOL_TLSv1_2",
                     ],
+                },
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
                 },
             },
             "required": ["keyspace", "host", "useSsl"],
@@ -84,6 +97,7 @@ class Cassandra(BaseQueryRunner):
         select release_version from system.local;
         """
         results, error = self.run_query(query, None)
+        results = json_loads(results)
         release_version = results["rows"][0]["release_version"]
 
         query = """
@@ -104,6 +118,7 @@ class Cassandra(BaseQueryRunner):
             )
 
         results, error = self.run_query(query, None)
+        results = json_loads(results)
 
         schema = {}
         for row in results["rows"]:
@@ -118,7 +133,9 @@ class Cassandra(BaseQueryRunner):
     def run_query(self, query, user):
         connection = None
         cert_path = self._generate_cert_file()
-        if self.configuration.get("username", "") and self.configuration.get("password", ""):
+        if self.configuration.get("username", "") and self.configuration.get(
+            "password", ""
+        ):
             auth_provider = PlainTextAuthProvider(
                 username="{}".format(self.configuration.get("username", "")),
                 password="{}".format(self.configuration.get("password", "")),
@@ -151,13 +168,14 @@ class Cassandra(BaseQueryRunner):
         rows = [dict(zip(column_names, row)) for row in result]
 
         data = {"columns": columns, "rows": rows}
+        json_data = json_dumps(data, cls=CassandraJSONEncoder)
 
-        return data, None
+        return json_data, None
 
     def _generate_cert_file(self):
         cert_encoded_bytes = self.configuration.get("sslCertificateFile", None)
         if cert_encoded_bytes:
-            with NamedTemporaryFile(mode="w", delete=False) as cert_file:
+            with NamedTemporaryFile(mode='w', delete=False) as cert_file:
                 cert_bytes = b64decode(cert_encoded_bytes)
                 cert_file.write(cert_bytes.decode("utf-8"))
             return cert_file.name
@@ -170,7 +188,10 @@ class Cassandra(BaseQueryRunner):
     def _get_ssl_options(self, cert_path):
         ssl_options = None
         if self.configuration.get("useSsl", False):
-            ssl_options = generate_ssl_options_dict(protocol=self.configuration["sslProtocol"], cert_path=cert_path)
+            ssl_options = generate_ssl_options_dict(
+                protocol=self.configuration["sslProtocol"],
+                cert_path=cert_path
+            )
         return ssl_options
 
 

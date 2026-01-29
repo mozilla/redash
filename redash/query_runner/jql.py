@@ -1,12 +1,12 @@
 import re
 from collections import OrderedDict
 
-from redash.query_runner import TYPE_STRING, BaseHTTPQueryRunner, register
-from redash.utils import json_loads
+from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
 
 
 # TODO: make this more general and move into __init__.py
-class ResultSet:
+class ResultSet(object):
     def __init__(self):
         self.columns = OrderedDict()
         self.rows = []
@@ -26,13 +26,13 @@ class ResultSet:
             }
 
     def to_json(self):
-        return {"rows": self.rows, "columns": list(self.columns.values())}
+        return json_dumps({"rows": self.rows, "columns": list(self.columns.values())})
 
     def merge(self, set):
         self.rows = self.rows + set.rows
 
 
-def parse_issue(issue, field_mapping):  # noqa: C901
+def parse_issue(issue, field_mapping):
     result = OrderedDict()
     result["key"] = issue["key"]
 
@@ -45,7 +45,9 @@ def parse_issue(issue, field_mapping):  # noqa: C901
                 # if field mapping with dict member mappings defined get value of each member
                 for member_name in member_names:
                     if member_name in v:
-                        result[field_mapping.get_dict_output_field_name(k, member_name)] = v[member_name]
+                        result[
+                            field_mapping.get_dict_output_field_name(k, member_name)
+                        ] = v[member_name]
 
             else:
                 # these special mapping rules are kept for backwards compatibility
@@ -70,7 +72,9 @@ def parse_issue(issue, field_mapping):  # noqa: C901
                             if member_name in listItem:
                                 listValues.append(listItem[member_name])
                     if len(listValues) > 0:
-                        result[field_mapping.get_dict_output_field_name(k, member_name)] = ",".join(listValues)
+                        result[
+                            field_mapping.get_dict_output_field_name(k, member_name)
+                        ] = ",".join(listValues)
 
             else:
                 # otherwise support list values only for non-dict items
@@ -110,7 +114,7 @@ class FieldMapping:
             member_name = None
 
             # check for member name contained in field name
-            member_parser = re.search(r"(\w+)\.(\w+)", k)
+            member_parser = re.search("(\w+)\.(\w+)", k)
             if member_parser:
                 field_name = member_parser.group(1)
                 member_name = member_parser.group(2)

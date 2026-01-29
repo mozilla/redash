@@ -1,10 +1,8 @@
-import { get, isObject } from "lodash";
+import { isObject, get } from "lodash";
 import React from "react";
 import PropTypes from "prop-types";
 
 import "./ErrorMessage.less";
-import DynamicComponent from "@/components/DynamicComponent";
-import { ErrorMessageDetails } from "@/components/ApplicationArea/ErrorMessageDetails";
 
 function getErrorMessageByStatus(status, defaultMessage) {
   switch (status) {
@@ -33,30 +31,21 @@ function getErrorMessage(error) {
   return message;
 }
 
-export default function ErrorMessage({ error, message }) {
+export default function ErrorMessage({ error }) {
   if (!error) {
     return null;
   }
 
   console.error(error);
 
-  const errorDetailsProps = {
-    error,
-    message: message || getErrorMessage(error),
-  };
-
   return (
-    <div className="error-message-container" data-test="ErrorMessage" role="alert">
+    <div className="error-message-container" data-test="ErrorMessage">
       <div className="error-state bg-white tiled">
         <div className="error-state__icon">
-          <i className="zmdi zmdi-alert-circle-o" aria-hidden="true" />
+          <i className="zmdi zmdi-alert-circle-o" />
         </div>
         <div className="error-state__details">
-          <DynamicComponent
-            name="ErrorMessageDetails"
-            fallback={<ErrorMessageDetails {...errorDetailsProps} />}
-            {...errorDetailsProps}
-          />
+          <h4>{getErrorMessage(error)}</h4>
         </div>
       </div>
     </div>
@@ -65,5 +54,4 @@ export default function ErrorMessage({ error, message }) {
 
 ErrorMessage.propTypes = {
   error: PropTypes.object.isRequired,
-  message: PropTypes.string,
 };

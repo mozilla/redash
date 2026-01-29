@@ -1,5 +1,6 @@
 /* global cy, Cypress */
 
+import { createDashboard, addTextbox } from "../../support/redash-api";
 import { getWidgetTestId } from "../../support/dashboard";
 
 const menuWidth = 80;
@@ -15,7 +16,7 @@ describe("Dashboard", () => {
     cy.getByTestId("CreateDashboardMenuItem").click();
 
     cy.server();
-    cy.route("POST", "**/api/dashboards").as("NewDashboard");
+    cy.route("POST", "api/dashboards").as("NewDashboard");
 
     cy.getByTestId("CreateDashboardDialog").within(() => {
       cy.getByTestId("DashboardSaveButton").should("be.disabled");
@@ -24,19 +25,19 @@ describe("Dashboard", () => {
     });
 
     cy.wait("@NewDashboard").then(xhr => {
-      const id = Cypress._.get(xhr, "response.body.id");
-      assert.isDefined(id, "Dashboard api call returns id");
+      const slug = Cypress._.get(xhr, "response.body.slug");
+      assert.isDefined(slug, "Dashboard api call returns slug");
 
       cy.visit("/dashboards");
       cy.getByTestId("DashboardLayoutContent").within(() => {
-        cy.getByTestId(`DashboardId${id}`).should("exist");
+        cy.getByTestId(slug).should("exist");
       });
     });
   });
 
   it("archives dashboard", () => {
-    cy.createDashboard("Foo Bar").then(({ id }) => {
-      cy.visit(`/dashboards/${id}`);
+    createDashboard("Foo Bar").then(({ slug }) => {
+      cy.visit(`/dashboard/${slug}`);
 
       cy.getByTestId("DashboardMoreButton").click();
 
@@ -51,22 +52,7 @@ describe("Dashboard", () => {
 
       cy.visit("/dashboards");
       cy.getByTestId("DashboardLayoutContent").within(() => {
-        cy.getByTestId(`DashboardId${id}`).should("not.exist");
-      });
-    });
-  });
-
-  it("is accessible through multiple urls", () => {
-    cy.server();
-    cy.route("GET", "**/api/dashboards/*").as("LoadDashboard");
-    cy.createDashboard("Dashboard multiple urls").then(({ id, slug }) => {
-      [`/dashboards/${id}`, `/dashboards/${id}-anything-here`, `/dashboard/${slug}`].forEach(url => {
-        cy.visit(url);
-        cy.wait("@LoadDashboard");
-        cy.getByTestId(`DashboardId${id}Container`).should("exist");
-
-        // assert it always use the "/dashboards/{id}" path
-        cy.location("pathname").should("contain", `/dashboards/${id}`);
+        cy.getByTestId(slug).should("not.exist");
       });
     });
   });
@@ -74,11 +60,11 @@ describe("Dashboard", () => {
   context("viewport width is at 800px", () => {
     before(function() {
       cy.login();
-      cy.createDashboard("Foo Bar")
-        .then(({ id }) => {
-          this.dashboardUrl = `/dashboards/${id}`;
-          this.dashboardEditUrl = `/dashboards/${id}?edit`;
-          return cy.addTextbox(id, "Hello World!").then(getWidgetTestId);
+      createDashboard("Foo Bar")
+        .then(({ slug, id }) => {
+          this.dashboardUrl = `/dashboard/${slug}`;
+          this.dashboardEditUrl = `/dashboard/${slug}?edit`;
+          return addTextbox(id, "Hello World!").then(getWidgetTestId);
         })
         .then(elTestId => {
           cy.visit(this.dashboardUrl);
@@ -87,7 +73,6 @@ describe("Dashboard", () => {
     });
 
     beforeEach(function() {
-      cy.login();
       cy.visit(this.dashboardUrl);
       cy.viewport(800 + menuWidth, 800);
     });
@@ -132,8 +117,8 @@ describe("Dashboard", () => {
   context("viewport width is at 767px", () => {
     before(function() {
       cy.login();
-      cy.createDashboard("Foo Bar").then(({ id }) => {
-        this.dashboardUrl = `/dashboards/${id}`;
+      createDashboard("Foo Bar").then(({ slug }) => {
+        this.dashboardUrl = `/dashboard/${slug}`;
       });
     });
 

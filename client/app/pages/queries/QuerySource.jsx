@@ -1,10 +1,11 @@
-import { extend, find, includes, isEmpty, map } from "lodash";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { isEmpty, find, map, extend, includes } from "lodash";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { useDebouncedCallback } from "use-debounce";
 import useMedia from "use-media";
 import Button from "antd/lib/button";
+import Select from "antd/lib/select";
 import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
 import Resizable from "@/components/Resizable";
 import Parameters from "@/components/Parameters";
@@ -13,8 +14,6 @@ import DynamicComponent from "@/components/DynamicComponent";
 import recordEvent from "@/services/recordEvent";
 import { ExecutionStatus } from "@/services/query-result";
 import routes from "@/services/routes";
-import notification from "@/services/notification";
-import * as queryFormat from "@/lib/queryFormat";
 
 import QueryPageHeader from "./components/QueryPageHeader";
 import QueryMetadata from "./components/QueryMetadata";
@@ -28,7 +27,6 @@ import { getEditorComponents } from "@/components/queries/editor-components";
 import useQuery from "./hooks/useQuery";
 import useVisualizationTabHandler from "./hooks/useVisualizationTabHandler";
 import useAutocompleteFlags from "./hooks/useAutocompleteFlags";
-import useAutoLimitFlags from "./hooks/useAutoLimitFlags";
 import useQueryExecute from "./hooks/useQueryExecute";
 import useQueryResultData from "@/lib/useQueryResultData";
 import useQueryDataSources from "./hooks/useQueryDataSources";
@@ -39,14 +37,15 @@ import useEditScheduleDialog from "./hooks/useEditScheduleDialog";
 import useAddVisualizationDialog from "./hooks/useAddVisualizationDialog";
 import useEditVisualizationDialog from "./hooks/useEditVisualizationDialog";
 import useDeleteVisualization from "./hooks/useDeleteVisualization";
+import useFormatQuery from "./hooks/useFormatQuery";
 import useUpdateQuery from "./hooks/useUpdateQuery";
 import useUpdateQueryDescription from "./hooks/useUpdateQueryDescription";
 import useUnsavedChangesAlert from "./hooks/useUnsavedChangesAlert";
 
-import "./components/QuerySourceDropdown"; // register QuerySourceDropdown
 import "./QuerySource.less";
 
 function chooseDataSourceId(dataSourceIds, availableDataSources) {
+  dataSourceIds = map(dataSourceIds, v => parseInt(v, 10));
   availableDataSources = map(availableDataSources, ds => ds.id);
   return find(dataSourceIds, id => includes(availableDataSources, id)) || null;
 }
@@ -79,7 +78,6 @@ function QuerySource(props) {
 
   const editorRef = useRef(null);
   const [autocompleteAvailable, autocompleteEnabled, toggleAutocomplete] = useAutocompleteFlags(schema);
-  const [autoLimitAvailable, autoLimitChecked, setAutoLimit] = useAutoLimitFlags(dataSource, query, setQuery);
 
   const [handleQueryEditorChange] = useDebouncedCallback(queryText => {
     setQuery(extend(query.clone(), { query: queryText }));
@@ -96,16 +94,7 @@ function QuerySource(props) {
 
   const updateQuery = useUpdateQuery(query, setQuery);
   const updateQueryDescription = useUpdateQueryDescription(query, setQuery);
-  const querySyntax = dataSource ? dataSource.syntax || "sql" : null;
-  const isFormatQueryAvailable = queryFormat.isFormatQueryAvailable(querySyntax);
-  const formatQuery = () => {
-    try {
-      const formattedQueryText = queryFormat.formatQuery(query.query, querySyntax);
-      setQuery(extend(query.clone(), { query: formattedQueryText }));
-    } catch (err) {
-      notification.error(String(err));
-    }
-  };
+  const formatQuery = useFormatQuery(query, dataSource ? dataSource.syntax : null, setQuery);
 
   const handleDataSourceChange = useCallback(
     dataSourceId => {
@@ -134,10 +123,11 @@ function QuerySource(props) {
     // choose data source id for new queries
     if (dataSourcesLoaded && queryFlags.isNew) {
       const firstDataSourceId = dataSources.length > 0 ? dataSources[0].id : null;
-      const selectedDataSourceId = parseInt(localStorage.getItem("lastSelectedDataSourceId")) || null;
-
       handleDataSourceChange(
-        chooseDataSourceId([query.data_source_id, selectedDataSourceId, firstDataSourceId], dataSources)
+        chooseDataSourceId(
+          [query.data_source_id, localStorage.getItem("lastSelectedDataSourceId"), firstDataSourceId],
+          dataSources
+        )
       );
     }
   }, [query.data_source_id, queryFlags.isNew, dataSourcesLoaded, dataSources, handleDataSourceChange]);
@@ -200,7 +190,6 @@ function QuerySource(props) {
           dataSource={dataSource}
           sourceMode
           selectedVisualization={selectedVisualization}
-          headerExtra={<DynamicComponent name="QuerySource.HeaderExtra" query={query} />}
           onChange={setQuery}
         />
       </div>
@@ -209,14 +198,29 @@ function QuerySource(props) {
           <nav>
             {dataSourcesLoaded && (
               <div className="editor__left__data-source">
-                <DynamicComponent
-                  name={"QuerySourceDropdown"}
-                  dataSources={dataSources}
+                <Select
+                  className="w-100"
+                  data-test="SelectDataSource"
+                  placeholder="Choose data source..."
                   value={dataSource ? dataSource.id : undefined}
                   disabled={!queryFlags.canEdit || !dataSourcesLoaded || dataSources.length === 0}
                   loading={!dataSourcesLoaded}
-                  onChange={handleDataSourceChange}
-                />
+                  optionFilterProp="data-name"
+                  showSearch
+                  onChange={handleDataSourceChange}>
+                  {map(dataSources, ds => (
+                    <Select.Option
+                      key={`ds-${ds.id}`}
+                      value={ds.id}
+                      data-name={ds.name}
+                      title={ds.description && ds.description}
+                      data-test={`SelectDataSource${ds.id}`}>
+                      <img src={`/static/images/db-logos/${ds.type}.png`} width="20" alt={ds.name} />
+                      <span>{ds.name}</span>
+                    </Select.Option>
+                  ))}
+                </Select>
+                <DynamicComponent name="SelectDataSourceExtra" dataSourceId={dataSource ? dataSource.id : undefined} />
               </div>
             )}
             <div className="editor__left__schema">
@@ -275,11 +279,8 @@ function QuerySource(props) {
                         onClick: openAddNewParameterDialog,
                       }}
                       formatButtonProps={{
-                        title: isFormatQueryAvailable
-                          ? "Format Query"
-                          : "Query formatting is not supported for your Data Source syntax",
-                        disabled: !dataSource || !isFormatQueryAvailable,
-                        shortcut: isFormatQueryAvailable ? "mod+shift+f" : null,
+                        title: "Format Query",
+                        shortcut: "mod+shift+f",
                         onClick: formatQuery,
                       }}
                       saveButtonProps={
@@ -308,11 +309,6 @@ function QuerySource(props) {
                         enabled: autocompleteEnabled,
                         onToggle: toggleAutocomplete,
                       }}
-                      autoLimitCheckboxProps={{
-                        available: autoLimitAvailable,
-                        checked: autoLimitChecked,
-                        onChange: setAutoLimit,
-                      }}
                       dataSourceSelectorProps={
                         dataSource
                           ? {
@@ -335,7 +331,6 @@ function QuerySource(props) {
                   <div className="query-parameters-wrapper">
                     <Parameters
                       editable={queryFlags.canEdit}
-                      sortable={queryFlags.canEdit}
                       disableUrlUpdate={queryFlags.isNew}
                       parameters={parameters}
                       onPendingValuesChange={() => updateParametersDirtyFlag()}

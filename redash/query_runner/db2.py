@@ -1,22 +1,12 @@
 import logging
 
-from redash.query_runner import (
-    TYPE_DATE,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseSQLQueryRunner,
-    InterruptException,
-    JobTimeoutException,
-    register,
-)
+from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
 
 logger = logging.getLogger(__name__)
 
 try:
     import select
-
     import ibm_db_dbi
 
     types_map = {
@@ -65,7 +55,7 @@ class DB2(BaseSQLQueryRunner):
     @classmethod
     def enabled(cls):
         try:
-            import ibm_db  # noqa: F401
+            import ibm_db
         except ImportError:
             return False
 
@@ -75,7 +65,9 @@ class DB2(BaseSQLQueryRunner):
         results, error = self.run_query(query, None)
 
         if error is not None:
-            self._handle_run_query_error(error)
+            raise Exception("Failed getting schema.")
+
+        results = json_loads(results)
 
         for row in results["rows"]:
             if row["TABLE_SCHEMA"] != "public":
@@ -122,27 +114,33 @@ class DB2(BaseSQLQueryRunner):
             cursor.execute(query)
 
             if cursor.description is not None:
-                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
-                rows = [dict(zip((column["name"] for column in columns), row)) for row in cursor]
+                columns = self.fetch_columns(
+                    [(i[0], types_map.get(i[1], None)) for i in cursor.description]
+                )
+                rows = [
+                    dict(zip((column["name"] for column in columns), row))
+                    for row in cursor
+                ]
 
                 data = {"columns": columns, "rows": rows}
                 error = None
+                json_data = json_dumps(data)
             else:
                 error = "Query completed but it returned no data."
-                data = None
-        except (select.error, OSError):
+                json_data = None
+        except (select.error, OSError) as e:
             error = "Query interrupted. Please retry."
-            data = None
+            json_data = None
         except ibm_db_dbi.DatabaseError as e:
             error = str(e)
-            data = None
+            json_data = None
         except (KeyboardInterrupt, InterruptException, JobTimeoutException):
             connection.cancel()
             raise
         finally:
             connection.close()
 
-        return data, error
+        return json_data, error
 
 
 register(DB2)

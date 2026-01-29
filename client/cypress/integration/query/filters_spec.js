@@ -1,3 +1,4 @@
+import { createQuery } from "../../support/redash-api";
 import { expectTableToHaveLength, expectFirstColumnToHaveMembers } from "../../support/visualizations/table";
 
 const SQL = `
@@ -26,13 +27,13 @@ describe("Query Filters", () => {
         query: `SELECT stage1 AS "stage1::filter", stage2, value FROM (${SQL}) q`,
       };
 
-      cy.createQuery(queryData).then(({ id }) => cy.visit(`/queries/${id}`));
+      createQuery(queryData).then(({ id }) => cy.visit(`/queries/${id}`));
       cy.getByTestId("ExecuteButton").click();
     });
 
     it("filters rows in a Table Visualization", () => {
       cy.getByTestId("FilterName-stage1::filter")
-        .find(".ant-select-selection-item")
+        .find(".ant-select-selection-selected-value")
         .should("have.text", "a");
 
       expectTableToHaveLength(4);
@@ -42,7 +43,7 @@ describe("Query Filters", () => {
         .find(".ant-select")
         .click();
 
-      cy.contains(".ant-select-item-option-content", "b").click();
+      cy.contains("li.ant-select-dropdown-menu-item", "b").click();
 
       expectTableToHaveLength(3);
       expectFirstColumnToHaveMembers(["b", "b", "b"]);
@@ -56,62 +57,46 @@ describe("Query Filters", () => {
         query: `SELECT stage1 AS "stage1::multi-filter", stage2, value FROM (${SQL}) q`,
       };
 
-      cy.createQuery(queryData).then(({ id }) => cy.visit(`/queries/${id}`));
+      createQuery(queryData).then(({ id }) => cy.visit(`/queries/${id}`));
       cy.getByTestId("ExecuteButton").click();
     });
 
     function expectSelectedOptionsToHaveMembers(values) {
       cy.getByTestId("FilterName-stage1::multi-filter")
-        .find(".ant-select-selection-item-content")
+        .find(".ant-select-selection__choice__content")
         .then($selectedOptions => Cypress.$.map($selectedOptions, item => Cypress.$(item).text()))
         .then(selectedOptions => expect(selectedOptions).to.have.members(values));
     }
 
     it("filters rows in a Table Visualization", () => {
-      // Defaults to All Options Selected
-
-      expectSelectedOptionsToHaveMembers(["a", "b", "c"]);
-      expectTableToHaveLength(11);
-      expectFirstColumnToHaveMembers(["a", "a", "a", "a", "b", "b", "b", "c", "c", "c", "c"]);
-
-      // Clear Option
-
-      cy.getByTestId("FilterName-stage1::multi-filter")
-        .find(".ant-select-selector")
-        .click();
-      cy.getByTestId("ClearOption").click();
-      cy.getByTestId("FilterName-stage1::multi-filter").click(); // close dropdown
-
-      cy.getByTestId("TableVisualization").should("not.exist");
-
-      // Single Option selected
-
-      cy.getByTestId("FilterName-stage1::multi-filter")
-        .find(".ant-select-selector")
-        .click();
-      cy.contains(".ant-select-item-option-grouped > .ant-select-item-option-content", "a").click();
-      cy.getByTestId("FilterName-stage1::multi-filter").click(); // close dropdown
-
       expectSelectedOptionsToHaveMembers(["a"]);
       expectTableToHaveLength(4);
       expectFirstColumnToHaveMembers(["a", "a", "a", "a"]);
 
-      // Two Options selected
-
       cy.getByTestId("FilterName-stage1::multi-filter")
-        .find(".ant-select-selector")
+        .find(".ant-select-selection")
         .click();
-      cy.contains(".ant-select-item-option-content", "b").click();
+      cy.contains("li.ant-select-dropdown-menu-item", "b").click();
       cy.getByTestId("FilterName-stage1::multi-filter").click(); // close dropdown
 
       expectSelectedOptionsToHaveMembers(["a", "b"]);
       expectTableToHaveLength(7);
       expectFirstColumnToHaveMembers(["a", "a", "a", "a", "b", "b", "b"]);
 
+      // Clear Option
+
+      cy.getByTestId("FilterName-stage1::multi-filter")
+        .find(".ant-select-selection")
+        .click();
+      cy.getByTestId("ClearOption").click();
+      cy.getByTestId("FilterName-stage1::multi-filter").click(); // close dropdown
+
+      cy.getByTestId("TableVisualization").should("not.exist");
+
       // Select All Option
 
       cy.getByTestId("FilterName-stage1::multi-filter")
-        .find(".ant-select-selector")
+        .find(".ant-select-selection")
         .click();
       cy.getByTestId("SelectAllOption").click();
       cy.getByTestId("FilterName-stage1::multi-filter").click(); // close dropdown

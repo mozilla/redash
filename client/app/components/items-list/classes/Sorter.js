@@ -24,8 +24,6 @@ export default class Sorter {
 
   reverse = false;
 
-  sortByIteratees = null;
-
   get compiled() {
     return compile(this.field, this.reverse);
   }
@@ -44,10 +42,9 @@ export default class Sorter {
     this.reverse = !!value; // cast to boolean
   }
 
-  constructor({ orderByField, orderByReverse } = {}, sortByIteratees = undefined) {
+  constructor({ orderByField, orderByReverse } = {}) {
     this.setField(orderByField);
     this.setReverse(orderByReverse);
-    this.sortByIteratees = sortByIteratees;
   }
 
   toggleField(field) {
@@ -64,8 +61,7 @@ export default class Sorter {
 
   sort(items) {
     if (this.field) {
-      const customIteratee = this.sortByIteratees && this.sortByIteratees[this.field];
-      items = sortBy(items, customIteratee ? [customIteratee] : this.field);
+      items = sortBy(items, this.field);
       if (this.reverse) {
         items.reverse();
       }

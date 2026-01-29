@@ -1,12 +1,7 @@
 import logging
 
-from redash.query_runner import (
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    register,
-)
+from redash.query_runner import *
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -19,36 +14,25 @@ except ImportError:
     enabled = False
 
 
-TYPES_MAP = {
-    str: TYPE_STRING,
-    int: TYPE_INTEGER,
-    float: TYPE_FLOAT,
-}
-
-
-def _get_type(value):
-    return TYPES_MAP.get(type(value), TYPE_STRING)
-
-
 def _transform_result(results):
-    column_names = []
+    result_columns = []
     result_rows = []
 
     for result in results:
         for series in result.raw.get("series", []):
             for column in series["columns"]:
-                if column not in column_names:
-                    column_names.append(column)
+                if column not in result_columns:
+                    result_columns.append(column)
             tags = series.get("tags", {})
             for key in tags.keys():
-                if key not in column_names:
-                    column_names.append(key)
+                if key not in result_columns:
+                    result_columns.append(key)
 
     for result in results:
         for series in result.raw.get("series", []):
             for point in series["values"]:
                 result_row = {}
-                for column in column_names:
+                for column in result_columns:
                     tags = series.get("tags", {})
                     if column in tags:
                         result_row[column] = tags[column]
@@ -58,12 +42,9 @@ def _transform_result(results):
                         result_row[column] = value
                 result_rows.append(result_row)
 
-    if len(result_rows) > 0:
-        result_columns = [{"name": c, "type": _get_type(result_rows[0][c])} for c in result_rows[0].keys()]
-    else:
-        result_columns = [{"name": c, "type": TYPE_STRING} for c in column_names]
-
-    return {"columns": result_columns, "rows": result_rows}
+    return json_dumps(
+        {"columns": [{"name": c} for c in result_columns], "rows": result_rows}
+    )
 
 
 class InfluxDB(BaseQueryRunner):
@@ -74,7 +55,15 @@ class InfluxDB(BaseQueryRunner):
     def configuration_schema(cls):
         return {
             "type": "object",
-            "properties": {"url": {"type": "string"}},
+            "properties": {
+                "url": {"type": "string"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
+            },
             "required": ["url"],
         }
 

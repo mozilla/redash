@@ -3,42 +3,17 @@ import importlib
 import logging
 import sys
 
-from RestrictedPython import compile_restricted
-from RestrictedPython.Guards import (
-    guarded_iter_unpack_sequence,
-    guarded_unpack_sequence,
-    safe_builtins,
-)
-from RestrictedPython.transformer import IOPERATOR_TO_STR
-
+from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
 from redash import models
-from redash.query_runner import (
-    SUPPORTED_COLUMN_TYPES,
-    TYPE_BOOLEAN,
-    TYPE_DATE,
-    TYPE_DATETIME,
-    TYPE_FLOAT,
-    TYPE_INTEGER,
-    TYPE_STRING,
-    BaseQueryRunner,
-    register,
-)
-from redash.utils.pandas import pandas_installed
-
-if pandas_installed:
-    import pandas as pd
-
-    from redash.utils.pandas import pandas_to_result
-
-    enabled = True
-else:
-    enabled = False
+from RestrictedPython import compile_restricted
+from RestrictedPython.Guards import safe_builtins, guarded_iter_unpack_sequence, guarded_unpack_sequence
 
 
 logger = logging.getLogger(__name__)
 
 
-class CustomPrint:
+class CustomPrint(object):
     """CustomPrint redirect "print" calls to be sent as "log" on the result object."""
 
     def __init__(self):
@@ -48,7 +23,9 @@ class CustomPrint:
     def write(self, text):
         if self.enabled:
             if text and text.strip():
-                log_line = "[{0}] {1}".format(datetime.datetime.utcnow().isoformat(), text)
+                log_line = "[{0}] {1}".format(
+                    datetime.datetime.utcnow().isoformat(), text
+                )
                 self.lines.append(log_line)
 
     def enable(self):
@@ -68,31 +45,31 @@ class Python(BaseQueryRunner):
     should_annotate_query = False
 
     safe_builtins = (
-        "abs",
-        "all",
-        "any",
-        "bool",
-        "complex",
-        "dict",
-        "divmod",
-        "enumerate",
-        "filter",
-        "float",
-        "int",
-        "len",
-        "list",
-        "map",
-        "max",
-        "min",
-        "next",
-        "reversed",
-        "round",
-        "set",
-        "slice",
         "sorted",
-        "str",
+        "reversed",
+        "map",
+        "any",
+        "all",
+        "slice",
+        "filter",
+        "len",
+        "next",
+        "enumerate",
         "sum",
+        "abs",
+        "min",
+        "max",
+        "round",
+        "divmod",
+        "str",
+        "int",
+        "float",
+        "complex",
         "tuple",
+        "set",
+        "list",
+        "dict",
+        "bool",
     )
 
     @classmethod
@@ -106,6 +83,12 @@ class Python(BaseQueryRunner):
                 },
                 "additionalModulesPaths": {"type": "string"},
                 "additionalBuiltins": {"type": "string"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
             },
         }
 
@@ -135,7 +118,7 @@ class Python(BaseQueryRunner):
         if self.configuration.get("additionalBuiltins", None):
             for b in self.configuration["additionalBuiltins"].split(","):
                 if b not in self.safe_builtins:
-                    self.safe_builtins += (b,)
+                    self.safe_builtins += (b, )
 
     def custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         if name in self._allowed_modules:
@@ -148,7 +131,9 @@ class Python(BaseQueryRunner):
 
             return m
 
-        raise Exception("'{0}' is not configured as a supported import module".format(name))
+        raise Exception(
+            "'{0}' is not configured as a supported import module".format(name)
+        )
 
     @staticmethod
     def custom_write(obj):
@@ -167,14 +152,6 @@ class Python(BaseQueryRunner):
         return iter(obj)
 
     @staticmethod
-    def custom_inplacevar(op, x, y):
-        if op not in IOPERATOR_TO_STR.values():
-            raise Exception("'{} is not supported inplace variable'".format(op))
-        glb = {"x": x, "y": y}
-        exec("x" + op + "y", glb)
-        return glb["x"]
-
-    @staticmethod
     def add_result_column(result, column_name, friendly_name, column_type):
         """Helper function to add columns inside a Python script running in Redash in an easier way
 
@@ -190,7 +167,9 @@ class Python(BaseQueryRunner):
         if "columns" not in result:
             result["columns"] = []
 
-        result["columns"].append({"name": column_name, "friendly_name": friendly_name, "type": column_type})
+        result["columns"].append(
+            {"name": column_name, "friendly_name": friendly_name, "type": column_type}
+        )
 
     @staticmethod
     def add_result_row(result, values):
@@ -206,7 +185,7 @@ class Python(BaseQueryRunner):
         result["rows"].append(values)
 
     @staticmethod
-    def execute_query(data_source_name_or_id, query, result_type=None):
+    def execute_query(data_source_name_or_id, query):
         """Run query from specific data source.
 
         Parameters:
@@ -214,7 +193,7 @@ class Python(BaseQueryRunner):
         :query string: Query to run
         """
         try:
-            if isinstance(data_source_name_or_id, int):
+            if type(data_source_name_or_id) == int:
                 data_source = models.DataSource.get_by_id(data_source_name_or_id)
             else:
                 data_source = models.DataSource.get_by_name(data_source_name_or_id)
@@ -227,12 +206,7 @@ class Python(BaseQueryRunner):
             raise Exception(error)
 
         # TODO: allow avoiding the JSON dumps/loads in same process
-        query_result = data
-
-        if result_type == "dataframe" and pandas_installed:
-            return pd.DataFrame(query_result["rows"])
-
-        return query_result
+        return json_loads(data)
 
     @staticmethod
     def get_source_schema(data_source_name_or_id):
@@ -242,7 +216,7 @@ class Python(BaseQueryRunner):
         :return:
         """
         try:
-            if isinstance(data_source_name_or_id, int):
+            if type(data_source_name_or_id) == int:
                 data_source = models.DataSource.get_by_id(data_source_name_or_id)
             else:
                 data_source = models.DataSource.get_by_name(data_source_name_or_id)
@@ -271,37 +245,11 @@ class Python(BaseQueryRunner):
 
         return query.latest_query_data.data
 
-    def dataframe_to_result(self, result, df):
-        converted_result = pandas_to_result(df)
-
-        result["rows"] = converted_result["rows"]
-        for column in converted_result["columns"]:
-            self.add_result_column(result, column["name"], column["friendly_name"], column["type"])
-
     def get_current_user(self):
         return self._current_user.to_dict()
 
     def test_connection(self):
         pass
-
-    def validate_result(self, result):
-        """Validate the result after executing the query.
-
-        Parameters:
-        :result dict: The result dict.
-        """
-        if not result:
-            raise Exception("local variable `result` should not be empty.")
-        if not isinstance(result, dict):
-            raise Exception("local variable `result` should be of type `dict`.")
-        if "rows" not in result:
-            raise Exception("Missing `rows` field in `result` dict.")
-        if "columns" not in result:
-            raise Exception("Missing `columns` field in `result` dict.")
-        if not isinstance(result["rows"], list):
-            raise Exception("`rows` field should be of type `list`.")
-        if not isinstance(result["columns"], list):
-            raise Exception("`columns` field should be of type `list`.")
 
     def run_query(self, query, user):
         self._current_user = user
@@ -323,7 +271,6 @@ class Python(BaseQueryRunner):
             builtins["_print_"] = self._custom_print
             builtins["_unpack_sequence_"] = guarded_unpack_sequence
             builtins["_iter_unpack_sequence_"] = guarded_iter_unpack_sequence
-            builtins["_inplacevar_"] = self.custom_inplacevar
 
             # Layer in our own additional set of builtins that we have
             # considered safe.
@@ -336,8 +283,6 @@ class Python(BaseQueryRunner):
             restricted_globals["get_current_user"] = self.get_current_user
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["add_result_column"] = self.add_result_column
-            if pandas_installed:
-                restricted_globals["dataframe_to_result"] = self.dataframe_to_result
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
             restricted_globals["enable_print_log"] = self._custom_print.enable
@@ -356,14 +301,14 @@ class Python(BaseQueryRunner):
 
             exec(code, restricted_globals, self._script_locals)
 
-            data = self._script_locals["result"]
-            self.validate_result(data)
-            data["log"] = self._custom_print.lines
+            result = self._script_locals["result"]
+            result["log"] = self._custom_print.lines
+            json_data = json_dumps(result)
         except Exception as e:
             error = str(type(e)) + " " + str(e)
-            data = None
+            json_data = None
 
-        return data, error
+        return json_data, error
 
 
 register(Python)

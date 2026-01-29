@@ -3,7 +3,6 @@ import Card from "antd/lib/card";
 import Button from "antd/lib/button";
 import Typography from "antd/lib/typography";
 import { clientConfig } from "@/services/auth";
-import Link from "@/components/Link";
 import HelpTrigger from "@/components/HelpTrigger";
 import DynamicComponent from "@/components/DynamicComponent";
 import OrgSettings from "@/services/organizationSettings";
@@ -22,7 +21,7 @@ function BeaconConsent() {
     setHide(true);
   };
 
-  const confirmConsent = (confirm) => {
+  const confirmConsent = confirm => {
     let message = "🙏 Thank you.";
 
     if (!confirm) {
@@ -47,8 +46,7 @@ function BeaconConsent() {
               <HelpTrigger type="USAGE_DATA_SHARING" />
             </>
           }
-          bordered={false}
-        >
+          bordered={false}>
           <Text>Help Redash improve by automatically sending anonymous usage data:</Text>
           <div className="m-t-5">
             <ul>
@@ -67,7 +65,8 @@ function BeaconConsent() {
           </div>
           <div className="m-t-15">
             <Text type="secondary">
-              You can change this setting anytime from the <Link href="settings/general">Settings</Link> page.
+              You can change this setting anytime from the <a href="settings/organization">Organization Settings</a>{" "}
+              page.
             </Text>
           </div>
         </Card>

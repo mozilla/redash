@@ -7,7 +7,7 @@ describe("Create Query", () => {
   it("executes and saves a query", () => {
     cy.clickThrough(`
       SelectDataSource
-      SelectDataSource${Cypress.env("dataSourceId")}
+      SelectDataSource1
     `);
 
     cy.getByTestId("QueryEditor")
@@ -22,6 +22,6 @@ describe("Create Query", () => {
     cy.percySnapshot("Edit Query");
 
     cy.getByTestId("SaveButton").click();
-    cy.url().should("match", /\/queries\/.+\/source/);
+    cy.url().should("match", /\/queries\/\d+\/source/);
   });
 });

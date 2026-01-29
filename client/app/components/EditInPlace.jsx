@@ -86,7 +86,6 @@ export default class EditInPlace extends React.Component {
     return (
       <InputComponent
         defaultValue={value}
-        aria-label="Editing"
         onBlur={e => this.stopEditing(e.target.value)}
         onKeyDown={this.handleKeyDown}
         autoFocus

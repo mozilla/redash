@@ -1,7 +1,6 @@
 import {
   createParameter,
   TextParameter,
-  TextPatternParameter,
   NumberParameter,
   EnumParameter,
   QueryBasedDropdownParameter,
@@ -13,7 +12,6 @@ describe("Parameter", () => {
   describe("create", () => {
     const parameterTypes = [
       ["text", TextParameter],
-      ["text-pattern", TextPatternParameter],
       ["number", NumberParameter],
       ["enum", EnumParameter],
       ["query", QueryBasedDropdownParameter],

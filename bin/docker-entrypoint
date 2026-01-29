@@ -2,51 +2,42 @@
 set -e
 
 scheduler() {
+  /app/manage.py db upgrade
   echo "Starting RQ scheduler..."
 
   exec /app/manage.py rq scheduler
 }
 
 dev_scheduler() {
+  /app/manage.py db upgrade
   echo "Starting dev RQ scheduler..."
 
   exec watchmedo auto-restart --directory=./redash/ --pattern=*.py --recursive -- ./manage.py rq scheduler
 }
 
 worker() {
+  /app/manage.py db upgrade
   echo "Starting RQ worker..."
 
   export WORKERS_COUNT=${WORKERS_COUNT:-2}
   export QUEUES=${QUEUES:-}
 
-  exec supervisord -c worker.conf
-}
-
-workers_healthcheck() {
-  WORKERS_COUNT=${WORKERS_COUNT}
-  echo "Checking active workers count against $WORKERS_COUNT..."
-  ACTIVE_WORKERS_COUNT=`echo $(rq info --url $REDASH_REDIS_URL -R | grep workers | grep -oP ^[0-9]+)`
-  if [ "$ACTIVE_WORKERS_COUNT" -lt "$WORKERS_COUNT"  ]; then
-    echo "$ACTIVE_WORKERS_COUNT workers are active, Exiting"
-    exit 1
-  else
-    echo "$ACTIVE_WORKERS_COUNT workers are active"
-    exit 0
-  fi
+  supervisord -c worker.conf
 }
 
 dev_worker() {
+  /app/manage.py db upgrade
   echo "Starting dev RQ worker..."
 
   exec watchmedo auto-restart --directory=./redash/ --pattern=*.py --recursive -- ./manage.py rq worker $QUEUES
 }
 
 server() {
+  /app/manage.py db upgrade
   # Recycle gunicorn workers every n-th request. See http://docs.gunicorn.org/en/stable/settings.html#max-requests for more details.
   MAX_REQUESTS=${MAX_REQUESTS:-1000}
   MAX_REQUESTS_JITTER=${MAX_REQUESTS_JITTER:-100}
-  TIMEOUT=${REDASH_GUNICORN_TIMEOUT:-60}
-  exec /usr/local/bin/gunicorn -b 0.0.0.0:5000 --name redash -w${REDASH_WEB_WORKERS:-4} redash.wsgi:app --max-requests $MAX_REQUESTS --max-requests-jitter $MAX_REQUESTS_JITTER --timeout $TIMEOUT
+  exec /usr/local/bin/gunicorn -b 0.0.0.0:5000 --name redash -w${REDASH_WEB_WORKERS:-4} redash.wsgi:app --max-requests $MAX_REQUESTS --max-requests-jitter $MAX_REQUESTS_JITTER
 }
 
 create_db() {
@@ -67,7 +58,7 @@ help() {
   echo ""
   echo "shell -- open shell"
   echo "dev_server -- start Flask development server with debugger and auto reload"
-  echo "debug -- start Flask development server with remote debugger via debugpy"
+  echo "debug -- start Flask development server with remote debugger via ptvsd"
   echo "create_db -- create database tables"
   echo "manage -- CLI to manage redash"
   echo "tests -- run tests"
@@ -88,10 +79,6 @@ case "$1" in
   worker)
     shift
     worker
-    ;;
-  workers_healthcheck)
-    shift
-    workers_healthcheck
     ;;
   server)
     shift
@@ -144,3 +131,4 @@ case "$1" in
     exec "$@"
     ;;
 esac
+
