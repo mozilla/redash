@@ -35,16 +35,13 @@
     vertical-align: middle;
   }
 
-  .tags-control > .label-tag {
+  .tags-control a {
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
   }
 
-  &:hover,
-  &:focus,
-  &:active,
-  &:focus-within {
-    .tags-control > .label-tag {
+  &:hover {
+    .tags-control a {
       opacity: 1;
     }
   }

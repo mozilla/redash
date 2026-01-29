@@ -1,17 +1,21 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { filter, includes, get, find } from "lodash";
+import { slice, without, filter, includes } from "lodash";
 import PropTypes from "prop-types";
 import { useDebouncedCallback } from "use-debounce";
-import Button from "antd/lib/button";
-import SyncOutlinedIcon from "@ant-design/icons/SyncOutlined";
 import Input from "antd/lib/input";
 import Select from "antd/lib/select";
-import Tooltip from "@/components/Tooltip";
 import { SchemaList, applyFilterOnSchema } from "@/components/queries/SchemaBrowser";
 import useImmutableCallback from "@/lib/hooks/useImmutableCallback";
 import useDatabricksSchema from "./useDatabricksSchema";
 
 import "./DatabricksSchemaBrowser.less";
+
+// Limit number of rendered options to improve performance until Antd v4
+function getLimitedDatabases(databases, currentDatabaseName, limit = 1000) {
+  const limitedDatabases = slice(without(databases, currentDatabaseName), 0, limit);
+
+  return currentDatabaseName ? [...limitedDatabases, currentDatabaseName].sort() : limitedDatabases;
+}
 
 export default function DatabricksSchemaBrowser({
   dataSource,
@@ -26,11 +30,8 @@ export default function DatabricksSchemaBrowser({
     loadingDatabases,
     schema,
     loadingSchema,
-    loadTableColumns,
     currentDatabaseName,
     setCurrentDatabase,
-    refreshAll,
-    refreshing,
   } = useDatabricksSchema(dataSource, options, onOptionsUpdate);
   const [filterString, setFilterString] = useState("");
   const [databaseFilterString, setDatabaseFilterString] = useState("");
@@ -56,22 +57,23 @@ export default function DatabricksSchemaBrowser({
     () => filter(databases, database => includes(database.toLowerCase(), databaseFilterString.toLowerCase())),
     [databases, databaseFilterString]
   );
+  const limitedDatabases = useMemo(() => getLimitedDatabases(filteredDatabases, currentDatabaseName), [
+    filteredDatabases,
+    currentDatabaseName,
+  ]);
 
   const handleSchemaUpdate = useImmutableCallback(onSchemaUpdate);
 
   useEffect(() => {
+    setExpandedFlags({});
     handleSchemaUpdate(schema);
   }, [schema, handleSchemaUpdate]);
 
-  useEffect(() => {
-    setExpandedFlags({});
-  }, [currentDatabaseName]);
+  if (schema.length === 0 && databases.length === 0 && !(loadingDatabases || loadingSchema)) {
+    return null;
+  }
 
   function toggleTable(tableName) {
-    const table = find(schema, { name: tableName });
-    if (!expandedFlags[tableName] && get(table, "loading", false)) {
-      loadTableColumns(tableName);
-    }
     setExpandedFlags({
       ...expandedFlags,
       [tableName]: !expandedFlags[tableName],
@@ -84,7 +86,6 @@ export default function DatabricksSchemaBrowser({
         <Input
           className={isDatabaseSelectOpen ? "database-select-open" : ""}
           placeholder="Filter tables & columns..."
-          aria-label="Search schema"
           disabled={loadingDatabases || loadingSchema}
           onChange={event => handleFilterChange(event.target.value)}
           addonBefore={
@@ -99,15 +100,20 @@ export default function DatabricksSchemaBrowser({
               onDropdownVisibleChange={setIsDatabaseSelectOpen}
               placeholder={
                 <>
-                  <i className="fa fa-database m-r-5" aria-hidden="true" /> Database
+                  <i className="fa fa-database m-r-5" /> Database
                 </>
               }>
-              {filteredDatabases.map(database => (
+              {limitedDatabases.map(database => (
                 <Select.Option key={database}>
-                  <i className="fa fa-database m-r-5" aria-hidden="true" />
+                  <i className="fa fa-database m-r-5" />
                   {database}
                 </Select.Option>
               ))}
+              {limitedDatabases.length < filteredDatabases.length && (
+                <Select.Option key="hidden_options" value={-1} disabled>
+                  Some databases were hidden due to a large set, search to limit results.
+                </Select.Option>
+              )}
             </Select>
           }
         />
@@ -120,15 +126,6 @@ export default function DatabricksSchemaBrowser({
           onTableExpand={toggleTable}
           onItemSelect={onItemSelect}
         />
-        {!(loadingSchema || loadingDatabases) && (
-          <div className="load-button">
-            <Tooltip title={!refreshing ? "Refresh Databases and Current Schema" : null}>
-              <Button type="link" onClick={refreshAll} disabled={refreshing}>
-                <SyncOutlinedIcon spin={refreshing} />
-              </Button>
-            </Tooltip>
-          </div>
-        )}
       </div>
     </div>
   );

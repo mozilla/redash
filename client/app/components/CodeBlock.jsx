@@ -1,8 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import Button from "antd/lib/button";
-import Tooltip from "@/components/Tooltip";
-import CopyOutlinedIcon from "@ant-design/icons/CopyOutlined";
+import Tooltip from "antd/lib/tooltip";
 import "./CodeBlock.less";
 
 export default class CodeBlock extends React.Component {
@@ -60,7 +59,7 @@ export default class CodeBlock extends React.Component {
 
     const copyButton = (
       <Tooltip title={this.state.copied || "Copy"}>
-        <Button icon={<CopyOutlinedIcon />} type="dashed" size="small" onClick={this.copy} />
+        <Button icon="copy" type="dashed" size="small" onClick={this.copy} />
       </Tooltip>
     );
 

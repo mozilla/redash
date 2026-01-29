@@ -1,3 +1,5 @@
+import { createQuery } from "../../support/redash-api";
+
 describe("Create Alert", () => {
   beforeEach(() => {
     cy.login();
@@ -10,7 +12,7 @@ describe("Create Alert", () => {
   });
 
   it("selects query and takes a screenshot", () => {
-    cy.createQuery({ name: "Create Alert Query" }).then(({ id: queryId }) => {
+    createQuery({ name: "Create Alert Query" }).then(({ id: queryId }) => {
       cy.visit("/alerts/new");
       cy.getByTestId("QuerySelector")
         .click()

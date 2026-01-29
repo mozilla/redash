@@ -1,21 +1,23 @@
 import time
-from inspect import isclass
 
+from inspect import isclass
 from flask import Blueprint, current_app, request
+
 from flask_login import current_user, login_required
 from flask_restful import Resource, abort
-from sqlalchemy import cast
-from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.orm.exc import NoResultFound
-
 from redash import settings
 from redash.authentication import current_org
 from redash.models import db
 from redash.tasks import record_event as record_event_task
 from redash.utils import json_dumps
-from redash.utils.query_order import sort_query
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import cast
+from sqlalchemy.dialects import postgresql
+from sqlalchemy_utils import sort_query
 
-routes = Blueprint("redash", __name__, template_folder=settings.fix_assets_path("templates"))
+routes = Blueprint(
+    "redash", __name__, template_folder=settings.fix_assets_path("templates")
+)
 
 
 class BaseResource(Resource):
@@ -114,7 +116,9 @@ def json_response(response):
 def filter_by_tags(result_set, column):
     if request.args.getlist("tags"):
         tags = request.args.getlist("tags")
-        result_set = result_set.filter(cast(column, ARRAY(db.Text)).contains(tags))
+        result_set = result_set.filter(
+            cast(column, postgresql.ARRAY(db.Text)).contains(tags)
+        )
     return result_set
 
 

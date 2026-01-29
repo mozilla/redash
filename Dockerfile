@@ -1,52 +1,30 @@
-FROM node:18-bookworm AS frontend-builder
-
-RUN npm install --global --force yarn@1.22.22
+FROM node:12 as frontend-builder
 
 # Controls whether to build the frontend assets
 ARG skip_frontend_build
 
-ENV CYPRESS_INSTALL_BINARY=0
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
-
-RUN useradd -m -d /frontend redash
-USER redash
-
 WORKDIR /frontend
-COPY --chown=redash package.json yarn.lock .yarnrc /frontend/
-COPY --chown=redash viz-lib /frontend/viz-lib
-COPY --chown=redash scripts /frontend/scripts
+COPY package.json package-lock.json /frontend/
+COPY viz-lib /frontend/viz-lib
+RUN if [ "x$skip_frontend_build" = "x" ] ; then npm ci --unsafe-perm; fi
 
-# Controls whether to instrument code for coverage information
-ARG code_coverage
-ENV BABEL_ENV=${code_coverage:+test}
-
-# Avoid issues caused by lags in disk and network I/O speeds when working on top of QEMU emulation for multi-platform image building.
-RUN yarn config set network-timeout 300000
-
-RUN if [ "x$skip_frontend_build" = "x" ] ; then yarn --frozen-lockfile --network-concurrency 1; fi
-
-COPY --chown=redash client /frontend/client
-COPY --chown=redash webpack.config.js /frontend/
-RUN <<EOF
-  if [ "x$skip_frontend_build" = "x" ]; then
-    yarn build
-  else
-    mkdir -p /frontend/client/dist
-    touch /frontend/client/dist/multi_org.html
-    touch /frontend/client/dist/index.html
-  fi
-EOF
-
-FROM python:3.10-slim-bookworm
+COPY client /frontend/client
+COPY webpack.config.js /frontend/
+RUN if [ "x$skip_frontend_build" = "x" ] ; then npm run build; else mkdir -p /frontend/client/dist && touch /frontend/client/dist/multi_org.html && touch /frontend/client/dist/index.html; fi
+FROM python:3.7-slim-buster
 
 EXPOSE 5000
+
+# Controls whether to install extra dependencies needed for all data sources.
+ARG skip_ds_deps
+# Controls whether to install dev dependencies.
+ARG skip_dev_deps
 
 RUN useradd --create-home redash
 
 # Ubuntu packages
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends \
-  pkg-config \
+  apt-get install -y \
   curl \
   gnupg \
   build-essential \
@@ -54,8 +32,7 @@ RUN apt-get update && \
   libffi-dev \
   sudo \
   git-core \
-  # Kerberos, needed for MS SQL Python driver to compile on arm64
-  libkrb5-dev \
+  wget \
   # Postgres client
   libpq-dev \
   # ODBC support:
@@ -69,51 +46,37 @@ RUN apt-get update && \
   libsasl2-dev \
   unzip \
   libsasl2-modules-gssapi-mit && \
+  # MSSQL ODBC Driver:  
+  curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+  curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+  apt-get update && \
+  ACCEPT_EULA=Y apt-get install -y msodbcsql17 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
-
-ARG TARGETPLATFORM
-ARG databricks_odbc_driver_url=https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/odbc/2.6.26/SimbaSparkODBC-2.6.26.1045-Debian-64bit.zip
-RUN <<EOF
-  if [ "$TARGETPLATFORM" = "linux/amd64" ]; then
-    curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-    curl https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list
-    apt-get update
-    ACCEPT_EULA=Y apt-get install  -y --no-install-recommends msodbcsql18
-    apt-get clean
-    rm -rf /var/lib/apt/lists/*
-    curl "$databricks_odbc_driver_url" --location --output /tmp/simba_odbc.zip
-    chmod 600 /tmp/simba_odbc.zip
-    unzip /tmp/simba_odbc.zip -d /tmp/simba
-    dpkg -i /tmp/simba/*.deb
-    printf "[Simba]\nDriver = /opt/simba/spark/lib/64/libsparkodbc_sb64.so" >> /etc/odbcinst.ini
-    rm /tmp/simba_odbc.zip
-    rm -rf /tmp/simba
-  fi
-EOF
+ARG databricks_odbc_driver_url=https://databricks.com/wp-content/uploads/2.6.10.1010-2/SimbaSparkODBC-2.6.10.1010-2-Debian-64bit.zip
+ADD $databricks_odbc_driver_url /tmp/simba_odbc.zip
+RUN unzip /tmp/simba_odbc.zip -d /tmp/ \
+  && dpkg -i /tmp/SimbaSparkODBC-*/*.deb \
+  && echo "[Simba]\nDriver = /opt/simba/spark/lib/64/libsparkodbc_sb64.so" >> /etc/odbcinst.ini \
+  && rm /tmp/simba_odbc.zip \
+  && rm -rf /tmp/SimbaSparkODBC*
 
 WORKDIR /app
 
-ENV POETRY_VERSION=1.8.3
-ENV POETRY_HOME=/etc/poetry
-ENV POETRY_VIRTUALENVS_CREATE=false
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Disalbe PIP Cache and Version Check
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1
 
-# Avoid crashes, including corrupted cache artifacts, when building multi-platform images with GitHub Actions.
-RUN /etc/poetry/bin/poetry cache clear pypi --all
+# We first copy only the requirements file, to avoid rebuilding on every file
+# change.
+COPY requirements.txt requirements_bundles.txt requirements_dev.txt requirements_all_ds.txt ./
+RUN if [ "x$skip_dev_deps" = "x" ] ; then pip install -r requirements.txt -r requirements_dev.txt; else pip install -r requirements.txt; fi
+RUN if [ "x$skip_ds_deps" = "x" ] ; then pip install -r requirements_all_ds.txt ; else echo "Skipping pip install -r requirements_all_ds.txt" ; fi
 
-COPY pyproject.toml poetry.lock ./
-
-ARG POETRY_OPTIONS="--no-root --no-interaction --no-ansi"
-# for LDAP authentication, install with `ldap3` group
-# disabled by default due to GPL license conflict
-ARG install_groups="main,all_ds,dev"
-RUN /etc/poetry/bin/poetry install --only $install_groups $POETRY_OPTIONS
-
-COPY --chown=redash . /app
-COPY --from=frontend-builder --chown=redash /frontend/client/dist /app/client/dist
-RUN chown redash /app
+COPY . /app
+COPY --from=frontend-builder /frontend/client/dist /app/client/dist
+RUN chown -R redash /app
 USER redash
 
 ENTRYPOINT ["/app/bin/docker-entrypoint"]

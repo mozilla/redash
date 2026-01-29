@@ -8,17 +8,18 @@ except ImportError:
     enabled = False
 
 from redash.query_runner import BaseQueryRunner, register
+from redash.utils import json_dumps
 
 
 def reduce_item(reduced_item, key, value):
     """From https://github.com/vinay20045/json-to-csv"""
     # Reduction Condition 1
-    if isinstance(value, list):
+    if type(value) is list:
         for i, sub_item in enumerate(value):
             reduce_item(reduced_item, "{}.{}".format(key, i), sub_item)
 
     # Reduction Condition 2
-    elif isinstance(value, dict):
+    elif type(value) is dict:
         sub_keys = value.keys()
         for sub_key in sub_keys:
             reduce_item(reduced_item, "{}.{}".format(key, sub_key), value[sub_key])
@@ -80,7 +81,8 @@ class Dgraph(BaseQueryRunner):
             client_stub.close()
 
     def run_query(self, query, user):
-        data = None
+
+        json_data = None
         error = None
 
         try:
@@ -104,14 +106,18 @@ class Dgraph(BaseQueryRunner):
 
             header = list(set(header))
 
-            columns = [{"name": c, "friendly_name": c, "type": "string"} for c in header]
+            columns = [
+                {"name": c, "friendly_name": c, "type": "string"} for c in header
+            ]
 
             # finally, assemble both the columns and data
             data = {"columns": columns, "rows": processed_data}
+
+            json_data = json_dumps(data)
         except Exception as e:
             error = e
 
-        return data, error
+        return json_data, error
 
     def get_schema(self, get_stats=False):
         """Queries Dgraph for all the predicates, their types, their tokenizers, etc.

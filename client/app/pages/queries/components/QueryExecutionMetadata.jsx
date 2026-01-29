@@ -1,15 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
-import WarningTwoTone from "@ant-design/icons/WarningTwoTone";
 import TimeAgo from "@/components/TimeAgo";
-import Tooltip from "@/components/Tooltip";
 import useAddToDashboardDialog from "../hooks/useAddToDashboardDialog";
 import useEmbedDialog from "../hooks/useEmbedDialog";
 import QueryControlDropdown from "@/components/EditVisualizationButton/QueryControlDropdown";
 import EditVisualizationButton from "@/components/EditVisualizationButton";
 import useQueryResultData from "@/lib/useQueryResultData";
 import { durationHumanize, pluralize, prettySize } from "@/lib/utils";
-import { isUndefined } from "lodash";
 
 import "./QueryExecutionMetadata.less";
 
@@ -45,19 +42,6 @@ export default function QueryExecutionMetadata({
       )}
       <span className="m-l-5 m-r-10">
         <span>
-          {queryResultData.truncated === true && (
-            <span className="m-r-5">
-              <Tooltip
-                title={
-                  "Result truncated to " +
-                  queryResultData.rows.length +
-                  " rows. Databricks may truncate query results that are unstably large."
-                }
-              >
-                <WarningTwoTone twoToneColor="#FF9800" />
-              </Tooltip>
-            </span>
-          )}
           <strong>{queryResultData.rows.length}</strong> {pluralize("row", queryResultData.rows.length)}
         </span>
         <span className="m-l-5">
@@ -69,9 +53,10 @@ export default function QueryExecutionMetadata({
           )}
           {isQueryExecuting && <span>Running&hellip;</span>}
         </span>
-        {!isUndefined(queryResultData.metadata.data_scanned) && !isQueryExecuting && (
+        {queryResultData.metadata.data_scanned && (
           <span className="m-l-5">
-            Data Scanned <strong>{prettySize(queryResultData.metadata.data_scanned)}</strong>
+            <span className="hidden-xs">Data Scanned </span>
+            <strong>{prettySize(queryResultData.metadata.data_scanned)}</strong>
           </span>
         )}
       </span>

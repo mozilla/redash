@@ -7,9 +7,10 @@ Create Date: 2019-01-17 13:22:21.729334
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql import table
 
-from redash.models import MutableDict
+from redash.models import MutableDict, PseudoJSON
 
 # revision identifiers, used by Alembic.
 revision = "73beceabb948"
@@ -42,7 +43,7 @@ def upgrade():
     queries = table(
         "queries",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("schedule", sa.Text()),
+        sa.Column("schedule", MutableDict.as_mutable(PseudoJSON)),
     )
 
     conn = op.get_bind()

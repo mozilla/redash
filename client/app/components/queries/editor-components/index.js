@@ -9,9 +9,6 @@ registerEditorComponent(QueryEditorComponents.SCHEMA_BROWSER, SchemaBrowser);
 registerEditorComponent(QueryEditorComponents.QUERY_EDITOR, QueryEditor);
 
 // databricks
-registerEditorComponent(QueryEditorComponents.SCHEMA_BROWSER, DatabricksSchemaBrowser, [
-  "databricks",
-  "databricks_internal",
-]);
+registerEditorComponent(QueryEditorComponents.SCHEMA_BROWSER, DatabricksSchemaBrowser, ["databricks"]);
 
 export { getEditorComponents };

@@ -6,12 +6,9 @@ import Modal from "antd/lib/modal";
 import Dropdown from "antd/lib/dropdown";
 import Menu from "antd/lib/menu";
 import Button from "antd/lib/button";
+import Icon from "antd/lib/icon";
 
-import LoadingOutlinedIcon from "@ant-design/icons/LoadingOutlined";
-import EllipsisOutlinedIcon from "@ant-design/icons/EllipsisOutlined";
-import PlainButton from "@/components/PlainButton";
-
-export default function MenuButton({ doDelete, canEdit, mute, unmute, evaluate, muted }) {
+export default function MenuButton({ doDelete, canEdit, mute, unmute, muted }) {
   const [loading, setLoading] = useState(false);
 
   const execute = useCallback(action => {
@@ -47,22 +44,17 @@ export default function MenuButton({ doDelete, canEdit, mute, unmute, evaluate, 
         <Menu>
           <Menu.Item>
             {muted ? (
-              <PlainButton onClick={() => execute(unmute)}>Unmute Notifications</PlainButton>
+              <a onClick={() => execute(unmute)}>Unmute Notifications</a>
             ) : (
-              <PlainButton onClick={() => execute(mute)}>Mute Notifications</PlainButton>
+              <a onClick={() => execute(mute)}>Mute Notifications</a>
             )}
           </Menu.Item>
           <Menu.Item>
-            <PlainButton onClick={confirmDelete}>Delete</PlainButton>
-          </Menu.Item>
-          <Menu.Item>
-            <PlainButton onClick={() => execute(evaluate)}>Evaluate</PlainButton>
+            <a onClick={confirmDelete}>Delete Alert</a>
           </Menu.Item>
         </Menu>
       }>
-      <Button aria-label="More actions">
-        {loading ? <LoadingOutlinedIcon /> : <EllipsisOutlinedIcon rotate={90} aria-hidden="true" />}
-      </Button>
+      <Button>{loading ? <Icon type="loading" /> : <Icon type="ellipsis" rotate={90} />}</Button>
     </Dropdown>
   );
 }
@@ -72,7 +64,6 @@ MenuButton.propTypes = {
   canEdit: PropTypes.bool.isRequired,
   mute: PropTypes.func.isRequired,
   unmute: PropTypes.func.isRequired,
-  evaluate: PropTypes.func.isRequired,
   muted: PropTypes.bool,
 };
 

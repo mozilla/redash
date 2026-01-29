@@ -2,11 +2,9 @@ import _ from "lodash";
 import { axios } from "@/services/axios";
 import dashboardGridOptions from "@/config/dashboard-grid-options";
 import Widget from "./widget";
+import { currentUser } from "@/services/auth";
 import location from "@/services/location";
 import { cloneParameter } from "@/services/parameters";
-import { policy } from "@/services/policy";
-
-export const urlForDashboard = ({ id, slug }) => `dashboards/${id}-${slug}`;
 
 export function collectDashboardFilters(dashboard, queryResults, urlParams) {
   const filters = {};
@@ -125,11 +123,6 @@ function calculateNewWidgetPosition(existingWidgets, newWidget) {
 
 export function Dashboard(dashboard) {
   _.extend(this, dashboard);
-  Object.defineProperty(this, "url", {
-    get: function() {
-      return urlForDashboard(this);
-    },
-  });
 }
 
 function prepareDashboardWidgets(widgets) {
@@ -154,25 +147,17 @@ function transformResponse(data) {
   return data;
 }
 
-const saveOrCreateUrl = data => (data.id ? `api/dashboards/${data.id}` : "api/dashboards");
+const saveOrCreateUrl = data => (data.slug ? `api/dashboards/${data.slug}` : "api/dashboards");
 const DashboardService = {
-  get: ({ id, slug }) => {
-    const params = {};
-    if (!id) {
-      params.legacy = null;
-    }
-    return axios.get(`api/dashboards/${id || slug}`, { params }).then(transformResponse);
-  },
+  get: ({ slug }) => axios.get(`api/dashboards/${slug}`).then(transformResponse),
   getByToken: ({ token }) => axios.get(`api/dashboards/public/${token}`).then(transformResponse),
   save: data => axios.post(saveOrCreateUrl(data), data).then(transformResponse),
-  delete: ({ id }) => axios.delete(`api/dashboards/${id}`).then(transformResponse),
+  delete: ({ slug }) => axios.delete(`api/dashboards/${slug}`).then(transformResponse),
   query: params => axios.get("api/dashboards", { params }).then(transformResponse),
   recent: params => axios.get("api/dashboards/recent", { params }).then(transformResponse),
-  myDashboards: params => axios.get("api/dashboards/my", { params }).then(transformResponse),
   favorites: params => axios.get("api/dashboards/favorites", { params }).then(transformResponse),
-  favorite: ({ id }) => axios.post(`api/dashboards/${id}/favorite`),
-  unfavorite: ({ id }) => axios.delete(`api/dashboards/${id}/favorite`),
-  fork: ({ id }) => axios.post(`api/dashboards/${id}/fork`, { id }).then(transformResponse),
+  favorite: ({ slug }) => axios.post(`api/dashboards/${slug}/favorite`),
+  unfavorite: ({ slug }) => axios.delete(`api/dashboards/${slug}/favorite`),
 };
 
 _.extend(Dashboard, DashboardService);
@@ -181,7 +166,7 @@ Dashboard.prepareDashboardWidgets = prepareDashboardWidgets;
 Dashboard.prepareWidgetsForDashboard = prepareWidgetsForDashboard;
 
 Dashboard.prototype.canEdit = function canEdit() {
-  return policy.canEdit(this);
+  return currentUser.canEdit(this) || this.can_edit;
 };
 
 Dashboard.prototype.getParametersDefs = function getParametersDefs() {
@@ -210,18 +195,11 @@ Dashboard.prototype.getParametersDefs = function getParametersDefs() {
         });
     }
   });
-  const resultingGlobalParams = _.values(
+  return _.values(
     _.each(globalParams, param => {
       param.setValue(param.value); // apply global param value to all locals
       param.fromUrlParams(queryParams); // try to initialize from url (may do nothing)
     })
-  );
-
-  // order dashboard params using paramOrder
-  return _.sortBy(resultingGlobalParams, param =>
-    _.includes(this.options.globalParamOrder, param.name)
-      ? _.indexOf(this.options.globalParamOrder, param.name)
-      : _.size(this.options.globalParamOrder)
   );
 };
 
@@ -265,8 +243,4 @@ Dashboard.prototype.favorite = function favorite() {
 
 Dashboard.prototype.unfavorite = function unfavorite() {
   return Dashboard.unfavorite(this);
-};
-
-Dashboard.prototype.getUrl = function getUrl() {
-  return urlForDashboard(this);
 };

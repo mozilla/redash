@@ -1,11 +1,8 @@
 import logging
 import sqlite3
 
-from redash.query_runner import (
-    BaseSQLQueryRunner,
-    JobTimeoutException,
-    register,
-)
+from redash.query_runner import BaseSQLQueryRunner, register, JobTimeoutException
+from redash.utils import json_dumps, json_loads
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +14,15 @@ class Sqlite(BaseSQLQueryRunner):
     def configuration_schema(cls):
         return {
             "type": "object",
-            "properties": {"dbpath": {"type": "string", "title": "Database Path"}},
+            "properties": {
+                "dbpath": {"type": "string", "title": "Database Path"},
+                "toggle_table_string": {
+                    "type": "string",
+                    "title": "Toggle Table String",
+                    "default": "_v",
+                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                },
+            },
             "required": ["dbpath"],
         }
 
@@ -28,24 +33,27 @@ class Sqlite(BaseSQLQueryRunner):
     def __init__(self, configuration):
         super(Sqlite, self).__init__(configuration)
 
-        self._dbpath = self.configuration.get("dbpath", "")
+        self._dbpath = self.configuration["dbpath"]
 
     def _get_tables(self, schema):
         query_table = "select tbl_name from sqlite_master where type='table'"
-        query_columns = 'PRAGMA table_info("%s")'
+        query_columns = "PRAGMA table_info(%s)"
 
         results, error = self.run_query(query_table, None)
 
         if error is not None:
             raise Exception("Failed getting schema.")
 
+        results = json_loads(results)
+
         for row in results["rows"]:
             table_name = row["tbl_name"]
             schema[table_name] = {"name": table_name, "columns": []}
             results_table, error = self.run_query(query_columns % (table_name,), None)
             if error is not None:
-                self._handle_run_query_error(error)
+                raise Exception("Failed getting schema.")
 
+            results_table = json_loads(results_table)
             for row_column in results_table["rows"]:
                 schema[table_name]["columns"].append(row_column["name"])
 
@@ -61,19 +69,23 @@ class Sqlite(BaseSQLQueryRunner):
 
             if cursor.description is not None:
                 columns = self.fetch_columns([(i[0], None) for i in cursor.description])
-                rows = [dict(zip((column["name"] for column in columns), row)) for row in cursor]
+                rows = [
+                    dict(zip((column["name"] for column in columns), row))
+                    for row in cursor
+                ]
 
                 data = {"columns": columns, "rows": rows}
                 error = None
+                json_data = json_dumps(data)
             else:
                 error = "Query completed but it returned no data."
-                data = None
+                json_data = None
         except (KeyboardInterrupt, JobTimeoutException):
             connection.cancel()
             raise
         finally:
             connection.close()
-        return data, error
+        return json_data, error
 
 
 register(Sqlite)

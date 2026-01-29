@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import Tooltip from "@/components/Tooltip";
-import PlainButton from "@/components/PlainButton";
+import Tooltip from "antd/lib/tooltip";
 import { localizeTime, durationHumanize } from "@/lib/utils";
 import { RefreshScheduleType, RefreshScheduleDefault } from "../proptypes";
 
@@ -52,9 +51,9 @@ export default class SchedulePhrase extends React.Component {
     const content = full ? <Tooltip title={full}>{short}</Tooltip> : short;
 
     return this.props.isLink ? (
-      <PlainButton type="link" className="schedule-phrase" onClick={this.props.onClick} data-test="EditSchedule">
+      <a className="schedule-phrase" onClick={this.props.onClick}>
         {content}
-      </PlainButton>
+      </a>
     ) : (
       content
     );

@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import Button from "antd/lib/button";
 import Modal from "antd/lib/modal";
 import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
-import Link from "@/components/Link";
 import Paginator from "@/components/Paginator";
 import DynamicComponent from "@/components/DynamicComponent";
 import { UserPreviewCard } from "@/components/PreviewCard";
@@ -99,9 +98,9 @@ class UsersList extends React.Component {
     Columns.custom.sortable(
       (text, user) =>
         map(user.groups, group => (
-          <Link key={"group" + group.id} className="label label-tag" href={"groups/" + group.id}>
+          <a key={"group" + group.id} className="label label-tag" href={"groups/" + group.id}>
             {group.name}
-          </Link>
+          </a>
         )),
       {
         title: "Groups",
@@ -154,7 +153,7 @@ class UsersList extends React.Component {
                 <p>
                   The mail server is not configured, please send the following link to <b>{user.name}</b>:
                 </p>
-                <InputWithCopy value={absoluteUrl(user.invite_link)} aria-label="Invite link" readOnly />
+                <InputWithCopy value={absoluteUrl(user.invite_link)} readOnly />
               </React.Fragment>
             ),
           });
@@ -197,7 +196,7 @@ class UsersList extends React.Component {
     return (
       <div className="m-b-15">
         <Button type="primary" disabled={!policy.isCreateUserEnabled()} onClick={this.showCreateUserDialog}>
-          <i className="fa fa-plus m-r-5" aria-hidden="true" />
+          <i className="fa fa-plus m-r-5" />
           New User
         </Button>
         <DynamicComponent name="UsersListExtra" />
@@ -212,12 +211,14 @@ class UsersList extends React.Component {
         {this.renderPageHeader()}
         <Layout>
           <Layout.Sidebar className="m-b-0">
-            <Sidebar.SearchInput
-              value={controller.searchTerm}
-              onChange={controller.updateSearch}
-              label="Search users"
-            />
+            <Sidebar.SearchInput value={controller.searchTerm} onChange={controller.updateSearch} />
             <Sidebar.Menu items={this.sidebarMenu} selected={controller.params.currentPage} />
+            <Sidebar.PageSizeSelect
+              className="m-b-10"
+              options={controller.pageSizeOptions}
+              value={controller.itemsPerPage}
+              onChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+            />
           </Layout.Sidebar>
           <Layout.Content>
             {!controller.isLoaded && <LoadingState className="" />}
@@ -233,10 +234,8 @@ class UsersList extends React.Component {
                   toggleSorting={controller.toggleSorting}
                 />
                 <Paginator
-                  showPageSizeSelect
                   totalCount={controller.totalItemsCount}
-                  pageSize={controller.itemsPerPage}
-                  onPageSizeChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+                  itemsPerPage={controller.itemsPerPage}
                   page={controller.page}
                   onChange={page => controller.updatePagination({ page })}
                 />

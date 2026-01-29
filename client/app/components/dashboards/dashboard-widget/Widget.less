@@ -1,4 +1,12 @@
-@import (reference, less) "~@/assets/less/inc/variables";
+@import "../../../assets/less/inc/variables";
+
+.tile .t-header .th-title a.query-link {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.th-title p.hidden-print {
+  margin-bottom: 0;
+}
 
 .widget-wrapper {
   .widget-actions {
@@ -14,19 +22,10 @@
       line-height: 100%;
       display: block;
       padding: 4px 10px 3px;
+    }
 
-      &:focus {
-        background-color: rgba(0, 0, 0, 0.1);
-      }
-
-      &:hover {
-        background-color: transparent;
-        color: @blue;
-      }
-
-      &:active {
-        filter: brightness(75%);
-      }
+    .action:hover {
+      background-color: rgba(0, 0, 0, 0.1);
     }
   }
 
@@ -84,7 +83,7 @@
     display: block;
   }
 
-  .query-link {
+  a.query-link {
     pointer-events: none;
     cursor: move;
   }
@@ -191,18 +190,10 @@
     .th-title {
       padding-right: 23px; // no overlap on RefreshIndicator
 
-      .hidden-print {
-        margin-bottom: 0;
-      }
-
-      .query-link {
+      a {
         color: fade(@redash-black, 80%);
         font-size: 15px;
         font-weight: 500;
-
-        &:not(.visualization-name) {
-          color: fade(@redash-black, 50%);
-        }
       }
     }
 
@@ -221,10 +212,7 @@
     padding: 15px;
   }
 
-  &:hover,
-  &:focus,
-  &:active,
-  &:focus-within {
+  &:hover {
     .widget-menu-regular,
     .btn__refresh {
       opacity: 1 !important;
@@ -252,12 +240,10 @@
       }
     }
 
-    a,
-    .plain-button {
+    a {
       color: fade(@redash-black, 65%);
 
-      &:hover,
-      &:focus {
+      &:hover {
         color: fade(@redash-black, 95%);
       }
     }

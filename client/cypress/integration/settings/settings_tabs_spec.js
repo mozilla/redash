@@ -1,3 +1,5 @@
+import { createUser } from "../../support/redash-api";
+
 describe("Settings Tabs", () => {
   const regularUser = {
     name: "Example User",
@@ -6,7 +8,7 @@ describe("Settings Tabs", () => {
   };
 
   const userTabs = ["Users", "Groups", "Query Snippets", "Account"];
-  const adminTabs = ["Data Sources", "Alert Destinations", "General"];
+  const adminTabs = ["Data Sources", "Alert Destinations", "Settings"];
 
   const expectSettingsTabsToBe = expectedTabs =>
     cy.getByTestId("SettingsScreenItem").then($list => {
@@ -15,7 +17,7 @@ describe("Settings Tabs", () => {
     });
 
   before(() => {
-    cy.login().then(() => cy.createUser(regularUser));
+    cy.login().then(() => createUser(regularUser));
   });
 
   describe("For admin user", () => {

@@ -24,13 +24,13 @@ def status_api():
 
 def init_app(app):
     from redash.handlers import (
-        admin,
-        authentication,
         embed,
-        organization,
         queries,
-        setup,
         static,
+        authentication,
+        admin,
+        setup,
+        organization,
     )
 
     app.register_blueprint(routes)
