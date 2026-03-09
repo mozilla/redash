@@ -1,0 +1,235 @@
+import logging
+
+from redash.models.users import ApiUser, User
+from redash.query_runner import (
+    TYPE_BOOLEAN,
+    TYPE_DATE,
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseQueryRunner,
+    InterruptException,
+    JobTimeoutException,
+    register,
+)
+
+logger = logging.getLogger(__name__)
+
+try:
+    import trino
+    from trino.exceptions import DatabaseError
+    from trino.types import NamedRowTuple
+
+    enabled = True
+except ImportError:
+    enabled = False
+
+
+def _convert_row_types(value):
+    """Convert NamedRowTuple instances to dicts so ROW fields are serialized with their names."""
+    if isinstance(value, NamedRowTuple):
+        names = value.__annotations__.get("names", [])
+        return {
+            name if name is not None else f"_field{i}": _convert_row_types(v)
+            for i, (name, v) in enumerate(zip(names, value))
+        }
+    if isinstance(value, (list, tuple)):
+        return [_convert_row_types(v) for v in value]
+    return value
+
+
+TRINO_TYPES_MAPPING = {
+    "boolean": TYPE_BOOLEAN,
+    "tinyint": TYPE_INTEGER,
+    "smallint": TYPE_INTEGER,
+    "integer": TYPE_INTEGER,
+    "long": TYPE_INTEGER,
+    "bigint": TYPE_INTEGER,
+    "float": TYPE_FLOAT,
+    "real": TYPE_FLOAT,
+    "double": TYPE_FLOAT,
+    "decimal": TYPE_INTEGER,
+    "varchar": TYPE_STRING,
+    "char": TYPE_STRING,
+    "string": TYPE_STRING,
+    "json": TYPE_STRING,
+    "date": TYPE_DATE,
+    "timestamp": TYPE_DATETIME,
+}
+
+
+class Trino(BaseQueryRunner):
+    noop_query = "SELECT 1"
+    should_annotate_query = False
+
+    @classmethod
+    def configuration_schema(cls):
+        return {
+            "type": "object",
+            "properties": {
+                "protocol": {"type": "string", "default": "http"},
+                "host": {"type": "string"},
+                "port": {"type": "number"},
+                "username": {"type": "string"},
+                "password": {"type": "string"},
+                "source": {"type": "string", "default": "redash"},
+                "client_tags": {"type": "string", "title": "Client tags (comma separated)"},
+                "catalog": {"type": "string"},
+                "schema": {"type": "string"},
+                "impersonation": {"type": "boolean", "default": False},
+                "impersonationField": {
+                    "type": "string",
+                    "title": "Impersonation User Attribute",
+                    "default": "email",
+                    "extendedEnum": [{"value": "email", "name": "Email"}, {"value": "name", "name": "Name"}],
+                },
+            },
+            "order": [
+                "protocol",
+                "host",
+                "port",
+                "username",
+                "password",
+                "source",
+                "client_tags",
+                "catalog",
+                "schema",
+                "impersonation",
+            ],
+            "required": ["host", "username"],
+            "secret": ["password"],
+            "extra_options": [
+                "client_tags",
+                "impersonation",
+                "impersonationField",
+            ],
+        }
+
+    @classmethod
+    def enabled(cls):
+        return enabled
+
+    @classmethod
+    def type(cls):
+        return "trino"
+
+    def get_schema(self, get_stats=False):
+        if self.configuration.get("catalog"):
+            catalogs = [self.configuration.get("catalog")]
+        else:
+            catalogs = self._get_catalogs()
+
+        schema = {}
+        for catalog in catalogs:
+            query = f"""
+                SELECT table_schema, table_name, column_name, data_type
+                FROM {catalog}.information_schema.columns
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+            """
+            results, error = self.run_query(query, None)
+
+            if error is not None:
+                self._handle_run_query_error(error)
+
+            for row in results["rows"]:
+                table_name = f'{catalog}.{row["table_schema"]}.{row["table_name"]}'
+
+                if table_name not in schema:
+                    schema[table_name] = {"name": table_name, "columns": []}
+
+                column = {"name": row["column_name"], "type": row["data_type"]}
+                schema[table_name]["columns"].append(column)
+
+        return list(schema.values())
+
+    def _get_catalogs(self):
+        query = """
+            SHOW CATALOGS
+        """
+        results, error = self.run_query(query, None)
+
+        if error is not None:
+            self._handle_run_query_error(error)
+
+        catalogs = []
+        for row in results["rows"]:
+            catalog = row["Catalog"]
+            if "." in catalog:
+                catalog = f'"{catalog}"'
+            catalogs.append(catalog)
+        return catalogs
+
+    def _get_trino_user(self, user):
+        """Determine the Trino user based on impersonation settings."""
+        default_user = self.configuration.get("username")
+
+        if not self.configuration.get("impersonation") or user is None:
+            return default_user
+
+        impersonation_field = self.configuration.get("impersonationField", "email")
+
+        if isinstance(user, User):
+            if impersonation_field == "email":
+                return user.email or default_user
+            elif impersonation_field == "name":
+                return user.name or default_user
+        elif isinstance(user, ApiUser):
+            return user.name or default_user
+
+        return default_user
+
+    def _get_client_tags(self):
+        client_tags = self.configuration.get("client_tags")
+        if not client_tags:
+            return None
+        tags = [tag.strip() for tag in client_tags.split(",") if tag.strip()]
+        return tags or None
+
+    def run_query(self, query, user):
+        if self.configuration.get("password"):
+            auth = trino.auth.BasicAuthentication(
+                username=self.configuration.get("username"), password=self.configuration.get("password")
+            )
+        else:
+            auth = trino.constants.DEFAULT_AUTH
+
+        connection = trino.dbapi.connect(
+            http_scheme=self.configuration.get("protocol", "http"),
+            host=self.configuration.get("host", ""),
+            source=self.configuration.get("source", "redash"),
+            port=self.configuration.get("port", 8080),
+            catalog=self.configuration.get("catalog", ""),
+            schema=self.configuration.get("schema", ""),
+            user=self._get_trino_user(user),
+            client_tags=self._get_client_tags(),
+            auth=auth,
+        )
+
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(query)
+            results = cursor.fetchall()
+            description = cursor.description
+            columns = self.fetch_columns([(c[0], TRINO_TYPES_MAPPING.get(c[1], None)) for c in description])
+            column_names = [c["name"] for c in columns]
+            rows = [dict(zip(column_names, [_convert_row_types(v) for v in r])) for r in results]
+            data = {"columns": columns, "rows": rows}
+            error = None
+        except DatabaseError as db:
+            data = None
+            default_message = "Unspecified DatabaseError: {0}".format(str(db))
+            if isinstance(db.args[0], dict):
+                message = db.args[0].get("failureInfo", {"message", None}).get("message")
+            else:
+                message = None
+            error = default_message if message is None else message
+        except (KeyboardInterrupt, InterruptException, JobTimeoutException):
+            cursor.cancel()
+            raise
+
+        return data, error
+
+
+register(Trino)

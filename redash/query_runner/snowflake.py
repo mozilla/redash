@@ -1,21 +1,25 @@
 try:
     import snowflake.connector
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
     enabled = True
 except ImportError:
     enabled = False
 
 
-from redash.query_runner import BaseQueryRunner, register
+from base64 import b64decode
+
+from redash import __version__
 from redash.query_runner import (
-    TYPE_STRING,
+    TYPE_BOOLEAN,
     TYPE_DATE,
     TYPE_DATETIME,
-    TYPE_INTEGER,
     TYPE_FLOAT,
-    TYPE_BOOLEAN,
+    TYPE_INTEGER,
+    TYPE_STRING,
+    BaseSQLQueryRunner,
+    register,
 )
-from redash.utils import json_dumps, json_loads
 
 TYPES_MAP = {
     0: TYPE_INTEGER,
@@ -31,7 +35,7 @@ TYPES_MAP = {
 }
 
 
-class Snowflake(BaseQueryRunner):
+class Snowflake(BaseSQLQueryRunner):
     noop_query = "SELECT 1"
 
     @classmethod
@@ -42,19 +46,34 @@ class Snowflake(BaseQueryRunner):
                 "account": {"type": "string"},
                 "user": {"type": "string"},
                 "password": {"type": "string"},
+                "private_key_File": {"type": "string"},
+                "private_key_pwd": {"type": "string"},
                 "warehouse": {"type": "string"},
                 "database": {"type": "string"},
                 "region": {"type": "string", "default": "us-west"},
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
+                "lower_case_columns": {
+                    "type": "boolean",
+                    "title": "Lower Case Column Names in Results",
+                    "default": False,
                 },
+                "host": {"type": "string"},
             },
-            "order": ["account", "user", "password", "warehouse", "database", "region"],
-            "required": ["user", "password", "account", "database", "warehouse"],
-            "secret": ["password"],
+            "order": [
+                "account",
+                "user",
+                "password",
+                "private_key_File",
+                "private_key_pwd",
+                "warehouse",
+                "database",
+                "region",
+                "host",
+            ],
+            "required": ["user", "account", "database", "warehouse"],
+            "secret": ["password", "private_key_File", "private_key_pwd"],
+            "extra_options": [
+                "host",
+            ],
         }
 
     @classmethod
@@ -70,27 +89,57 @@ class Snowflake(BaseQueryRunner):
 
     def _get_connection(self):
         region = self.configuration.get("region")
+        account = self.configuration["account"]
 
         # for us-west we don't need to pass a region (and if we do, it fails to connect)
         if region == "us-west":
             region = None
 
-        connection = snowflake.connector.connect(
-            user=self.configuration["user"],
-            password=self.configuration["password"],
-            account=self.configuration["account"],
-            region=region,
-        )
+        if self.configuration.get("host"):
+            host = self.configuration.get("host")
+        else:
+            if region:
+                host = "{}.{}.snowflakecomputing.com".format(account, region)
+            else:
+                host = "{}.snowflakecomputing.com".format(account)
+
+        params = {
+            "user": self.configuration["user"],
+            "account": account,
+            "region": region,
+            "host": host,
+            "application": "Redash/{} (Snowflake)".format(__version__.split("-")[0]),
+        }
+
+        if self.configuration.get("password"):
+            params["password"] = self.configuration["password"]
+        elif self.configuration.get("private_key_File"):
+            private_key_b64 = self.configuration.get("private_key_File")
+            private_key_bytes = b64decode(private_key_b64)
+            if self.configuration.get("private_key_pwd"):
+                private_key_pwd = self.configuration.get("private_key_pwd").encode()
+            else:
+                private_key_pwd = None
+            private_key_pem = load_pem_private_key(private_key_bytes, private_key_pwd)
+            params["private_key"] = private_key_pem
+        else:
+            raise Exception("Neither password nor private_key_b64 is set.")
+
+        connection = snowflake.connector.connect(**params)
 
         return connection
 
+    def _column_name(self, column_name):
+        if self.configuration.get("lower_case_columns", False):
+            return column_name.lower()
+
+        return column_name
+
     def _parse_results(self, cursor):
         columns = self.fetch_columns(
-            [(i[0], self.determine_type(i[1], i[5])) for i in cursor.description]
+            [(self._column_name(i[0]), self.determine_type(i[1], i[5])) for i in cursor.description]
         )
-        rows = [
-            dict(zip((column["name"] for column in columns), row)) for row in cursor
-        ]
+        rows = [dict(zip((column["name"] for column in columns), row)) for row in cursor]
 
         data = {"columns": columns, "rows": rows}
         return data
@@ -107,12 +156,11 @@ class Snowflake(BaseQueryRunner):
 
             data = self._parse_results(cursor)
             error = None
-            json_data = json_dumps(data)
         finally:
             cursor.close()
             connection.close()
 
-        return json_data, error
+        return data, error
 
     def _run_query_without_warehouse(self, query):
         connection = self._get_connection()
@@ -129,10 +177,10 @@ class Snowflake(BaseQueryRunner):
             cursor.close()
             connection.close()
 
-        return data, error    
-    
+        return data, error
+
     def _database_name_includes_schema(self):
-        return '.' in self.configuration.get('database')
+        return "." in self.configuration.get("database")
 
     def get_schema(self, get_stats=False):
         if self._database_name_includes_schema():
@@ -143,7 +191,7 @@ class Snowflake(BaseQueryRunner):
         results, error = self._run_query_without_warehouse(query)
 
         if error is not None:
-            raise Exception("Failed getting schema.")
+            self._handle_run_query_error(error)
 
         schema = {}
         for row in results["rows"]:

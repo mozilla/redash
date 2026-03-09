@@ -5,30 +5,32 @@ import { map, includes } from "lodash";
 import Button from "antd/lib/button";
 import Dropdown from "antd/lib/dropdown";
 import Menu from "antd/lib/menu";
-import Icon from "antd/lib/icon";
+import EllipsisOutlinedIcon from "@ant-design/icons/EllipsisOutlined";
 import Modal from "antd/lib/modal";
-import Tooltip from "antd/lib/tooltip";
+import Tooltip from "@/components/Tooltip";
 import FavoritesControl from "@/components/FavoritesControl";
 import EditInPlace from "@/components/EditInPlace";
+import PlainButton from "@/components/PlainButton";
 import { DashboardTagsControl } from "@/components/tags-control/TagsControl";
 import getTags from "@/services/getTags";
 import { clientConfig } from "@/services/auth";
 import { policy } from "@/services/policy";
+import recordEvent from "@/services/recordEvent";
 import { durationHumanize } from "@/lib/utils";
 import { DashboardStatusEnum } from "../hooks/useDashboard";
 
 import "./DashboardHeader.less";
 
 function getDashboardTags() {
-  return getTags("api/dashboards/tags").then(tags => map(tags, t => t.name));
+  return getTags("api/dashboards/tags").then((tags) => map(tags, (t) => t.name));
 }
 
 function buttonType(value) {
   return value ? "primary" : "default";
 }
 
-function DashboardPageTitle({ dashboardOptions }) {
-  const { dashboard, canEditDashboard, updateDashboard, editingLayout } = dashboardOptions;
+function DashboardPageTitle({ dashboardConfiguration }) {
+  const { dashboard, canEditDashboard, updateDashboard, editingLayout } = dashboardConfiguration;
   return (
     <div className="title-with-tags">
       <div className="page-title">
@@ -36,7 +38,7 @@ function DashboardPageTitle({ dashboardOptions }) {
         <h3>
           <EditInPlace
             isEditable={editingLayout}
-            onDone={name => updateDashboard({ name })}
+            onDone={(name) => updateDashboard({ name })}
             value={dashboard.name}
             ignoreBlanks
           />
@@ -51,18 +53,18 @@ function DashboardPageTitle({ dashboardOptions }) {
         isArchived={dashboard.is_archived}
         canEdit={canEditDashboard}
         getAvailableTags={getDashboardTags}
-        onEdit={tags => updateDashboard({ tags })}
+        onEdit={(tags) => updateDashboard({ tags })}
       />
     </div>
   );
 }
 
 DashboardPageTitle.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
 };
 
-function RefreshButton({ dashboardOptions }) {
-  const { refreshRate, setRefreshRate, disableRefreshRate, refreshing, refreshDashboard } = dashboardOptions;
+function RefreshButton({ dashboardConfiguration }) {
+  const { refreshRate, setRefreshRate, disableRefreshRate, refreshing, refreshDashboard } = dashboardConfiguration;
   const allowedIntervals = policy.getDashboardRefreshIntervals();
   const refreshRateOptions = clientConfig.dashboardRefreshIntervals;
   const onRefreshRateSelected = ({ key }) => {
@@ -78,7 +80,7 @@ function RefreshButton({ dashboardOptions }) {
     <Button.Group>
       <Tooltip title={refreshRate ? `Auto Refreshing every ${durationHumanize(refreshRate)}` : null}>
         <Button type={buttonType(refreshRate)} onClick={() => refreshDashboard()}>
-          <i className={cx("zmdi zmdi-refresh m-r-5", { "zmdi-hc-spin": refreshing })} />
+          <i className={cx("zmdi zmdi-refresh m-r-5", { "zmdi-hc-spin": refreshing })} aria-hidden="true" />
           {refreshRate ? durationHumanize(refreshRate) : "Refresh"}
         </Button>
       </Tooltip>
@@ -87,16 +89,17 @@ function RefreshButton({ dashboardOptions }) {
         placement="bottomRight"
         overlay={
           <Menu onClick={onRefreshRateSelected} selectedKeys={[`${refreshRate}`]}>
-            {refreshRateOptions.map(option => (
+            {refreshRateOptions.map((option) => (
               <Menu.Item key={`${option}`} disabled={!includes(allowedIntervals, option)}>
                 {durationHumanize(option)}
               </Menu.Item>
             ))}
             {refreshRate && <Menu.Item key={null}>Disable auto refresh</Menu.Item>}
           </Menu>
-        }>
+        }
+      >
         <Button className="icon-button hidden-xs" type={buttonType(refreshRate)}>
-          <i className="fa fa-angle-down" />
+          <i className="fa fa-angle-down" aria-hidden="true" />
           <span className="sr-only">Split button!</span>
         </Button>
       </Dropdown>
@@ -105,10 +108,10 @@ function RefreshButton({ dashboardOptions }) {
 }
 
 RefreshButton.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
 };
 
-function DashboardMoreOptionsButton({ dashboardOptions }) {
+function DashboardMoreOptionsButton({ dashboardConfiguration }) {
   const {
     dashboard,
     setEditingLayout,
@@ -117,7 +120,9 @@ function DashboardMoreOptionsButton({ dashboardOptions }) {
     managePermissions,
     gridDisabled,
     isDashboardOwnerOrAdmin,
-  } = dashboardOptions;
+    isDuplicating,
+    duplicateDashboard,
+  } = dashboardConfiguration;
 
   const archive = () => {
     Modal.confirm({
@@ -138,35 +143,44 @@ function DashboardMoreOptionsButton({ dashboardOptions }) {
       overlay={
         <Menu data-test="DashboardMoreButtonMenu">
           <Menu.Item className={cx({ hidden: gridDisabled })}>
-            <a onClick={() => setEditingLayout(true)}>Edit</a>
+            <PlainButton onClick={() => setEditingLayout(true)}>Edit</PlainButton>
           </Menu.Item>
-          {clientConfig.showPermissionsControl && isDashboardOwnerOrAdmin && (
+          {!isDuplicating && dashboard.canEdit() && (
             <Menu.Item>
-              <a onClick={managePermissions}>Manage Permissions</a>
+              <PlainButton onClick={duplicateDashboard}>
+                Fork <i className="fa fa-external-link m-l-5" aria-hidden="true" />
+                <span className="sr-only">(opens in a new tab)</span>
+              </PlainButton>
             </Menu.Item>
           )}
-          {!dashboard.is_draft && (
+          {clientConfig.showPermissionsControl && isDashboardOwnerOrAdmin && (
             <Menu.Item>
-              <a onClick={togglePublished}>Unpublish</a>
+              <PlainButton onClick={managePermissions}>Manage Permissions</PlainButton>
+            </Menu.Item>
+          )}
+          {!clientConfig.disablePublish && !dashboard.is_draft && (
+            <Menu.Item>
+              <PlainButton onClick={togglePublished}>Unpublish</PlainButton>
             </Menu.Item>
           )}
           <Menu.Item>
-            <a onClick={archive}>Archive</a>
+            <PlainButton onClick={archive}>Archive</PlainButton>
           </Menu.Item>
         </Menu>
-      }>
-      <Button className="icon-button m-l-5" data-test="DashboardMoreButton">
-        <Icon type="ellipsis" rotate={90} />
+      }
+    >
+      <Button className="icon-button m-l-5" data-test="DashboardMoreButton" aria-label="More actions">
+        <EllipsisOutlinedIcon rotate={90} aria-hidden="true" />
       </Button>
     </Dropdown>
   );
 }
 
 DashboardMoreOptionsButton.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
 };
 
-function DashboardControl({ dashboardOptions }) {
+function DashboardControl({ dashboardConfiguration, headerExtra }) {
   const {
     dashboard,
     togglePublished,
@@ -174,14 +188,22 @@ function DashboardControl({ dashboardOptions }) {
     fullscreen,
     toggleFullscreen,
     showShareDashboardDialog,
-  } = dashboardOptions;
+    updateDashboard,
+  } = dashboardConfiguration;
   const showPublishButton = dashboard.is_draft;
   const showRefreshButton = true;
   const showFullscreenButton = !dashboard.is_draft;
-  const showShareButton = dashboard.publicAccessEnabled || (canEditDashboard && !dashboard.is_draft);
+  const canShareDashboard = canEditDashboard && !dashboard.is_draft;
+  const showShareButton = !clientConfig.disablePublicUrls && (dashboard.publicAccessEnabled || canShareDashboard);
   const showMoreOptionsButton = canEditDashboard;
+
+  const unarchiveDashboard = () => {
+    recordEvent("unarchive", "dashboard", dashboard.id);
+    updateDashboard({ is_archived: false }, false);
+  };
   return (
     <div className="dashboard-control">
+      {dashboard.can_edit && dashboard.is_archived && <Button onClick={unarchiveDashboard}>Unarchive</Button>}
       {!dashboard.is_archived && (
         <span className="hidden-print">
           {showPublishButton && (
@@ -189,26 +211,34 @@ function DashboardControl({ dashboardOptions }) {
               <span className="fa fa-paper-plane m-r-5" /> Publish
             </Button>
           )}
-          {showRefreshButton && <RefreshButton dashboardOptions={dashboardOptions} />}
+          {showRefreshButton && <RefreshButton dashboardConfiguration={dashboardConfiguration} />}
           {showFullscreenButton && (
             <Tooltip className="hidden-xs" title="Enable/Disable Fullscreen display">
-              <Button type={buttonType(fullscreen)} className="icon-button m-l-5" onClick={toggleFullscreen}>
-                <i className="zmdi zmdi-fullscreen" />
+              <Button
+                type={buttonType(fullscreen)}
+                className="icon-button m-l-5"
+                onClick={toggleFullscreen}
+                aria-label="Toggle fullscreen display"
+              >
+                <i className="zmdi zmdi-fullscreen" aria-hidden="true" />
               </Button>
             </Tooltip>
           )}
+          {headerExtra}
           {showShareButton && (
             <Tooltip title="Dashboard Sharing Options">
               <Button
                 className="icon-button m-l-5"
                 type={buttonType(dashboard.publicAccessEnabled)}
                 onClick={showShareDashboardDialog}
-                data-test="OpenShareForm">
-                <i className="zmdi zmdi-share" />
+                data-test="OpenShareForm"
+                aria-label="Share"
+              >
+                <i className="zmdi zmdi-share" aria-hidden="true" />
               </Button>
             </Tooltip>
           )}
-          {showMoreOptionsButton && <DashboardMoreOptionsButton dashboardOptions={dashboardOptions} />}
+          {showMoreOptionsButton && <DashboardMoreOptionsButton dashboardConfiguration={dashboardConfiguration} />}
         </span>
       )}
     </div>
@@ -216,11 +246,21 @@ function DashboardControl({ dashboardOptions }) {
 }
 
 DashboardControl.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  headerExtra: PropTypes.node,
 };
 
-function DashboardEditControl({ dashboardOptions }) {
-  const { setEditingLayout, doneBtnClickedWhileSaving, dashboardStatus, retrySaveDashboardLayout } = dashboardOptions;
+function DashboardEditControl({ dashboardConfiguration, headerExtra }) {
+  const {
+    setEditingLayout,
+    doneBtnClickedWhileSaving,
+    dashboardStatus,
+    retrySaveDashboardLayout,
+    saveDashboardParameters,
+  } = dashboardConfiguration;
+  const handleDoneEditing = () => {
+    saveDashboardParameters().then(() => setEditingLayout(false));
+  };
   let status;
   if (dashboardStatus === DashboardStatusEnum.SAVED) {
     status = <span className="save-status">Saved</span>;
@@ -245,30 +285,33 @@ function DashboardEditControl({ dashboardOptions }) {
           Retry
         </Button>
       ) : (
-        <Button loading={doneBtnClickedWhileSaving} type="primary" onClick={() => setEditingLayout(false)}>
-          {!doneBtnClickedWhileSaving && <i className="fa fa-check m-r-5" />} Done Editing
+        <Button loading={doneBtnClickedWhileSaving} type="primary" onClick={handleDoneEditing}>
+          {!doneBtnClickedWhileSaving && <i className="fa fa-check m-r-5" aria-hidden="true" />} Done Editing
         </Button>
       )}
+      {headerExtra}
     </div>
   );
 }
 
 DashboardEditControl.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  headerExtra: PropTypes.node,
 };
 
-export default function DashboardHeader({ dashboardOptions }) {
-  const { editingLayout } = dashboardOptions;
+export default function DashboardHeader({ dashboardConfiguration, headerExtra }) {
+  const { editingLayout } = dashboardConfiguration;
   const DashboardControlComponent = editingLayout ? DashboardEditControl : DashboardControl;
 
   return (
     <div className="dashboard-header">
-      <DashboardPageTitle dashboardOptions={dashboardOptions} />
-      <DashboardControlComponent dashboardOptions={dashboardOptions} />
+      <DashboardPageTitle dashboardConfiguration={dashboardConfiguration} />
+      <DashboardControlComponent dashboardConfiguration={dashboardConfiguration} headerExtra={headerExtra} />
     </div>
   );
 }
 
 DashboardHeader.propTypes = {
-  dashboardOptions: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  dashboardConfiguration: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  headerExtra: PropTypes.node,
 };
