@@ -1,8 +1,7 @@
 import os
 import subprocess
-import sys
 
-from redash.query_runner import *
+from redash.query_runner import BaseQueryRunner, register
 
 
 def query_to_script_path(path, query):
@@ -45,12 +44,6 @@ class Script(BaseQueryRunner):
                     "type": "boolean",
                     "title": "Execute command through the shell",
                 },
-                "toggle_table_string": {
-                    "type": "string",
-                    "title": "Toggle Table String",
-                    "default": "_v",
-                    "info": "This string will be used to toggle visibility of tables in the schema browser when editing a query in order to remove non-useful tables from sight.",
-                },
             },
             "required": ["path"],
         }
@@ -62,15 +55,14 @@ class Script(BaseQueryRunner):
     def __init__(self, configuration):
         super(Script, self).__init__(configuration)
 
+        path = self.configuration.get("path", "")
         # If path is * allow any execution path
-        if self.configuration["path"] == "*":
+        if path == "*":
             return
 
         # Poor man's protection against running scripts from outside the scripts directory
-        if self.configuration["path"].find("../") > -1:
-            raise ValueError(
-                "Scripts can only be run from the configured scripts directory"
-            )
+        if path.find("../") > -1:
+            raise ValueError("Scripts can only be run from the configured scripts directory")
 
     def test_connection(self):
         pass

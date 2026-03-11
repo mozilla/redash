@@ -1,12 +1,13 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { find, orderBy } from "lodash";
 import useMedia from "use-media";
 import Tabs from "antd/lib/tabs";
-import VisualizationRenderer from "@/components/visualizations/VisualizationRenderer";
 import Button from "antd/lib/button";
 import Modal from "antd/lib/modal";
+import VisualizationRenderer from "@/components/visualizations/VisualizationRenderer";
+import PlainButton from "@/components/PlainButton";
 
 import "./QueryVisualizationTabs.less";
 
@@ -39,7 +40,7 @@ EmptyState.defaultProps = {
 
 function TabWithDeleteButton({ visualizationName, canDelete, onDelete, ...props }) {
   const handleDelete = useCallback(
-    e => {
+    (e) => {
       e.stopPropagation();
       Modal.confirm({
         title: "Delete Visualization",
@@ -58,9 +59,9 @@ function TabWithDeleteButton({ visualizationName, canDelete, onDelete, ...props 
     <span {...props}>
       {visualizationName}
       {canDelete && (
-        <a className="delete-visualization-button" onClick={handleDelete}>
-          <i className="zmdi zmdi-close" />
-        </a>
+        <PlainButton className="delete-visualization-button" onClick={handleDelete} aria-label="Close" title="Close">
+          <i className="zmdi zmdi-close" aria-hidden="true" />
+        </PlainButton>
       )}
     </span>
   );
@@ -91,6 +92,7 @@ export default function QueryVisualizationTabs({
   onAddVisualization,
   onDeleteVisualization,
   refreshButton,
+  canRefresh,
   ...props
 }) {
   const visualizations = useMemo(
@@ -109,16 +111,19 @@ export default function QueryVisualizationTabs({
         className="add-visualization-button"
         data-test="NewVisualization"
         type="link"
-        onClick={() => onAddVisualization()}>
-        <i className="fa fa-plus" />
+        onClick={() => onAddVisualization()}
+      >
+        <i className="fa fa-plus" aria-hidden="true" />
         <span className="m-l-5 hidden-xs">Add Visualization</span>
       </Button>
     );
   }
 
   const orderedVisualizations = useMemo(() => orderBy(visualizations, ["id"]), [visualizations]);
-  const isFirstVisualization = useCallback(visId => visId === orderedVisualizations[0].id, [orderedVisualizations]);
+  const isFirstVisualization = useCallback((visId) => visId === orderedVisualizations[0].id, [orderedVisualizations]);
   const isMobile = useMedia({ maxWidth: 768 });
+
+  const [filters, setFilters] = useState([]);
 
   return (
     <Tabs
@@ -128,12 +133,12 @@ export default function QueryVisualizationTabs({
       data-test="QueryPageVisualizationTabs"
       animated={false}
       tabBarGutter={0}
-      onChange={activeKey => onChangeTab(+activeKey)}
-      destroyInactiveTabPane>
-      {orderedVisualizations.map(visualization => (
+      onChange={(activeKey) => onChangeTab(+activeKey)}
+      destroyInactiveTabPane
+    >
+      {orderedVisualizations.map((visualization) => (
         <TabPane
           key={`${visualization.id}`}
-          data-test={`QueryPageVisualization${selectedTab}`}
           tab={
             <TabWithDeleteButton
               data-test={`QueryPageVisualizationTab${visualization.id}`}
@@ -141,13 +146,24 @@ export default function QueryVisualizationTabs({
               visualizationName={visualization.name}
               onDelete={() => onDeleteVisualization(visualization.id)}
             />
-          }>
+          }
+        >
           {queryResult ? (
-            <VisualizationRenderer visualization={visualization} queryResult={queryResult} context="query" />
+            <VisualizationRenderer
+              visualization={visualization}
+              queryResult={queryResult}
+              context="query"
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
           ) : (
             <EmptyState
-              title="Query Has no Result"
-              message="Execute/Refresh the query to show results."
+              title="Query has no result"
+              message={
+                canRefresh
+                  ? "Execute/Refresh the query to show results."
+                  : "You do not have a permission to execute/refresh this query."
+              }
               refreshButton={refreshButton}
             />
           )}
@@ -167,6 +183,7 @@ QueryVisualizationTabs.propTypes = {
   onAddVisualization: PropTypes.func,
   onDeleteVisualization: PropTypes.func,
   refreshButton: PropTypes.node,
+  canRefresh: PropTypes.bool,
 };
 
 QueryVisualizationTabs.defaultProps = {
@@ -179,4 +196,5 @@ QueryVisualizationTabs.defaultProps = {
   onAddVisualization: () => {},
   onDeleteVisualization: () => {},
   refreshButton: null,
+  canRefresh: true,
 };

@@ -1,12 +1,12 @@
 import re
 from collections import OrderedDict
 
-from redash.query_runner import *
-from redash.utils import json_dumps, json_loads
+from redash.query_runner import TYPE_STRING, BaseHTTPQueryRunner, register
+from redash.utils import json_loads
 
 
 # TODO: make this more general and move into __init__.py
-class ResultSet(object):
+class ResultSet:
     def __init__(self):
         self.columns = OrderedDict()
         self.rows = []
@@ -26,17 +26,21 @@ class ResultSet(object):
             }
 
     def to_json(self):
-        return json_dumps({"rows": self.rows, "columns": list(self.columns.values())})
+        return {"rows": self.rows, "columns": list(self.columns.values())}
 
     def merge(self, set):
         self.rows = self.rows + set.rows
 
 
-def parse_issue(issue, field_mapping):
+def parse_issue(issue, field_mapping):  # noqa: C901
     result = OrderedDict()
-    result["key"] = issue["key"]
 
-    for k, v in issue["fields"].items():  #
+    # Handle API v3 response format: key field may be missing, use id as fallback
+    result["key"] = issue.get("key", issue.get("id", "unknown"))
+
+    # Handle API v3 response format: fields may be missing
+    fields = issue.get("fields", {})
+    for k, v in fields.items():  #
         output_name = field_mapping.get_output_field_name(k)
         member_names = field_mapping.get_dict_members(k)
 
@@ -45,9 +49,7 @@ def parse_issue(issue, field_mapping):
                 # if field mapping with dict member mappings defined get value of each member
                 for member_name in member_names:
                     if member_name in v:
-                        result[
-                            field_mapping.get_dict_output_field_name(k, member_name)
-                        ] = v[member_name]
+                        result[field_mapping.get_dict_output_field_name(k, member_name)] = v[member_name]
 
             else:
                 # these special mapping rules are kept for backwards compatibility
@@ -72,9 +74,7 @@ def parse_issue(issue, field_mapping):
                             if member_name in listItem:
                                 listValues.append(listItem[member_name])
                     if len(listValues) > 0:
-                        result[
-                            field_mapping.get_dict_output_field_name(k, member_name)
-                        ] = ",".join(listValues)
+                        result[field_mapping.get_dict_output_field_name(k, member_name)] = ",".join(listValues)
 
             else:
                 # otherwise support list values only for non-dict items
@@ -102,7 +102,9 @@ def parse_issues(data, field_mapping):
 
 def parse_count(data):
     results = ResultSet()
-    results.add_row({"count": data["total"]})
+    # API v3 may not return 'total' field, fallback to counting issues
+    count = data.get("total", len(data.get("issues", [])))
+    results.add_row({"count": count})
     return results
 
 
@@ -114,7 +116,7 @@ class FieldMapping:
             member_name = None
 
             # check for member name contained in field name
-            member_parser = re.search("(\w+)\.(\w+)", k)
+            member_parser = re.search(r"(\w+)\.(\w+)", k)
             if member_parser:
                 field_name = member_parser.group(1)
                 member_name = member_parser.group(2)
@@ -164,17 +166,25 @@ class JiraJQL(BaseHTTPQueryRunner):
         self.syntax = "json"
 
     def run_query(self, query, user):
-        jql_url = "{}/rest/api/2/search".format(self.configuration["url"])
+        # Updated to API v3 endpoint, fix double slash issue
+        jql_url = "{}/rest/api/3/search/jql".format(self.configuration["url"].rstrip("/"))
 
         query = json_loads(query)
         query_type = query.pop("queryType", "select")
         field_mapping = FieldMapping(query.pop("fieldMapping", {}))
+
+        # API v3 requires mandatory jql parameter with restrictions
+        if "jql" not in query or not query["jql"]:
+            query["jql"] = "created >= -30d order by created DESC"
 
         if query_type == "count":
             query["maxResults"] = 1
             query["fields"] = ""
         else:
             query["maxResults"] = query.get("maxResults", 1000)
+
+        if "fields" not in query:
+            query["fields"] = "*all"
 
         response, error = self.get_response(jql_url, params=query)
         if error is not None:
@@ -186,17 +196,15 @@ class JiraJQL(BaseHTTPQueryRunner):
             results = parse_count(data)
         else:
             results = parse_issues(data, field_mapping)
-            index = data["startAt"] + data["maxResults"]
 
-            while data["total"] > index:
-                query["startAt"] = index
+            # API v3 uses token-based pagination instead of startAt/total
+            while not data.get("isLast", True) and "nextPageToken" in data:
+                query["nextPageToken"] = data["nextPageToken"]
                 response, error = self.get_response(jql_url, params=query)
                 if error is not None:
                     return None, error
 
                 data = response.json()
-                index = data["startAt"] + data["maxResults"]
-
                 addl_results = parse_issues(data, field_mapping)
                 results.merge(addl_results)
 

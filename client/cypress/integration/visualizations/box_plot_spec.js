@@ -1,7 +1,5 @@
 /* global cy, Cypress */
 
-import { createQuery, createVisualization } from "../../support/redash-api";
-
 const SQL = `
   SELECT 12 AS mn, 4967 AS mx UNION ALL
   SELECT 10 AS mn, 19430 AS mx UNION ALL
@@ -42,10 +40,11 @@ describe("Box Plot", () => {
 
   beforeEach(() => {
     cy.login();
-    createQuery({ query: SQL })
-      .then(({ id }) => createVisualization(id, "BOXPLOT", "Boxplot (Deprecated)", {}))
+    cy.createQuery({ query: SQL })
+      .then(({ id }) => cy.createVisualization(id, "BOXPLOT", "Boxplot (Deprecated)", {}))
       .then(({ id: visualizationId, query_id: queryId }) => {
         cy.visit(`queries/${queryId}/source#${visualizationId}`);
+        cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
         cy.getByTestId("ExecuteButton").click();
       });
   });
@@ -63,9 +62,7 @@ describe("Box Plot", () => {
     // Wait for proper initialization of visualization
     cy.wait(500); // eslint-disable-line cypress/no-unnecessary-waiting
 
-    cy.getByTestId("VisualizationPreview")
-      .find("svg")
-      .should("exist");
+    cy.getByTestId("VisualizationPreview").find("svg").should("exist");
 
     cy.percySnapshot("Visualizations - Box Plot", { widths: [viewportWidth] });
   });

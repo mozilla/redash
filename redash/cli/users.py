@@ -1,9 +1,10 @@
+import json
 from sys import exit
 
 from click import BOOL, argument, option, prompt
 from flask.cli import AppGroup
-from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models
 from redash.handlers.users import invite_user
@@ -26,7 +27,7 @@ def build_groups(org, groups, is_admin):
     return groups
 
 
-@manager.command()
+@manager.command(name="grant_admin")
 @argument("email")
 @option(
     "--org",
@@ -116,7 +117,7 @@ def create(
         exit(1)
 
 
-@manager.command()
+@manager.command(name="create_root")
 @argument("email")
 @argument("name")
 @option(
@@ -136,17 +137,13 @@ def create(
     "--password",
     "password",
     default=None,
-    help="Password for root user who don't use Google Auth "
-    "(leave blank for prompt).",
+    help="Password for root user who don't use Google Auth (leave blank for prompt).",
 )
 def create_root(email, name, google_auth=False, password=None, organization="default"):
     """
     Create root user.
     """
-    print(
-        "Creating root user (%s, %s) in organization %s..."
-        % (email, name, organization)
-    )
+    print("Creating root user (%s, %s) in organization %s..." % (email, name, organization))
     print("Login with Google Auth: %r\n" % google_auth)
 
     user = models.User.query.filter(models.User.email == email).first()
@@ -155,15 +152,13 @@ def create_root(email, name, google_auth=False, password=None, organization="def
         exit(1)
 
     org_slug = organization
-    org = models.Organization.query.filter(
-        models.Organization.slug == org_slug
-    ).first()
+    org = models.Organization.query.filter(models.Organization.slug == org_slug).first()
     if org is None:
         org = models.Organization(name=org_slug, slug=org_slug, settings={})
 
     admin_group = models.Group(
         name="admin",
-        permissions=["admin", "super_admin"],
+        permissions=models.Group.ADMIN_PERMISSIONS,
         org=org,
         type=models.Group.BUILTIN_GROUP,
     )
@@ -208,13 +203,9 @@ def delete(email, organization=None):
     """
     if organization:
         org = models.Organization.get_by_slug(organization)
-        deleted_count = models.User.query.filter(
-            models.User.email == email, models.User.org == org.id
-        ).delete()
+        deleted_count = models.User.query.filter(models.User.email == email, models.User.org == org.id).delete()
     else:
-        deleted_count = models.User.query.filter(models.User.email == email).delete(
-            synchronize_session=False
-        )
+        deleted_count = models.User.query.filter(models.User.email == email).delete(synchronize_session=False)
     models.db.session.commit()
     print("Deleted %d users." % deleted_count)
 
@@ -234,9 +225,7 @@ def password(email, password, organization=None):
     """
     if organization:
         org = models.Organization.get_by_slug(organization)
-        user = models.User.query.filter(
-            models.User.email == email, models.User.org == org
-        ).first()
+        user = models.User.query.filter(models.User.email == email, models.User.org == org).first()
     else:
         user = models.User.query.filter(models.User.email == email).first()
 
@@ -265,7 +254,7 @@ def password(email, password, organization=None):
     "--groups",
     "groups",
     default=None,
-    help="Comma seperated list of groups (leave blank for default).",
+    help="Comma separated list of groups (leave blank for default).",
 )
 def invite(email, name, inviter_email, groups, is_admin=False, organization="default"):
     """
@@ -297,13 +286,33 @@ def invite(email, name, inviter_email, groups, is_admin=False, organization="def
     default=None,
     help="The organization the user belongs to (leave blank for all" " organizations)",
 )
-def list_command(organization=None):
+@option("--json", "as_json", is_flag=True, default=False, help="Output as JSON")
+def list_command(organization=None, as_json=False):
     """List all users"""
     if organization:
         org = models.Organization.get_by_slug(organization)
         users = models.User.query.filter(models.User.org == org)
     else:
         users = models.User.query
+    if as_json:
+        result = []
+        for user in users.order_by(models.User.name):
+            result.append(
+                {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "org": {
+                        "slug": user.org.slug,
+                        "name": user.org.name,
+                    },
+                    "active": not user.is_disabled,
+                }
+            )
+
+        print(json.dumps(result, indent=2))
+        return
+
     for i, user in enumerate(users.order_by(models.User.name)):
         if i > 0:
             print("-" * 20)
